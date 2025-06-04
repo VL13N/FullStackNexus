@@ -11,7 +11,7 @@ if (!process.env.TAAPI_API_KEY) {
  * Fetches real-time technical indicators for cryptocurrency trading using bulk endpoints and caching
  */
 
-import LRU from "lru-cache";
+import { LRU } from "lru-cache";
 
 const taapiCache = new LRU({ max: 50, ttl: 1000 * 60 * 15 }); // 15 min cache
 

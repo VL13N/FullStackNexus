@@ -11,6 +11,116 @@ if (!process.env.TAAPI_API_KEY) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // TAAPI Pro API Routes
+  app.get("/api/taapi/rsi", async (req, res) => {
+    try {
+      const { fetchTAIndicator } = await import('../api/taapi.js');
+      const interval = req.query.interval as string || '1h';
+      const value = await fetchTAIndicator('rsi', interval);
+      
+      res.json({
+        success: true,
+        indicator: 'RSI',
+        value,
+        interval,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get("/api/taapi/macd", async (req, res) => {
+    try {
+      const { fetchTAIndicator } = await import('../api/taapi.js');
+      const interval = req.query.interval as string || '1h';
+      const value = await fetchTAIndicator('macd', interval);
+      
+      res.json({
+        success: true,
+        indicator: 'MACD',
+        value,
+        interval,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get("/api/taapi/bulk", async (req, res) => {
+    try {
+      const { fetchBulkIndicators } = await import('../api/taapi.js');
+      const interval = req.query.interval as string || '1h';
+      const data = await fetchBulkIndicators(interval);
+      
+      res.json({
+        success: true,
+        type: 'bulk_indicators',
+        data,
+        interval,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // CryptoRank V2 API Routes
+  app.get("/api/cryptorank/current", async (req, res) => {
+    try {
+      const { fetchSolanaCurrent } = await import('../api/cryptorank.js');
+      const data = await fetchSolanaCurrent();
+      
+      res.json({
+        success: true,
+        type: 'current_data',
+        data,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get("/api/cryptorank/historical", async (req, res) => {
+    try {
+      const { fetchSolanaHistorical } = await import('../api/cryptorank.js');
+      const interval = req.query.interval as string || '1h';
+      const data = await fetchSolanaHistorical(interval);
+      
+      res.json({
+        success: true,
+        type: 'historical_data',
+        data,
+        interval,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // Health check endpoint with API key validation
   app.get("/api/health", (req, res) => {
     const apiKeys = {
