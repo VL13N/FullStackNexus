@@ -106,7 +106,7 @@ function Dashboard() {
               <p className="text-sm text-muted-foreground mb-3">
                 Social metrics and sentiment analysis
               </p>
-              <Badge variant="secondary">API Key Required</Badge>
+              <Badge variant="default">Active</Badge>
             </CardContent>
           </Card>
         </Link>
