@@ -117,7 +117,8 @@ export async function fetchSolanaHistorical(interval = "1d") {
   await rateLimit();
   
   try {
-    const url = "https://api.cryptorank.io/v2/hist_price/solana";
+    // Use v1 sparkline endpoint with currency ID for historical data
+    const url = `https://api.cryptorank.io/v1/currencies/5663/sparkline`;
     const params = new URLSearchParams({
       api_key: CR_API_KEY,
       interval: interval
