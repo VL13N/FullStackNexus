@@ -6,11 +6,17 @@ async function testNews() {
     console.error("Error: LUNARCRUSH_API_KEY is undefined");
     process.exit(1);
   }
-  const url = `https://lunarcrush.com/api4/public/coins/solana/news?limit=5&api_key=${key}`;
+  const url = `https://lunarcrush.com/api4/public/topic/solana/news/v1`;
   console.log("Calling LunarCrush API4 news endpoint:");
   console.log(url);
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${key}`,
+        'Content-Type': 'application/json'
+      }
+    });
     console.log("HTTP status:", res.status);
     const json = await res.json();
     if (json && Array.isArray(json.data)) {

@@ -38,7 +38,7 @@ export async function fetchAndScoreNews() {
   }
 
   // 2. Fetch news from current API4 endpoint
-  const url = `https://lunarcrush.com/api4/public/topic/solana/news/v1?limit=20`;
+  const url = `https://lunarcrush.com/api4/public/topic/solana/news/v1`;
   let newsJson;
   try {
     const res = await fetch(url, {
@@ -64,29 +64,36 @@ export async function fetchAndScoreNews() {
   }
 
   // 3. Extract titles
-  const headlines = newsJson.data.map((n) => n.title);
+  const headlines = newsJson.data.map((n) => n.post_title);
 
   // 4. Build OpenAI prompt
   const prompt = `
 Given these Solana news headlines (1–20):
 ${headlines.map((h, i) => `${i + 1}. ${h}`).join("\n")}
 
-Score each headline from -100 (extremely bearish) to +100 (extremely bullish) for Solana's short‐term price impact. Return a JSON array:
+Score each headline from -100 (extremely bearish) to +100 (extremely bullish) for Solana's short‐term price impact. 
+
+You must respond with ONLY a valid JSON array in this exact format:
 [
-  { "headline": "<text>", "score": <number>, "justification": "<brief text>" },
-  …
+  { "headline": "exact headline text", "score": number, "justification": "brief explanation" },
+  { "headline": "exact headline text", "score": number, "justification": "brief explanation" }
 ]
-  `;
+
+Do not include any other text before or after the JSON array.`;
 
   // 5. Call GPT-4
   let scored;
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
-      messages: [{ role: "user", content: prompt }],
+      messages: [
+        { role: "system", content: "You are a financial analyst. Respond only with valid JSON arrays." },
+        { role: "user", content: prompt }
+      ],
       temperature: 0.2
     });
-    scored = JSON.parse(completion.choices[0].message.content);
+    const content = completion.choices[0].message.content.trim();
+    scored = JSON.parse(content);
   } catch (err) {
     console.error("OpenAI scoring error:", err.message || err);
     return [];
