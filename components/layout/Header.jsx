@@ -21,6 +21,9 @@ const Header = () => {
               <Link to="/dashboard" className="text-gray-600 hover:text-gray-900 transition-colors">
                 Dashboard
               </Link>
+              <Link to="/trading" className="text-gray-600 hover:text-gray-900 transition-colors">
+                Trading
+              </Link>
             </nav>
           </div>
           <div className="flex items-center space-x-4">

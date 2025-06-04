@@ -22,10 +22,22 @@ app.use('/api/trading', require('./routes/trading'));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
+  const apiKeys = {
+    TAAPI_API_KEY: !!process.env.TAAPI_API_KEY,
+    LUNARCRUSH_API_KEY: !!process.env.LUNARCRUSH_API_KEY,
+    CRYPTORANK_API_KEY: !!process.env.CRYPTORANK_API_KEY,
+    OPENAI_API_KEY: !!process.env.OPENAI_API_KEY,
+    DATABASE_URL: !!process.env.DATABASE_URL
+  };
+
+  const allConfigured = Object.values(apiKeys).every(Boolean);
+
   res.status(200).json({ 
-    status: 'OK', 
+    status: allConfigured ? 'OK' : 'PARTIAL',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    apiKeys,
+    allConfigured
   });
 });
 

@@ -4,6 +4,7 @@ import Layout from './layout/Layout';
 import Home from './pages/Home';
 import About from './pages/About';
 import Dashboard from './pages/Dashboard';
+import TradingDashboard from './pages/TradingDashboard';
 import './App.css';
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<About />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/trading" element={<TradingDashboard />} />
           </Routes>
         </Layout>
       </div>
