@@ -1,9 +1,18 @@
 /**
  * Live Data Fetching and Normalization Service
  * Orchestrates real-time data collection from all API sources and applies normalization
+ * Now includes data persistence and lineage tracking for ML/backtesting
  */
 
 import { normalizeMetrics } from './normalize.js';
+import { 
+  persistTechnicalData, 
+  persistSocialData, 
+  persistFundamentalData, 
+  persistOnChainData, 
+  persistAstrologyData,
+  persistFinancialAstrologyData 
+} from './dataPersistence.js';
 
 /**
  * Fetch raw metrics from all configured API sources in parallel

@@ -99,7 +99,7 @@ class PredictionService {
       console.log('Running live prediction analysis...');
 
       // Fetch and normalize current metrics
-      const { normalized } = await fetchAndNormalize();
+      const { normalized, dataIds } = await fetchAndNormalize();
 
       // Compute pillar scores
       const techScore = computeTechnicalScore(normalized);
@@ -143,7 +143,7 @@ class PredictionService {
       // Categorize prediction
       const category = this.categorizeprediction(predictedPct);
 
-      // Store prediction in database
+      // Store prediction in database with enhanced lineage tracking
       await this.storePrediction({
         timestamp: new Date().toISOString(),
         techScore,
@@ -154,6 +154,24 @@ class PredictionService {
         category,
         confidence
       });
+
+      // Store enhanced prediction with data lineage
+      try {
+        const { persistEnhancedPrediction } = await import('./dataPersistence.js');
+        await persistEnhancedPrediction({
+          technical_score: techScore,
+          social_score: socialScore,
+          fundamental_score: fundScore,
+          astrology_score: astroScore,
+          overall_score: (techScore + socialScore + fundScore + astroScore) / 4,
+          classification: category,
+          confidence: confidence,
+          price_target: null,
+          risk_level: confidence > 0.7 ? 'Low' : confidence > 0.4 ? 'Medium' : 'High'
+        }, dataIds || {});
+      } catch (persistError) {
+        console.warn('Failed to persist enhanced prediction:', persistError.message);
+      }
 
       const result = {
         timestamp: new Date().toISOString(),
