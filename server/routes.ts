@@ -24,6 +24,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // LunarCrush API integration - Direct implementation
+  app.get("/api/lunarcrush/metrics", async (req, res) => {
+    try {
+      const { symbol = 'SOL', interval = '1d' } = req.query;
+      
+      if (!process.env.LUNARCRUSH_API_KEY) {
+        return res.status(503).json({
+          success: false,
+          error: "LunarCrush API key not configured",
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const params = new URLSearchParams({
+        data: 'assets',
+        key: process.env.LUNARCRUSH_API_KEY,
+        symbol: symbol as string,
+        interval: interval as string
+      });
+
+      const response = await fetch(`https://api.lunarcrush.com/v2?${params}`);
+      const data = await response.json();
+
+      if (data.data && data.data.length > 0) {
+        const solanaData = data.data[0];
+        
+        const metrics = {
+          symbol: solanaData.s || symbol,
+          name: solanaData.n || 'Solana',
+          price: solanaData.p || null,
+          priceChange24h: solanaData.pc || null,
+          volume24h: solanaData.v || null,
+          marketCap: solanaData.mc || null,
+          galaxyScore: solanaData.gs || null,
+          altRank: solanaData.acr || null,
+          socialVolume: solanaData.sv || null,
+          socialScore: solanaData.ss || null,
+          socialContributors: solanaData.sc || null,
+          socialDominance: solanaData.sd || null,
+          marketDominance: solanaData.md || null,
+          correlationRank: solanaData.cr || null,
+          volatility: solanaData.volatility || null
+        };
+
+        res.json({
+          success: true,
+          type: 'social_metrics',
+          symbol,
+          interval,
+          data: metrics,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        throw new Error('No data found for the specified symbol');
+      }
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get("/api/lunarcrush/social", async (req, res) => {
+    try {
+      if (!process.env.LUNARCRUSH_API_KEY) {
+        return res.status(503).json({
+          success: false,
+          error: "LunarCrush API key not configured",
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const params = new URLSearchParams({
+        data: 'assets',
+        key: process.env.LUNARCRUSH_API_KEY,
+        symbol: 'SOL'
+      });
+
+      const response = await fetch(`https://api.lunarcrush.com/v2?${params}`);
+      const data = await response.json();
+
+      if (data.data && data.data.length > 0) {
+        const solana = data.data[0];
+        
+        const socialMetrics = {
+          symbol: 'SOL',
+          name: 'Solana',
+          socialMetrics: {
+            galaxyScore: {
+              value: solana.gs,
+              description: 'Galaxy Score™ - Overall health and performance metric'
+            },
+            altRank: {
+              value: solana.acr,
+              description: 'AltRank™ - Alternative ranking based on social activity'
+            },
+            socialVolume: {
+              value: solana.sv,
+              description: 'Total social media mentions and discussions'
+            },
+            socialScore: {
+              value: solana.ss,
+              description: 'Social engagement and sentiment score'
+            },
+            socialContributors: {
+              value: solana.sc,
+              description: 'Number of unique social contributors'
+            },
+            socialDominance: {
+              value: solana.sd,
+              description: 'Social dominance compared to other cryptocurrencies'
+            }
+          },
+          marketMetrics: {
+            price: solana.p,
+            priceChange24h: solana.pc,
+            volume24h: solana.v,
+            marketCap: solana.mc,
+            marketDominance: solana.md,
+            correlationRank: solana.cr,
+            volatility: solana.volatility
+          }
+        };
+
+        res.json({
+          success: true,
+          type: 'detailed_social_metrics',
+          data: socialMetrics,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        throw new Error('No social metrics data found for Solana');
+      }
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // Solana TAAPI Pro integration - Direct implementation
   app.get("/api/solana/rsi", async (req, res) => {
     try {
