@@ -1,0 +1,75 @@
+You are an AI development assistant. The user’s CryptoRank key does not include historical‐price (hist_price) access, so any calls to `/v2/hist_price` or `/currencies/:id/sparkline` will always return 400/404. Please update the codebase to remove all historical‐data dependencies and ensure the app still functions using only the allowed endpoints.
+
+1. In `services/cryptorank.js`:
+   - Remove (or comment out) the entire `fetchSolanaHistorical()` function.
+   - Replace it with a stub that throws a clear “Not available on this plan” error:
+
+     ```js
+     // services/cryptorank.js
+
+     /**
+      * This function is no longer available because the current plan does not include hist_price.
+      */
+     export async function fetchSolanaHistorical(interval) {
+       throw new Error(
+         "Historical price data is not available on your CryptoRank plan. " +
+         "Allowed endpoints: /global, /currencies/map, /currencies/categories, /currencies/tags, /currencies/fiat, /currencies, /currencies/:id."
+       );
+     }
+     ```
+
+2. In `server/routes/cryptorankRoutes.ts` (or `.js`):
+   - Find the `/historical` route and modify it so it immediately returns a 403/400 with a JSON error, for example:
+
+     ```ts
+     // server/routes/cryptorankRoutes.ts
+     import express from "express";
+     // Remove any import of fetchSolanaHistorical
+
+     const router = express.Router();
+
+     router.get("/historical", (_req, res) => {
+       return res
+         .status(403)
+         .json({
+           success: false,
+           error: "Historical price data not available on your CryptoRank plan.",
+         });
+     });
+
+     export default router;
+     ```
+
+3. In `services/normalize.js` (or wherever you load “historical_metrics” to compute min/max):
+   - Delete or comment out any Supabase queries to the `historical_metrics` table.
+   - Replace `initializeNormalization()` with a no-op that sets every bound to a trivial default, e.g.:
+
+     ```js
+     // services/normalize.js
+
+     /**
+      * On plans without historical data, skip loading actual bounds.
+      * Use fixed default bounds (e.g. [0,1]) so normalizeMetrics() returns raw values.
+      */
+     export async function initializeNormalization() {
+       console.log("initializeNormalization(): historical data not available; using default bounds.");
+       global.normBounds = {}; // empty => normalizeMetrics will just passthrough or default to 50
+     }
+
+     export function normalizeMetrics(raw) {
+       // If no normBounds defined, return raw values or a constant.
+       const out = {};
+       for (const [metric, value] of Object.entries(raw)) {
+         out[metric] = value; // no scaling
+       }
+       return out;
+     }
+     ```
+
+4. In any code that calls `fetchSolanaHistorical()` directly (e.g. in `/scripts/tests/` or your scheduler), remove or wrap it in a try/catch and skip if it throws the “Not available” error.
+
+5. Ensure no other code tries to parse historical arrays—everything downstream should check for the thrown error and proceed without crashing.
+
+After making these changes, restart the Replit container so only the allowed CryptoRank endpoints are used. The app will now function correctly without ever attempting `/v2/hist_price`. 
+
+Once complete, reply:  

@@ -97,57 +97,13 @@ export async function fetchSolanaCurrent() {
 }
 
 /**
- * Fetches Solana historical price data.
- * Basic plan supports:
- *   • "5m" for up to 30 days of 5-minute candles
- *   • "1d" for daily candles
+ * This function is no longer available because the current plan does not include hist_price.
  */
-export async function fetchSolanaHistorical(interval = "1d") {
-  // Validate interval
-  const allowed = ["5m", "1d"];
-  if (!allowed.includes(interval)) {
-    throw new Error(
-      `Invalid interval "${interval}". Must be one of: ${allowed.join(", ")}`
-    );
-  }
-
-  const cacheKey = `solHist@${interval}`;
-  if (crCache.has(cacheKey)) return crCache.get(cacheKey);
-  
-  await rateLimit();
-  
-  try {
-    // Use v2 hist_price endpoint with coin slug for historical data
-    const url = `https://api.cryptorank.io/v2/hist_price/solana`;
-    const params = new URLSearchParams({
-      api_key: CR_API_KEY,
-      interval: interval
-    });
-
-    const response = await fetch(`${url}?${params}`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-      timeout: 15000
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-    }
-
-    const responseData = await response.json();
-    
-    if (!responseData.status || !responseData.status.success) {
-      throw new Error(`API error: ${responseData.status?.message || 'Unknown error'}`);
-    }
-    
-    const hist = responseData.data || [];
-    
-    crCache.set(cacheKey, hist);
-    return hist;
-  } catch (err) {
-    console.error('CryptoRank historical fetch failed:', err.message);
-    throw err;
-  }
+export async function fetchSolanaHistorical(interval) {
+  throw new Error(
+    "Historical price data is not available on your CryptoRank plan. " +
+    "Allowed endpoints: /global, /currencies/map, /currencies/categories, /currencies/tags, /currencies/fiat, /currencies, /currencies/:id."
+  );
 }
 
 // Legacy class for backward compatibility

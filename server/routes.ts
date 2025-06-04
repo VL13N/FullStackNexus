@@ -99,40 +99,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/cryptorank/historical", async (req, res) => {
-    const interval = String(req.query.interval || "1d");
-    const allowed = ["5m", "1d"];
-    
-    if (!allowed.includes(interval)) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: `Invalid interval "${interval}". Must be one of: ${allowed.join(", ")}`,
-        });
-    }
-
-    try {
-      const { fetchSolanaHistorical } = await import('../api/cryptorank.js');
-      const data = await fetchSolanaHistorical(interval);
-      
-      res.json({
-        success: true,
-        type: 'historical_data',
-        data,
-        interval,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error: any) {
-      const errorMsg = error.response?.data
-        ? JSON.stringify(error.response.data)
-        : error.message;
-      res.status(500).json({
+  app.get("/api/cryptorank/historical", (_req, res) => {
+    return res
+      .status(403)
+      .json({
         success: false,
-        error: errorMsg,
+        error: "Historical price data not available on your CryptoRank plan.",
         timestamp: new Date().toISOString()
       });
-    }
   });
 
   // Health check endpoint with API key validation

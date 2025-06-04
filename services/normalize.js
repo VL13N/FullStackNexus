@@ -11,47 +11,13 @@ if (SUPABASE_URL && SUPABASE_KEY) {
   supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 }
 
+/**
+ * On plans without historical data, skip loading actual bounds.
+ * Use fixed default bounds so normalizeMetrics() returns raw values.
+ */
 export async function initializeNormalization() {
-  if (!supabase) {
-    console.log("Using default normalization bounds (no Supabase credentials).");
-    global.normBounds = {};
-    return;
-  }
-
-  console.log("Initializing normalization bounds from Supabase...");
-  try {
-    const { data: names, error: namesErr } = await supabase
-      .from("historical_metrics")
-      .select("metric_name");
-
-    if (namesErr) throw namesErr;
-
-    const uniqueMetrics = [...new Set(names.map(row => row.metric_name))];
-
-    for (const metric of uniqueMetrics) {
-      const { data: bounds, error: boundsErr } = await supabase
-        .from("historical_metrics")
-        .select("raw_value")
-        .eq("metric_name", metric);
-
-      if (boundsErr) {
-        console.error(`Error fetching bounds for ${metric}:`, boundsErr.message);
-        continue;
-      }
-
-      const values = bounds.map(row => parseFloat(row.raw_value));
-      normBounds[metric] = {
-        min: Math.min(...values),
-        max: Math.max(...values)
-      };
-    }
-
-    global.normBounds = normBounds;
-    console.log(`Normalization bounds loaded for ${Object.keys(normBounds).length} metrics`);
-  } catch (err) {
-    console.error("Error initializing normalization:", err.message || err);
-    global.normBounds = {};
-  }
+  console.log("initializeNormalization(): historical data not available; using default bounds.");
+  global.normBounds = {}; // empty => normalizeMetrics will just passthrough or default to 50
 }
 
 export function normalizeMetrics(raw) {
