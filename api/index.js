@@ -18,6 +18,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/data', require('./routes/data'));
+app.use('/api/trading', require('./routes/trading'));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
