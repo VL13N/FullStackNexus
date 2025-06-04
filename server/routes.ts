@@ -440,6 +440,296 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Solana On-Chain Metrics API integration - Direct implementation
+  app.get("/api/onchain/metrics", async (req, res) => {
+    try {
+      // Fetch from Solana Tracker API (no auth required for basic endpoints)
+      const networkResponse = await fetch('https://api.solanatracker.io/v1/network');
+      const validatorsResponse = await fetch('https://api.solanatracker.io/v1/validators');
+      
+      const [networkData, validatorsData] = await Promise.all([
+        networkResponse.json(),
+        validatorsResponse.json()
+      ]);
+
+      const metrics = {
+        timestamp: new Date().toISOString(),
+        source: 'solana_tracker',
+        network: {
+          tps: networkData.tps || null,
+          blockHeight: networkData.block_height || null,
+          totalTransactions: networkData.total_transactions || null,
+          averageBlockTime: networkData.average_block_time || null
+        },
+        validators: {
+          activeValidators: validatorsData.active_validators || null,
+          totalValidators: validatorsData.total_validators || null,
+          averageApy: validatorsData.average_apy || null,
+          totalStake: validatorsData.total_stake || null,
+          averageCommission: validatorsData.average_commission || null
+        }
+      };
+
+      res.json({
+        success: true,
+        type: 'network_metrics',
+        data: metrics,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get("/api/onchain/validators", async (req, res) => {
+    try {
+      const response = await fetch('https://api.solanatracker.io/v1/validators');
+      const data = await response.json();
+
+      const validatorStats = {
+        source: 'solana_tracker',
+        timestamp: new Date().toISOString(),
+        overview: {
+          totalValidators: data.total_validators || null,
+          activeValidators: data.active_validators || null,
+          averageApy: data.average_apy || null,
+          totalStake: data.total_stake || null,
+          averageCommission: data.average_commission || null
+        },
+        topValidators: (data.validators || []).slice(0, 20).map((validator: any) => ({
+          identity: validator.identity || null,
+          name: validator.name || null,
+          voteAccount: validator.vote_account || null,
+          commission: validator.commission || null,
+          lastVote: validator.last_vote || null,
+          rootSlot: validator.root_slot || null,
+          activatedStake: validator.activated_stake || null,
+          epochVoteAccount: validator.epoch_vote_account || null,
+          epochCredits: validator.epoch_credits || null,
+          version: validator.version || null,
+          apy: validator.apy || null
+        }))
+      };
+
+      res.json({
+        success: true,
+        type: 'validator_stats',
+        data: validatorStats,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get("/api/onchain/staking", async (req, res) => {
+    try {
+      const [validatorsResponse, epochResponse] = await Promise.all([
+        fetch('https://api.solanatracker.io/v1/validators'),
+        fetch('https://api.solanatracker.io/v1/epoch')
+      ]);
+      
+      const [validatorsData, epochData] = await Promise.all([
+        validatorsResponse.json(),
+        epochResponse.json()
+      ]);
+
+      const stakingInfo = {
+        source: 'solana_tracker',
+        timestamp: new Date().toISOString(),
+        overview: {
+          averageApy: validatorsData.average_apy || null,
+          totalStake: validatorsData.total_stake || null,
+          averageCommission: validatorsData.average_commission || null,
+          activeValidators: validatorsData.active_validators || null
+        },
+        epochInfo: {
+          currentEpoch: epochData.epoch || null,
+          epochProgress: epochData.slot_index && epochData.slots_in_epoch ? 
+            (epochData.slot_index / epochData.slots_in_epoch * 100) : null,
+          slotsRemaining: epochData.slot_index && epochData.slots_in_epoch ? 
+            (epochData.slots_in_epoch - epochData.slot_index) : null,
+          slotIndex: epochData.slot_index || null,
+          slotsInEpoch: epochData.slots_in_epoch || null,
+          absoluteSlot: epochData.absolute_slot || null
+        }
+      };
+
+      // Calculate yield distribution if validator data available
+      const validatorApys = (validatorsData.validators || [])
+        .map((v: any) => v.apy)
+        .filter((apy: any) => apy !== null && apy !== undefined)
+        .sort((a: number, b: number) => b - a);
+
+      if (validatorApys.length > 0) {
+        (stakingInfo as any).yieldDistribution = {
+          highest: validatorApys[0],
+          median: validatorApys[Math.floor(validatorApys.length / 2)],
+          lowest: validatorApys[validatorApys.length - 1],
+          topQuartile: validatorApys[Math.floor(validatorApys.length * 0.25)],
+          bottomQuartile: validatorApys[Math.floor(validatorApys.length * 0.75)]
+        };
+      }
+
+      res.json({
+        success: true,
+        type: 'staking_yields',
+        data: stakingInfo,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get("/api/onchain/epoch", async (req, res) => {
+    try {
+      const response = await fetch('https://api.solanatracker.io/v1/epoch');
+      const data = await response.json();
+
+      const epochInfo = {
+        source: 'solana_tracker',
+        timestamp: new Date().toISOString(),
+        currentEpoch: {
+          epoch: data.epoch || null,
+          slotIndex: data.slot_index || null,
+          slotsInEpoch: data.slots_in_epoch || null,
+          absoluteSlot: data.absolute_slot || null,
+          blockHeight: data.block_height || null,
+          transactionCount: data.transaction_count || null,
+          progress: data.slot_index && data.slots_in_epoch ? 
+            (data.slot_index / data.slots_in_epoch * 100) : null,
+          slotsRemaining: data.slot_index && data.slots_in_epoch ? 
+            (data.slots_in_epoch - data.slot_index) : null
+        }
+      };
+
+      res.json({
+        success: true,
+        type: 'epoch_info',
+        data: epochInfo,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get("/api/onchain/tps", async (req, res) => {
+    try {
+      const response = await fetch('https://api.solanatracker.io/v1/network');
+      const data = await response.json();
+
+      const tpsData = {
+        timestamp: new Date().toISOString(),
+        source: 'solana_tracker',
+        currentTps: data.tps || null,
+        averageBlockTime: data.average_block_time || null,
+        blockHeight: data.block_height || null,
+        totalTransactions: data.total_transactions || null,
+        metrics: {
+          tps: data.tps || null,
+          blockTime: data.average_block_time || null,
+          throughput: data.tps && data.average_block_time ? 
+            (data.tps * data.average_block_time) : null
+        }
+      };
+
+      res.json({
+        success: true,
+        type: 'tps_monitoring',
+        data: tpsData,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get("/api/onchain/overview", async (req, res) => {
+    try {
+      const [networkResponse, validatorsResponse, epochResponse] = await Promise.all([
+        fetch('https://api.solanatracker.io/v1/network'),
+        fetch('https://api.solanatracker.io/v1/validators'),
+        fetch('https://api.solanatracker.io/v1/epoch')
+      ]);
+
+      const [networkData, validatorsData, epochData] = await Promise.all([
+        networkResponse.json(),
+        validatorsResponse.json(),
+        epochResponse.json()
+      ]);
+
+      const overview = {
+        timestamp: new Date().toISOString(),
+        source: 'solana_tracker',
+        network: {
+          tps: networkData.tps || null,
+          blockHeight: networkData.block_height || null,
+          totalTransactions: networkData.total_transactions || null,
+          averageBlockTime: networkData.average_block_time || null
+        },
+        validators: {
+          total: validatorsData.total_validators || null,
+          active: validatorsData.active_validators || null,
+          averageApy: validatorsData.average_apy || null,
+          totalStake: validatorsData.total_stake || null,
+          averageCommission: validatorsData.average_commission || null
+        },
+        epoch: {
+          current: epochData.epoch || null,
+          progress: epochData.slot_index && epochData.slots_in_epoch ? 
+            (epochData.slot_index / epochData.slots_in_epoch * 100) : null,
+          slotIndex: epochData.slot_index || null,
+          slotsInEpoch: epochData.slots_in_epoch || null,
+          absoluteSlot: epochData.absolute_slot || null,
+          blockHeight: epochData.block_height || null,
+          transactionCount: epochData.transaction_count || null
+        },
+        health: {
+          networkActive: networkData.tps ? networkData.tps > 0 : false,
+          validatorsHealthy: validatorsData.active_validators && validatorsData.total_validators ? 
+            (validatorsData.active_validators / validatorsData.total_validators > 0.8) : false,
+          epochProgressing: epochData.slot_index && epochData.slots_in_epoch ? 
+            (epochData.slot_index > 0) : false
+        }
+      };
+
+      res.json({
+        success: true,
+        type: 'blockchain_overview',
+        data: overview,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // Solana TAAPI Pro integration - Direct implementation
   app.get("/api/solana/rsi", async (req, res) => {
     try {
