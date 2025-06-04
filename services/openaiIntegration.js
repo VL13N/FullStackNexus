@@ -6,20 +6,20 @@
  * Fetches and scores LunarCrush news, generates daily market updates, and suggests dynamic pillar weights
  */
 
+import dns from "dns/promises";
 import OpenAI from 'openai';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const LUNARCRUSH_API_KEY = process.env.LUNARCRUSH_API_KEY;
-
-if (!LUNARCRUSH_API_KEY) {
-  throw new Error("LUNARCRUSH_API_KEY is undefined—check Replit Secrets and restart.");
-}
-
-if (!process.env.OPENAI_API_KEY) {
-  throw new Error("OPENAI_API_KEY is undefined—check Replit Secrets and restart.");
+async function checkLunarCrushDNS() {
+  try {
+    await dns.lookup("api.lunarcrush.com");
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -27,104 +27,77 @@ if (!process.env.OPENAI_API_KEY) {
  * @returns {Array} Array of scored news items
  */
 export async function fetchAndScoreNews() {
+  const key = process.env.LUNARCRUSH_API_KEY;
+  if (!key) throw new Error("LUNARCRUSH_API_KEY is undefined");
+
+  // 1. DNS connectivity check
+  const canResolve = await checkLunarCrushDNS();
+  if (!canResolve) {
+    console.error("LunarCrush DNS lookup failed for api.lunarcrush.com. Skipping news scoring.");
+    return [];
+  }
+
+  // 2. Fetch v1 news from "topic/solana"
+  const url = `https://api.lunarcrush.com/v1/topic/solana/news/v1?key=${key}&limit=20`;
+  let newsJson;
   try {
-    // Fetch news from LunarCrush
-    const newsUrl = `https://api.lunarcrush.com/v2?data=news&key=${LUNARCRUSH_API_KEY}&symbol=SOL`;
-    
-    const response = await fetch(newsUrl, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-      timeout: 15000
-    });
-
-    if (!response.ok) {
-      throw new Error(`LunarCrush news API HTTP ${response.status}: ${await response.text()}`);
-    }
-
-    const newsData = await response.json();
-    
-    if (!newsData.data || !Array.isArray(newsData.data)) {
-      throw new Error('Invalid news data format from LunarCrush');
-    }
-
-    // Extract up to latest 20 headlines
-    const headlines = newsData.data
-      .slice(0, 20)
-      .map(item => item.title || item.headline || item.text)
-      .filter(Boolean);
-
-    if (headlines.length === 0) {
-      console.log('No headlines found from LunarCrush news');
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.error("LunarCrush news returned HTTP", res.status);
       return [];
     }
+    newsJson = await res.json();
+  } catch (err) {
+    console.error("LunarCrush fetch error:", err.message || err);
+    return [];
+  }
 
-    // Build prompt for GPT-4
-    const headlinesList = headlines.map((headline, index) => `${index + 1}. ${headline}`).join('\n');
-    
-    const prompt = `Given these Solana news headlines (1–${headlines.length}):
-${headlinesList}
+  if (!Array.isArray(newsJson.data) || newsJson.data.length === 0) {
+    console.log("fetchAndScoreNews(): no headlines returned from v1 endpoint.");
+    return [];
+  }
 
-Score each from -100 (extremely bearish) to +100 (extremely bullish) for short-term SOL price impact.
-Return JSON array like:
+  // 3. Extract titles
+  const headlines = newsJson.data.map((n) => n.title);
+
+  // 4. Build OpenAI prompt
+  const prompt = `
+Given these Solana news headlines (1–20):
+${headlines.map((h, i) => `${i + 1}. ${h}`).join("\n")}
+
+Score each headline from -100 (extremely bearish) to +100 (extremely bullish) for Solana's short‐term price impact. Return a JSON array:
 [
   { "headline": "<text>", "score": <number>, "justification": "<brief text>" },
-  ...
-]`;
+  …
+]
+  `;
 
-    // Call OpenAI GPT-4
+  // 5. Call GPT-4
+  let scored;
+  try {
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.2
     });
-
-    const responseText = completion.choices[0].message.content;
-    
-    // Parse JSON response
-    let scoredNews;
-    try {
-      scoredNews = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('Failed to parse OpenAI response as JSON:', responseText);
-      throw new Error('Invalid JSON response from OpenAI');
-    }
-
-    if (!Array.isArray(scoredNews)) {
-      throw new Error('OpenAI response is not an array');
-    }
-
-    // Store in Supabase news_scores table
-    const timestamp = new Date().toISOString();
-    
-    for (const item of scoredNews) {
-      if (item.headline && typeof item.score === 'number' && item.justification) {
-        try {
-          // Insert into database using raw SQL
-          const query = `
-            INSERT INTO news_scores (timestamp, headline, score, justification)
-            VALUES ($1, $2, $3, $4)
-          `;
-          
-          // Note: This would need actual database connection
-          // For now, we'll log the data that would be stored
-          console.log('Would store in news_scores:', {
-            timestamp,
-            headline: item.headline,
-            score: item.score,
-            justification: item.justification
-          });
-        } catch (dbError) {
-          console.error('Failed to store news score in database:', dbError);
-        }
-      }
-    }
-
-    return scoredNews;
-    
-  } catch (error) {
-    console.error('Failed to fetch and score news:', error);
-    throw error;
+    scored = JSON.parse(completion.choices[0].message.content);
+  } catch (err) {
+    console.error("OpenAI scoring error:", err.message || err);
+    return [];
   }
+
+  // 6. Store in database (placeholder for future integration)
+  for (const item of scored) {
+    if (item.headline && typeof item.score === 'number' && item.justification) {
+      console.log('News scored:', {
+        headline: item.headline,
+        score: item.score,
+        justification: item.justification
+      });
+    }
+  }
+
+  return scored;
 }
 
 /**

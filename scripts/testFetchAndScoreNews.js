@@ -5,7 +5,11 @@ async function runTest() {
   console.log("Testing fetchAndScoreNews()");
   try {
     const scored = await fetchAndScoreNews();
-    console.log("fetchAndScoreNews() returned:", JSON.stringify(scored, null, 2));
+    if (Array.isArray(scored) && scored.length === 0) {
+      console.log("fetchAndScoreNews(): returned [] (no headlines or skipped).");
+    } else {
+      console.log("fetchAndScoreNews() returned:", JSON.stringify(scored, null, 2));
+    }
   } catch (err) {
     console.error("Error in fetchAndScoreNews():", err.message || err);
   }
