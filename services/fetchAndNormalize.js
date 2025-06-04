@@ -48,14 +48,14 @@ export async function fetchRawMetrics() {
     );
   }
 
-  // Fundamental metrics from CryptoRank
+  // Fundamental metrics from CryptoRank V2 API
   if (process.env.CRYPTORANK_API_KEY) {
     fetchPromises.push(
-      fetchCryptoRankMetrics().then(data => {
+      import('../api/cryptorank.js').then(module => module.fetchSolanaCurrent()).then(data => {
         if (data) {
-          rawMetrics.marketCapUsd = data.marketCap;
-          rawMetrics.fullyDilutedValuation = data.fullyDilutedValuation;
-          rawMetrics.circulatingSupplyPct = data.circulatingSupplyPct;
+          rawMetrics.marketCapUsd = data.marketCapUsd;
+          rawMetrics.volume24hUsd = data.volume24hUsd;
+          rawMetrics.priceUsd = data.priceUsd;
         }
       })
     );

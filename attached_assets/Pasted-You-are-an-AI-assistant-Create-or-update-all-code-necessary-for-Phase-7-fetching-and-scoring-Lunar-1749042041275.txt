@@ -1,0 +1,120 @@
+You are an AI assistant. Create or update all code necessary for Phase 7: fetching and scoring LunarCrush news, generating a daily AI‐driven market update, and suggesting dynamic pillar weights. Follow these steps exactly:
+
+1. Create a new file `/services/openaiIntegration.js`. In this file, export three async functions:
+   a) `fetchAndScoreNews()`:  
+      • Call LunarCrush’s news endpoint:  
+        `GET https://api.lunarcrush.com/v2?data=news&key=${process.env.LUNARCRUSH_API_KEY}&symbol=SOL`  
+      • Extract up to the latest 20 headlines as an array of strings.  
+      • Build a prompt for GPT-4:  
+        ```
+        Given these Solana news headlines (1–20):
+          1. <headline1>
+          2. <headline2>
+          …
+        Score each from -100 (extremely bearish) to +100 (extremely bullish) for short-term SOL price impact.  
+        Return JSON array like:  
+          [ 
+            { "headline": "<text>", "score": <number>, "justification": "<brief text>" }, 
+            … 
+          ]
+        ```  
+      • Call `openai.chat.completions.create({ model: "gpt-4", messages:[{ role:"user", content: prompt }], temperature:0.2 })`.  
+      • Parse the JSON response into an array of `{ headline, score, justification }`.  
+      • Store each item in Supabase table `news_scores(timestamp TIMESTAMP, headline TEXT, score FLOAT, justification TEXT)`.  
+      • Return the array of scored news.
+
+   b) `generateDailyUpdate()`:  
+      • Fetch yesterday’s (last 24 hrs) entries from `news_scores` (limit 20, descending by timestamp).  
+      • Fetch the latest row from `live_predictions` (Supabase).  
+      • Build a prompt for GPT-4:  
+        ```
+        Using these inputs:
+
+      • Latest 20 news items with scores:
+        • "<headline1>" (score: <n1>)
+        • "<headline2>" (score: <n2>)
+        …
+
+      • Latest prediction data:
+        – Technical Score: <tech_score>
+        – Social Score: <social_score>
+        – Fundamental Score: <fund_score>
+        – Astrology Score: <astro_score>
+        – Predicted Move: <predicted_pct>% (<category>)
+
+        1. Summarize the top bullish and bearish factors in 2–3 bullet points each.
+        2. Provide a concise market outlook for Solana today, blending news sentiment, scores, and predicted move.
+        3. Conclude with a brief recommendation (e.g., “Monitor X, Y, Z”).
+        Return only the plain‐text update (no extra JSON).
+        ```  
+      • Call `openai.chat.completions.create({ model: "gpt-4", messages:[{ role:"user", content: prompt }], temperature:0.5 })`.  
+      • Extract the text result (`completion.choices[0].message.content`).  
+      • Insert into Supabase table `daily_updates(date DATE, content TEXT)` where `date = today’s YYYY-MM-DD`.  
+      • Return the generated update string.
+
+   c) `suggestWeights()`:  
+      • Fetch the last 24 rows from `live_predictions` (Supabase), ordered descending by timestamp.  
+      • Fetch the last 20 rows from `news_scores`.  
+      • Build a prompt for GPT-4:  
+        ```
+        Based on these recent data:
+
+      • Live predictions (chronological, newest first):
+        – "<timestamp1>": tech=<tech1>, social=<social1>, fund=<fund1>, astro=<astro1>, predPct=<pct1>%
+        – "<timestamp2>": …
+        …
+
+      • Latest news scores:
+        – "<headlineA>" (score: <sA>)
+        – "<headlineB>" (score: <sB>)
+        …
+
+        Recommend updated percentage weights (sum = 100) for these four pillars:
+      • Technical  
+      • Social  
+      • Fundamental  
+      • Astrology  
+
+      Provide JSON:
+      {
+        "Technical": <number>,
+        "Social": <number>,
+        "Fundamental": <number>,
+        "Astrology": <number>,
+        "justification": {
+          "Technical": "<reason>",
+          "Social": "<reason>",
+          "Fundamental": "<reason>",
+          "Astrology": "<reason>"
+        }
+      }
+        ```  
+      • Call `openai.chat.completions.create({ model: "gpt-4", messages:[{ role:"user", content: prompt }], temperature:0.3 })`.  
+      • Parse JSON into `{ Technical, Social, Fundamental, Astrology, justification }`.  
+      • Insert into Supabase table  
+        `dynamic_weights(date DATE, technical FLOAT, social FLOAT, fundamental FLOAT, astrology FLOAT, justification JSONB)` with `date = today’s YYYY-MM-DD`.  
+      • Return the parsed JSON.
+
+2. Update `/services/scheduler.js` to add a daily cron job at 08:00 UTC (or your preferred hour) that:
+   a) Imports `fetchAndScoreNews, generateDailyUpdate, suggestWeights` from `./openaiIntegration.js`.  
+   b) Calls `await fetchAndScoreNews()`, logs “News scored.”  
+   c) Calls `const updateText = await generateDailyUpdate()`, logs “Daily update: <first 50 chars>….”  
+   d) Calls `const weights = await suggestWeights()`, logs “New weights: <JSON>.”  
+   e) Wrap in try/catch, and if any function fails, log the error and send a Discord alert via `/api/alerts.js`.
+
+3. Create the necessary Supabase tables if they don’t exist:
+   • `news_scores(timestamp TIMESTAMP, headline TEXT, score FLOAT, justification TEXT)`  
+   • `daily_updates(date DATE, content TEXT)`  
+   • `dynamic_weights(date DATE, technical FLOAT, social FLOAT, fundamental FLOAT, astrology FLOAT, justification JSONB)`
+
+4. At the top of `/services/openaiIntegration.js`, add a comment reminder:
+   ```js
+   // NOTE: Ensure OPENAI_API_KEY and LUNARCRUSH_API_KEY are set in environment variables.
+   //       If you receive “Invalid API key,” verify the key in LunarCrush and OpenAI dashboards.
+
+Once all code is generated, restart the Replit container and test manually by invoking each function from a Node REPL:
+• node -e "require('./services/openaiIntegration').fetchAndScoreNews().then(console.log).catch(console.error);"
+• node -e "require('./services/openaiIntegration').generateDailyUpdate().then(console.log).catch(console.error);"
+• node -e "require('./services/openaiIntegration').suggestWeights().then(console.log).catch(console.error);"
+
+When complete, reply “Phase 7 updated.”
