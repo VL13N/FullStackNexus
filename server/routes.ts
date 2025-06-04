@@ -1,6 +1,19 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { createClient } from "@supabase/supabase-js";
+
+// Initialize Supabase client
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
+let supabase: any = null;
+
+if (SUPABASE_URL && SUPABASE_KEY) {
+  supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+  console.log("Supabase client initialized successfully");
+} else {
+  console.warn("Supabase credentials not found - database endpoints will be unavailable");
+}
 
 // NOTE: TAAPI's MACD parameters must be camelCase (fastPeriod, slowPeriod, signalPeriod).
 // If you still see authentication errors, check TAAPI dashboard → Usage for quota and IP Access.
@@ -1911,7 +1924,7 @@ Keep response concise and professional.`;
       if (!supabase) {
         return res.status(503).json({
           success: false,
-          error: "Database not configured",
+          error: "Database not configured - Supabase credentials required",
           timestamp: new Date().toISOString()
         });
       }
@@ -1933,6 +1946,7 @@ Keep response concise and professional.`;
         timestamp: new Date().toISOString()
       });
     } catch (error: any) {
+      console.error("Error fetching latest prediction:", error.message || error);
       res.status(500).json({
         success: false,
         error: error.message,
@@ -1946,12 +1960,12 @@ Keep response concise and professional.`;
       if (!supabase) {
         return res.status(503).json({
           success: false,
-          error: "Database not configured",
+          error: "Database not configured - Supabase credentials required",
           timestamp: new Date().toISOString()
         });
       }
 
-      const limit = parseInt(req.query.limit as string) || 10;
+      const limit = parseInt(req.query.limit as string) || 20;
       
       const { data, error } = await supabase
         .from('news_scores')
@@ -1969,6 +1983,7 @@ Keep response concise and professional.`;
         timestamp: new Date().toISOString()
       });
     } catch (error: any) {
+      console.error("Error fetching recent news scores:", error.message || error);
       res.status(500).json({
         success: false,
         error: error.message,
@@ -1982,22 +1997,20 @@ Keep response concise and professional.`;
       if (!supabase) {
         return res.status(503).json({
           success: false,
-          error: "Database not configured",
+          error: "Database not configured - Supabase credentials required",
           timestamp: new Date().toISOString()
         });
       }
 
-      const today = new Date().toISOString().split('T')[0];
+      const todayDate = new Date().toISOString().split('T')[0];
       
       const { data, error } = await supabase
         .from('daily_updates')
         .select('*')
-        .eq('date', today)
-        .order('timestamp', { ascending: false })
-        .limit(1)
+        .eq('date', todayDate)
         .single();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
         throw error;
       }
 
@@ -2007,6 +2020,7 @@ Keep response concise and professional.`;
         timestamp: new Date().toISOString()
       });
     } catch (error: any) {
+      console.error("Error fetching today's update:", error.message || error);
       res.status(500).json({
         success: false,
         error: error.message,
