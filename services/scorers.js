@@ -223,9 +223,22 @@ export function computeMacroFlowsScore(norm) {
   const btcDominanceWeight = 0.4;   // Altcoin vs Bitcoin preference
   const totalMarketWeight = 0.6;    // Overall crypto market health
   
+  // Normalize large market cap values to 0-100 scale
+  const normalizeMarketCap = (value) => {
+    if (!value || typeof value !== 'number') return 50;
+    
+    // Market cap ranges: 1T = baseline (50), 3T+ = bullish (100), sub-1T = bearish (0-50)
+    const trillion = 1000000000000;
+    if (value >= 3 * trillion) return 100;
+    if (value <= 0.5 * trillion) return 0;
+    
+    // Linear scaling between 0.5T and 3T
+    return Math.min(100, Math.max(0, ((value - 0.5 * trillion) / (2.5 * trillion)) * 100));
+  };
+  
   return (
     btcDominanceWeight * (100 - (norm.btcDominance || 50)) + // Inverse: lower BTC dominance favors alts
-    totalMarketWeight * (norm.totalCryptoMarketCapExStablecoins || 50)
+    totalMarketWeight * normalizeMarketCap(norm.totalCryptoMarketCapExStablecoins)
   );
 }
 
