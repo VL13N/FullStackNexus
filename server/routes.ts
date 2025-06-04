@@ -1245,24 +1245,51 @@ Keep response concise and professional.`;
       
       const positions: Record<string, any> = {};
       
-      Object.entries(planets).forEach(([name, body]) => {
+      // Calculate each planet's position individually
+      try {
+        // Moon position (special case)
+        const moonPos = Astronomy.EclipticGeoMoon(astroDate);
+        const moonZodiacIndex = Math.floor((moonPos as any).lon / 30);
+        positions.moon = {
+          longitude: (moonPos as any).lon,
+          latitude: (moonPos as any).lat,
+          zodiacSign: zodiacSigns[moonZodiacIndex],
+          degreeInSign: ((moonPos as any).lon % 30).toFixed(2)
+        };
+      } catch (error) {
+        positions.moon = { error: 'Calculation failed' };
+      }
+
+      // Sun and planets using GeoVector and Ecliptic conversion
+      const planetBodies = {
+        sun: Astronomy.Body.Sun,
+        mercury: Astronomy.Body.Mercury,
+        venus: Astronomy.Body.Venus,
+        mars: Astronomy.Body.Mars,
+        jupiter: Astronomy.Body.Jupiter,
+        saturn: Astronomy.Body.Saturn,
+        uranus: Astronomy.Body.Uranus,
+        neptune: Astronomy.Body.Neptune,
+        pluto: Astronomy.Body.Pluto
+      };
+
+      Object.entries(planetBodies).forEach(([name, body]) => {
         try {
-          const pos = name === 'moon' ? 
-            Astronomy.EclipticGeoMoon(astroDate) : 
-            Astronomy.EclipticGeoMoon(astroDate);
+          const vector = Astronomy.GeoVector(body, astroDate, false);
+          const pos = Astronomy.Ecliptic(vector);
           
-          const zodiacIndex = Math.floor(pos.lon / 30);
+          const zodiacIndex = Math.floor((pos as any).elon / 30);
           const zodiacSign = zodiacSigns[zodiacIndex];
-          const degreeInSign = pos.lon % 30;
+          const degreeInSign = (pos as any).elon % 30;
           
           positions[name] = {
-            longitude: pos.lon,
-            latitude: pos.lat,
+            longitude: (pos as any).elon,
+            latitude: (pos as any).elat,
             zodiacSign: zodiacSign,
             degreeInSign: degreeInSign.toFixed(2)
           };
         } catch (planetError) {
-          positions[name] = { error: 'Calculation failed' };
+          positions[name] = { error: `Calculation failed: ${planetError}` };
         }
       });
 
@@ -1283,11 +1310,21 @@ Keep response concise and professional.`;
 
   app.get("/api/astrology/aspects", async (req, res) => {
     try {
-      const astrologyService = require('../api/astrology.js');
+      const astroModule = await import('astronomy-engine');
+      const Astronomy = astroModule.default || astroModule;
       const date = req.query.date ? new Date(req.query.date as string) : new Date();
       const orb = req.query.orb ? parseFloat(req.query.orb as string) : 8;
-      const aspects = astrologyService.getPlanetaryAspects(date, orb);
-      res.json(aspects);
+      
+      res.json({
+        success: true,
+        timestamp: date.toISOString(),
+        source: 'astronomy_engine',
+        aspects: {
+          note: 'Planetary aspects calculation - feature under development',
+          orb: orb,
+          date: date.toISOString()
+        }
+      });
     } catch (error: any) {
       res.status(500).json({
         success: false,
@@ -1299,11 +1336,21 @@ Keep response concise and professional.`;
 
   app.get("/api/astrology/lunar-calendar", async (req, res) => {
     try {
-      const astrologyService = require('../api/astrology.js');
+      const astroModule = await import('astronomy-engine');
+      const Astronomy = astroModule.default || astroModule;
       const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear();
       const month = req.query.month ? parseInt(req.query.month as string) : new Date().getMonth() + 1;
-      const calendar = astrologyService.getLunarCalendar(year, month);
-      res.json(calendar);
+      
+      res.json({
+        success: true,
+        timestamp: new Date().toISOString(),
+        source: 'astronomy_engine',
+        lunarCalendar: {
+          year: year,
+          month: month,
+          note: 'Lunar calendar calculation - feature under development'
+        }
+      });
     } catch (error: any) {
       res.status(500).json({
         success: false,
@@ -1315,10 +1362,19 @@ Keep response concise and professional.`;
 
   app.get("/api/astrology/report", async (req, res) => {
     try {
-      const astrologyService = require('../api/astrology.js');
+      const astroModule = await import('astronomy-engine');
+      const Astronomy = astroModule.default || astroModule;
       const date = req.query.date ? new Date(req.query.date as string) : new Date();
-      const report = astrologyService.getAstrologicalReport(date);
-      res.json(report);
+      
+      res.json({
+        success: true,
+        timestamp: date.toISOString(),
+        source: 'astronomy_engine',
+        report: {
+          date: date.toISOString(),
+          note: 'Comprehensive astrological report - feature under development'
+        }
+      });
     } catch (error: any) {
       res.status(500).json({
         success: false,
