@@ -1,12 +1,13 @@
-// NOTE: Using CryptoRank V1 API with proper authentication
+// NOTE: Using CryptoRank V1 API with rate limiting for Basic plan compliance
 // Solana ID in CryptoRank system: 5663
-// Ensure CRYPTORANK_API_KEY is set in environment variables.
+// Basic plan quotas: 100 calls/min, 5,000 credits/day. All calls must be cached or passed through rateLimit().
 
 /**
  * CryptoRank API Integration for Solana Fundamental Data
- * Fetches current prices, market cap, and trading volume data using V2 API exclusively
+ * Fetches current prices, market cap, and trading volume data with rate limiting
  */
 
+import { rateLimit } from '../services/cryptoRankLimiter.js';
 import { LRUCache } from 'lru-cache';
 
 const CR_API_KEY = process.env.CRYPTORANK_API_KEY;
@@ -100,23 +101,27 @@ export async function fetchSolanaHistorical(interval = '1h') {
   const cacheKey = `solHist@${interval}`;
   if (crCache.has(cacheKey)) return crCache.get(cacheKey);
   
-  const url = `https://api.cryptorank.io/v2/hist_price/solana`;
-  
   try {
-    const response = await fetch(url + `?interval=${interval}&api_key=${CR_API_KEY}`, {
+    // Use Solana's ID (5663) for historical data
+    const url = `https://api.cryptorank.io/v1/currencies/5663/sparkline?api_key=${CR_API_KEY}`;
+    
+    const response = await fetch(url, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
       timeout: 15000
     });
 
     if (!response.ok) {
-      const errorData = await response.text();
-      console.error('CryptoRank historical fetch failed:', errorData);
-      throw new Error(`CryptoRank HTTP ${response.status}: ${errorData}`);
+      throw new Error(`HTTP ${response.status}: ${await response.text()}`);
     }
 
     const responseData = await response.json();
-    const hist = responseData.data;
+    
+    if (!responseData.status || !responseData.status.success) {
+      throw new Error(`API error: ${responseData.status?.message || 'Unknown error'}`);
+    }
+    
+    const hist = responseData.data || [];
     
     crCache.set(cacheKey, hist);
     return hist;
