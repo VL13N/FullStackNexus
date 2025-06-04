@@ -1527,6 +1527,278 @@ Keep response concise and professional.`;
     }
   });
 
+  // Comprehensive Trading Analysis Endpoint
+  app.get("/api/analysis/complete", async (req, res) => {
+    try {
+      // Import scoring and normalization modules
+      const { 
+        computeMasterScore, 
+        getScoreBreakdown, 
+        interpretMasterScore 
+      } = await import('../services/scorers.js');
+      
+      const { 
+        normalizeMetrics, 
+        initializeNormalization 
+      } = await import('../services/normalize.js');
+
+      // Initialize normalization bounds if not already done
+      try {
+        await initializeNormalization();
+      } catch (initError) {
+        console.warn('Normalization initialization failed, using defaults:', initError);
+      }
+
+      // Collect raw metrics from all API sources
+      const rawMetrics: Record<string, number> = {};
+      
+      // Technical metrics from TAAPI
+      if (process.env.TAAPI_API_KEY) {
+        try {
+          const technicalIndicators = ['rsi', 'ema', 'sma', 'macd', 'bbands', 'atr', 'vwap'];
+          for (const indicator of technicalIndicators) {
+            const url = `https://api.taapi.io/${indicator}?secret=${process.env.TAAPI_API_KEY}&exchange=binance&symbol=SOL/USDT&interval=1h`;
+            const response = await fetch(url);
+            if (response.ok) {
+              const data = await response.json();
+              
+              switch (indicator) {
+                case 'rsi':
+                  rawMetrics.rsi_1h = data.value;
+                  break;
+                case 'ema':
+                  // Get multiple EMA periods
+                  const ema8Url = `https://api.taapi.io/ema?secret=${process.env.TAAPI_API_KEY}&exchange=binance&symbol=SOL/USDT&interval=1h&period=8`;
+                  const ema21Url = `https://api.taapi.io/ema?secret=${process.env.TAAPI_API_KEY}&exchange=binance&symbol=SOL/USDT&interval=1h&period=21`;
+                  
+                  const ema8Response = await fetch(ema8Url);
+                  const ema21Response = await fetch(ema21Url);
+                  
+                  if (ema8Response.ok) {
+                    const ema8Data = await ema8Response.json();
+                    rawMetrics.ema8 = ema8Data.value;
+                  }
+                  if (ema21Response.ok) {
+                    const ema21Data = await ema21Response.json();
+                    rawMetrics.ema21 = ema21Data.value;
+                  }
+                  break;
+                case 'sma':
+                  // Get multiple SMA periods
+                  const sma50Url = `https://api.taapi.io/sma?secret=${process.env.TAAPI_API_KEY}&exchange=binance&symbol=SOL/USDT&interval=1h&period=50`;
+                  const sma200Url = `https://api.taapi.io/sma?secret=${process.env.TAAPI_API_KEY}&exchange=binance&symbol=SOL/USDT&interval=4h&period=200`;
+                  
+                  const sma50Response = await fetch(sma50Url);
+                  const sma200Response = await fetch(sma200Url);
+                  
+                  if (sma50Response.ok) {
+                    const sma50Data = await sma50Response.json();
+                    rawMetrics.sma50 = sma50Data.value;
+                  }
+                  if (sma200Response.ok) {
+                    const sma200Data = await sma200Response.json();
+                    rawMetrics.sma200 = sma200Data.value;
+                  }
+                  break;
+                case 'macd':
+                  rawMetrics.macd_1h = data.valueMACD;
+                  break;
+                case 'bbands':
+                  if (data.valueUpperBand && data.valueLowerBand) {
+                    rawMetrics.bollingerWidth_1h = data.valueUpperBand - data.valueLowerBand;
+                  }
+                  break;
+                case 'atr':
+                  rawMetrics.atr_1h = data.value;
+                  break;
+                case 'vwap':
+                  rawMetrics.vwap_price_spread = data.value;
+                  break;
+              }
+            }
+          }
+        } catch (error) {
+          console.warn('TAAPI data collection failed:', error);
+        }
+      }
+
+      // Social metrics from LunarCrush
+      if (process.env.LUNARCRUSH_API_KEY) {
+        try {
+          const lunarCrushUrl = 'https://lunarcrush.com/api4/public/coins/sol/v1';
+          const response = await fetch(lunarCrushUrl, {
+            headers: {
+              'Authorization': `Bearer ${process.env.LUNARCRUSH_API_KEY}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.data) {
+              rawMetrics.galaxyScore = data.data.galaxy_score;
+              rawMetrics.socialVolume = data.data.social_volume;
+              rawMetrics.lunarcrushSentiment = data.data.sentiment;
+              rawMetrics.tweetCount = data.data.tweets;
+            }
+          }
+        } catch (error) {
+          console.warn('LunarCrush data collection failed:', error);
+        }
+      }
+
+      // Fundamental metrics from CryptoRank
+      if (process.env.CRYPTORANK_API_KEY) {
+        try {
+          const cryptoRankUrl = `https://api.cryptorank.io/v1/currencies/solana?api_key=${process.env.CRYPTORANK_API_KEY}`;
+          const response = await fetch(cryptoRankUrl);
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.data) {
+              rawMetrics.marketCapUsd = data.data.values.USD.marketCap;
+              rawMetrics.fullyDilutedValuation = data.data.values.USD.fullyDilutedValuation;
+              rawMetrics.circulatingSupplyPct = (data.data.circulatingSupply / data.data.maxSupply) * 100;
+            }
+          }
+        } catch (error) {
+          console.warn('CryptoRank data collection failed:', error);
+        }
+      }
+
+      // On-chain metrics
+      try {
+        const solanaTrackerUrl = 'https://data.solanatracker.io/performance';
+        const response = await fetch(solanaTrackerUrl);
+        
+        if (response.ok) {
+          const data = await response.json();
+          rawMetrics.tps = data.tps;
+          rawMetrics.activeAddresses = data.activeAddresses || 0;
+        }
+      } catch (error) {
+        console.warn('On-chain data collection failed:', error);
+      }
+
+      // Astrological metrics
+      try {
+        const astroModule = await import('astronomy-engine');
+        const Astronomy = astroModule.default || astroModule;
+        const astroDate = new Astronomy.AstroTime(new Date());
+        
+        // Lunar phase calculation
+        const moonIllumination = Astronomy.Illumination(Astronomy.Body.Moon, astroDate);
+        rawMetrics.lunarPhasePercentile = (moonIllumination as any).phase_fraction * 100;
+        
+        // Lunar distance calculation
+        const moonPos = Astronomy.GeoVector(Astronomy.Body.Moon, astroDate, false);
+        rawMetrics.lunarPerigeeApogeeDist = moonPos.length;
+        
+        // Planetary aspects
+        const sunPos = Astronomy.Ecliptic(Astronomy.GeoVector(Astronomy.Body.Sun, astroDate, false));
+        const marsPos = Astronomy.Ecliptic(Astronomy.GeoVector(Astronomy.Body.Mars, astroDate, false));
+        const saturnPos = Astronomy.Ecliptic(Astronomy.GeoVector(Astronomy.Body.Saturn, astroDate, false));
+        const jupiterPos = Astronomy.Ecliptic(Astronomy.GeoVector(Astronomy.Body.Jupiter, astroDate, false));
+        
+        // Calculate aspect angles
+        let marsSunAngle = Math.abs((sunPos as any).elon - (marsPos as any).elon);
+        if (marsSunAngle > 180) marsSunAngle = 360 - marsSunAngle;
+        rawMetrics.marsSunAspect = marsSunAngle;
+        
+        let saturnJupiterAngle = Math.abs((saturnPos as any).elon - (jupiterPos as any).elon);
+        if (saturnJupiterAngle > 180) saturnJupiterAngle = 360 - saturnJupiterAngle;
+        rawMetrics.saturnJupiterAspect = saturnJupiterAngle;
+        
+        // Solar ingress indicators
+        rawMetrics.solarIngressAries = Math.abs((sunPos as any).elon) < 1 ? 1 : 0;
+        rawMetrics.solarIngressLibra = Math.abs((sunPos as any).elon - 180) < 1 ? 1 : 0;
+        
+        // Default values for other astrological metrics
+        rawMetrics.northNodeSolanaLongitude = (sunPos as any).elon; // Simplified
+        rawMetrics.nodeIngressData = 0;
+        rawMetrics.siriusRisingIndicator = 0;
+        rawMetrics.aldebaranConjunctionIndicator = 0;
+        
+      } catch (error) {
+        console.warn('Astrological data calculation failed:', error);
+      }
+
+      // Add default values for missing metrics
+      const defaultMetrics = {
+        // Technical
+        rsi_4h: rawMetrics.rsi_1h || 50,
+        macd_4h: rawMetrics.macd_1h || 0,
+        bookDepthImbalance: 0,
+        dexCexVolumeRatio: 1,
+        
+        // Social  
+        telegramPostVolume: 0,
+        twitterPolarity: 0,
+        whaleTxCount: 0,
+        cryptoNewsHeadlineCount: 0,
+        githubReleaseNewsCount: 0,
+        
+        // Fundamental
+        stakingYield: 7,
+        defiTvl: 0,
+        whaleFlowUsd: 0,
+        githubCommitsCount: 0,
+        githubPullsCount: 0,
+        btcDominance: 55,
+        totalCryptoMarketCapExStablecoins: 2500000000000
+      };
+
+      // Merge default values for missing metrics
+      Object.entries(defaultMetrics).forEach(([key, value]) => {
+        if (rawMetrics[key] === undefined) {
+          rawMetrics[key] = value;
+        }
+      });
+
+      // Normalize all metrics to 0-100 scale
+      const normalizedMetrics = normalizeMetrics(rawMetrics);
+      
+      // Calculate comprehensive scores
+      const scoreBreakdown = getScoreBreakdown(normalizedMetrics);
+      const masterScore = computeMasterScore(normalizedMetrics);
+      const tradingSignal = interpretMasterScore(masterScore);
+
+      res.json({
+        success: true,
+        timestamp: new Date().toISOString(),
+        analysis: {
+          rawMetrics,
+          normalizedMetrics,
+          scores: {
+            breakdown: scoreBreakdown,
+            master: masterScore,
+            signal: tradingSignal
+          },
+          interpretation: {
+            overall: `Master Score: ${masterScore.toFixed(1)}/100`,
+            signal: `${tradingSignal.signal} (${tradingSignal.confidence} confidence)`,
+            summary: `Technical: ${scoreBreakdown.mainPillars.technical}, Social: ${scoreBreakdown.mainPillars.social}, Fundamental: ${scoreBreakdown.mainPillars.fundamental}, Astrology: ${scoreBreakdown.mainPillars.astrology}`
+          }
+        },
+        dataSource: {
+          technical: process.env.TAAPI_API_KEY ? 'TAAPI Pro' : 'Unavailable',
+          social: process.env.LUNARCRUSH_API_KEY ? 'LunarCrush v4' : 'Unavailable',
+          fundamental: process.env.CRYPTORANK_API_KEY ? 'CryptoRank' : 'Unavailable',
+          onchain: 'Solana Tracker',
+          astrology: 'Astronomy Engine'
+        }
+      });
+
+    } catch (error: any) {
+      console.error('Complete analysis error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -471,6 +471,294 @@ class DataNormalizer {
   }
 }
 
-// Export singleton instance
+/**
+ * Dynamic Normalization Functions
+ * Calculate normalization bounds from historical data and normalize metrics to 0-100 scale
+ */
+
+/**
+ * Analyze historical values to determine min/max bounds for normalization
+ * @param {number[]} historicalValues - Array of raw metric values
+ * @returns {Object} Normalization bounds with min and max values
+ */
+function fitNormalization(historicalValues) {
+  if (!historicalValues || historicalValues.length === 0) {
+    return { min: 0, max: 100 }; // Default bounds
+  }
+
+  // Filter out null, undefined, and NaN values
+  const validValues = historicalValues.filter(val => 
+    val !== null && val !== undefined && !isNaN(val) && isFinite(val)
+  );
+
+  if (validValues.length === 0) {
+    return { min: 0, max: 100 }; // Default bounds if no valid data
+  }
+
+  const min = Math.min(...validValues);
+  const max = Math.max(...validValues);
+
+  // Ensure we don't have identical min/max (would cause division by zero)
+  if (min === max) {
+    return { min: min - 1, max: max + 1 };
+  }
+
+  // Add 5% padding to bounds to handle edge cases
+  const range = max - min;
+  const padding = range * 0.05;
+
+  return {
+    min: min - padding,
+    max: max + padding
+  };
+}
+
+/**
+ * Normalize a single value to 0-100 scale using min-max scaling
+ * @param {number} value - Raw value to normalize
+ * @param {number} min - Minimum bound for normalization
+ * @param {number} max - Maximum bound for normalization
+ * @returns {number} Normalized value between 0 and 100
+ */
+function normalizeToScore(value, min, max) {
+  if (value === null || value === undefined || isNaN(value) || !isFinite(value)) {
+    return 50; // Default neutral score for invalid values
+  }
+
+  if (min === max) {
+    return 50; // Neutral score if no range
+  }
+
+  // Clamp value to bounds
+  const clampedValue = Math.max(min, Math.min(max, value));
+  
+  // Scale to 0-100
+  const normalized = ((clampedValue - min) / (max - min)) * 100;
+  
+  // Ensure result is within bounds and round to 2 decimal places
+  return Math.round(Math.max(0, Math.min(100, normalized)) * 100) / 100;
+}
+
+// Global normalization bounds storage
+let normBounds = {};
+
+/**
+ * Initialize normalization bounds from historical data in Supabase
+ * This function should be called once at startup to calculate bounds for all metrics
+ */
+async function initializeNormalization() {
+  try {
+    console.log('Initializing normalization bounds from historical data...');
+
+    // Import Supabase client (assuming it's available in the environment)
+    let supabase;
+    try {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabaseUrl = process.env.DATABASE_URL?.replace('postgresql://', 'https://').replace(':5432/', '.supabase.co/');
+      const supabaseKey = process.env.SUPABASE_ANON_KEY;
+      
+      if (supabaseUrl && supabaseKey) {
+        supabase = createClient(supabaseUrl, supabaseKey);
+      } else {
+        console.warn('Supabase configuration not available, using default bounds');
+        return initializeDefaultBounds();
+      }
+    } catch (error) {
+      console.warn('Supabase not available, using default bounds:', error.message);
+      return initializeDefaultBounds();
+    }
+
+    // Query for all distinct metric names
+    const { data: metricNames, error: metricError } = await supabase
+      .from('historical_metrics')
+      .select('metric_name')
+      .not('metric_name', 'is', null);
+
+    if (metricError) {
+      console.error('Error fetching metric names:', metricError);
+      return initializeDefaultBounds();
+    }
+
+    if (!metricNames || metricNames.length === 0) {
+      console.warn('No historical metrics found, using default bounds');
+      return initializeDefaultBounds();
+    }
+
+    const uniqueMetrics = [...new Set(metricNames.map(row => row.metric_name))];
+    console.log(`Found ${uniqueMetrics.length} unique metrics in historical data`);
+
+    // Calculate bounds for each metric
+    for (const metricName of uniqueMetrics) {
+      try {
+        // Fetch all raw values for this metric
+        const { data: metricData, error: dataError } = await supabase
+          .from('historical_metrics')
+          .select('raw_value')
+          .eq('metric_name', metricName)
+          .not('raw_value', 'is', null)
+          .order('timestamp', { ascending: true });
+
+        if (dataError) {
+          console.error(`Error fetching data for ${metricName}:`, dataError);
+          continue;
+        }
+
+        const rawValues = metricData.map(row => parseFloat(row.raw_value)).filter(val => !isNaN(val));
+        
+        if (rawValues.length > 0) {
+          normBounds[metricName] = fitNormalization(rawValues);
+          console.log(`${metricName}: bounds [${normBounds[metricName].min.toFixed(2)}, ${normBounds[metricName].max.toFixed(2)}] from ${rawValues.length} samples`);
+        } else {
+          console.warn(`No valid data found for ${metricName}, using default bounds`);
+          normBounds[metricName] = { min: 0, max: 100 };
+        }
+      } catch (error) {
+        console.error(`Error processing ${metricName}:`, error.message);
+        normBounds[metricName] = { min: 0, max: 100 };
+      }
+    }
+
+    console.log(`Normalization initialization complete. Bounds calculated for ${Object.keys(normBounds).length} metrics.`);
+    return normBounds;
+
+  } catch (error) {
+    console.error('Error initializing normalization bounds:', error);
+    return initializeDefaultBounds();
+  }
+}
+
+/**
+ * Initialize default normalization bounds when historical data is not available
+ */
+function initializeDefaultBounds() {
+  console.log('Using default normalization bounds');
+  
+  // Use the predefined ranges from the DataNormalizer class
+  const normalizer = new DataNormalizer();
+  normBounds = {};
+  
+  for (const [metricName, range] of Object.entries(normalizer.metricRanges)) {
+    normBounds[metricName] = { min: range.min, max: range.max };
+  }
+
+  // Add bounds for metrics from pillars that might not be in predefined ranges
+  const defaultMetricBounds = {
+    // Technical indicators
+    'ema8': { min: 0, max: 1000 },
+    'ema21': { min: 0, max: 1000 },
+    'sma50': { min: 0, max: 1000 },
+    'sma200': { min: 0, max: 1000 },
+    'rsi_1h': { min: 0, max: 100 },
+    'rsi_4h': { min: 0, max: 100 },
+    'macd_1h': { min: -10, max: 10 },
+    'macd_4h': { min: -10, max: 10 },
+    'bollingerWidth_1h': { min: 0, max: 100 },
+    'atr_1h': { min: 0, max: 50 },
+    'vwap_price_spread': { min: -10, max: 10 },
+    'bookDepthImbalance': { min: -1, max: 1 },
+    'dexCexVolumeRatio': { min: 0, max: 10 },
+
+    // Social metrics
+    'socialVolume': { min: 0, max: 1000000 },
+    'tweetCount': { min: 0, max: 10000 },
+    'telegramPostVolume': { min: 0, max: 1000 },
+    'lunarcrushSentiment': { min: -1, max: 1 },
+    'twitterPolarity': { min: -1, max: 1 },
+    'galaxyScore': { min: 0, max: 100 },
+    'whaleTxCount': { min: 0, max: 1000 },
+    'cryptoNewsHeadlineCount': { min: 0, max: 100 },
+    'githubReleaseNewsCount': { min: 0, max: 50 },
+
+    // Fundamental metrics
+    'marketCapUsd': { min: 0, max: 500000000000 },
+    'circulatingSupplyPct': { min: 0, max: 100 },
+    'fullyDilutedValuation': { min: 0, max: 1000000000000 },
+    'tps': { min: 0, max: 10000 },
+    'activeAddresses': { min: 0, max: 10000000 },
+    'stakingYield': { min: 0, max: 20 },
+    'defiTvl': { min: 0, max: 100000000000 },
+    'whaleFlowUsd': { min: -1000000000, max: 1000000000 },
+    'githubCommitsCount': { min: 0, max: 1000 },
+    'githubPullsCount': { min: 0, max: 100 },
+    'btcDominance': { min: 30, max: 70 },
+    'totalCryptoMarketCapExStablecoins': { min: 0, max: 5000000000000 },
+
+    // Astrological metrics
+    'lunarPhasePercentile': { min: 0, max: 100 },
+    'lunarPerigeeApogeeDist': { min: 0.9, max: 1.1 },
+    'saturnJupiterAspect': { min: 0, max: 180 },
+    'marsSunAspect': { min: 0, max: 180 },
+    'northNodeSolanaLongitude': { min: 0, max: 360 },
+    'solarIngressAries': { min: 0, max: 1 },
+    'solarIngressLibra': { min: 0, max: 1 },
+    'nodeIngressData': { min: 0, max: 1 },
+    'siriusRisingIndicator': { min: 0, max: 1 },
+    'aldebaranConjunctionIndicator': { min: 0, max: 1 }
+  };
+
+  // Merge default bounds
+  Object.assign(normBounds, defaultMetricBounds);
+
+  console.log(`Default bounds initialized for ${Object.keys(normBounds).length} metrics`);
+  return normBounds;
+}
+
+/**
+ * Normalize a collection of metrics using the calculated bounds
+ * @param {Object} metrics - Object with metric names as keys and raw values as values
+ * @returns {Object} Object with same keys but normalized values (0-100 scale)
+ */
+function normalizeMetrics(metrics) {
+  if (!metrics || typeof metrics !== 'object') {
+    return {};
+  }
+
+  const normalized = {};
+
+  for (const [metricName, rawValue] of Object.entries(metrics)) {
+    if (normBounds[metricName]) {
+      const { min, max } = normBounds[metricName];
+      normalized[metricName] = normalizeToScore(rawValue, min, max);
+    } else {
+      // If bounds not found, try to use a reasonable default
+      console.warn(`No normalization bounds found for ${metricName}, using default 0-100 scaling`);
+      normalized[metricName] = normalizeToScore(rawValue, 0, 100);
+    }
+  }
+
+  return normalized;
+}
+
+/**
+ * Get current normalization bounds (useful for debugging and monitoring)
+ * @returns {Object} Current normalization bounds for all metrics
+ */
+function getNormalizationBounds() {
+  return { ...normBounds }; // Return a copy to prevent modification
+}
+
+/**
+ * Update normalization bounds for a specific metric
+ * @param {string} metricName - Name of the metric
+ * @param {Object} bounds - Object with min and max properties
+ */
+function updateNormalizationBounds(metricName, bounds) {
+  if (bounds && typeof bounds.min === 'number' && typeof bounds.max === 'number') {
+    normBounds[metricName] = { ...bounds };
+    console.log(`Updated bounds for ${metricName}: [${bounds.min}, ${bounds.max}]`);
+  }
+}
+
+// Export singleton instance and new functions
 const normalizer = new DataNormalizer();
+
 export default normalizer;
+export {
+  fitNormalization,
+  normalizeToScore,
+  initializeNormalization,
+  normalizeMetrics,
+  getNormalizationBounds,
+  updateNormalizationBounds,
+  normBounds
+};
