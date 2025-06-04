@@ -33,12 +33,17 @@ export async function fetchSolanaCurrent() {
     return cached;
   }
 
-  const url = `https://api.cryptorank.io/v2/currencies?api_key=${process.env.CRYPTORANK_API_KEY}&ids=5426`;
+  const url = `https://api.cryptorank.io/v2/currencies?ids=5426`;
 
   try {
     console.log('CryptoRank V2 Request: Solana current data');
     
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: {
+        'X-API-KEY': process.env.CRYPTORANK_API_KEY,
+        'Content-Type': 'application/json'
+      }
+    });
     
     if (!response.ok) {
       const errorData = await response.text();
