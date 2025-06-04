@@ -96,10 +96,19 @@ export async function fetchSolanaCurrent() {
   }
 }
 
-export async function fetchSolanaHistorical(interval = '1h') {
-  // Reject 5-minute intervals on Basic plan to preserve credits
-  if (interval === '5m') {
-    throw new Error('5 min interval is not supported on Basic plan; please use interval=\'1h\' or upgrade plan');
+/**
+ * Fetches Solana historical price data.
+ * Basic plan supports:
+ *   • "5m" for up to 30 days of 5-minute candles
+ *   • "1d" for daily candles
+ */
+export async function fetchSolanaHistorical(interval = "1d") {
+  // Validate interval
+  const allowed = ["5m", "1d"];
+  if (!allowed.includes(interval)) {
+    throw new Error(
+      `Invalid interval "${interval}". Must be one of: ${allowed.join(", ")}`
+    );
   }
 
   const cacheKey = `solHist@${interval}`;
@@ -108,11 +117,13 @@ export async function fetchSolanaHistorical(interval = '1h') {
   await rateLimit();
   
   try {
-    // Use Solana's ID (5663) for historical data
-    // NOTE: On Basic plan, fetching 1h interval history costs 24 credits/day
-    const url = `https://api.cryptorank.io/v1/currencies/5663/sparkline?api_key=${CR_API_KEY}`;
-    
-    const response = await fetch(url, {
+    const url = "https://api.cryptorank.io/v2/hist_price/solana";
+    const params = new URLSearchParams({
+      api_key: CR_API_KEY,
+      interval: interval
+    });
+
+    const response = await fetch(`${url}?${params}`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
       timeout: 15000

@@ -1,0 +1,85 @@
+You are an AI assistant. The user’s CryptoRank Basic plan allows “up to 30 days at 5m intervals” and “daily” historical data. Currently our service only accepts “1h”, “4h”, or “1d”. Please update the historical‐data code so it accepts and validates “5m” (5‐minute) for up to 30 days and “1d” (daily). Do the following:
+
+1. **Update `services/cryptorank.js`**  
+   - Replace the existing `fetchSolanaHistorical` function with this version:
+     ```js
+     import axios from "axios";
+
+     const CR_API_KEY = process.env.CRYPTORANK_API_KEY;
+     if (!CR_API_KEY) {
+       throw new Error("CRYPTORANK_API_KEY is undefined—please set it in environment");
+     }
+
+     /**
+      * Fetches Solana historical price data.
+      * Basic plan supports:
+      *   • “5m” for up to 30 days of 5-minute candles
+      *   • “1d” for daily candles
+      */
+     export async function fetchSolanaHistorical(interval = "1d") {
+       // Validate interval
+       const allowed = ["5m", "1d"];
+       if (!allowed.includes(interval)) {
+         throw new Error(
+           `Invalid interval "${interval}". Must be one of: ${allowed.join(", ")}`
+         );
+       }
+
+       const url = "https://api.cryptorank.io/v2/hist_price/solana";
+       const params = {
+         api_key: CR_API_KEY,
+         interval,
+       };
+
+       try {
+         const response = await axios.get(url, { params });
+         return response.data.data; // array of { date, open, high, low, close, volume }
+       } catch (err) {
+         console.error(
+           "CryptoRank historical fetch failed:",
+           err.response?.data || err.message
+         );
+         throw err;
+       }
+     }
+     ```
+
+2. **Update the Express route** in `server/routes/cryptorankRoutes.ts` (or `.js`):
+   - Modify the `/historical` handler so it allows “5m” or “1d” and returns 400 on invalid:
+     ```ts
+     import express from "express";
+     import { fetchSolanaHistorical } from "../services/cryptorank.js";
+
+     const router = express.Router();
+
+     router.get("/historical", async (req, res) => {
+       const interval = String(req.query.interval || "1d");
+       const allowed = ["5m", "1d"];
+       if (!allowed.includes(interval)) {
+         return res
+           .status(400)
+           .json({
+             success: false,
+             error: `Invalid interval "${interval}". Must be one of: ${allowed.join(", ")}`,
+           });
+       }
+
+       try {
+         const data = await fetchSolanaHistorical(interval);
+         return res.json({ success: true, data });
+       } catch (err) {
+         const errorMsg = err.response?.data
+           ? JSON.stringify(err.response.data)
+           : err.message;
+         return res.status(500).json({ success: false, error: errorMsg });
+       }
+     });
+
+     export default router;
+     ```
+
+3. **Restart** the Replit container so environment variables and new code load.  
+4. **Test** with:
+   ```bash
+   curl -i "http://localhost:5000/api/cryptorank/historical?interval=5m"
+   curl -i "http://localhost:5000/api/cryptorank/historical?interval=1d"

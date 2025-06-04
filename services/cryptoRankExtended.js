@@ -324,14 +324,18 @@ export async function fetchFullMetadata(id) {
 
 /**
  * Fetch sparkline data for currency
- * NOTE: On Basic plan, fetching 1h interval history costs 24 credits/day; 
- * do not request 5m interval (costs 288 credits/day) unless you upgrade.
+ * Basic plan supports:
+ *   • "5m" for up to 30 days of 5-minute candles
+ *   • "1d" for daily candles
  * Cache TTL: 1 hour
  */
-export async function fetchSparkline(id, interval = '1h') {
-  // Reject 5-minute intervals on Basic plan to preserve credits
-  if (interval === '5m') {
-    throw new Error('5 min interval is not supported on Basic plan; please use interval=\'1h\' or upgrade plan');
+export async function fetchSparkline(id, interval = '1d') {
+  // Validate interval for Basic plan
+  const allowed = ["5m", "1d"];
+  if (!allowed.includes(interval)) {
+    throw new Error(
+      `Invalid interval "${interval}". Must be one of: ${allowed.join(", ")}`
+    );
   }
 
   const cacheKey = `sparkline_${id}_${interval}`;
@@ -407,13 +411,17 @@ export async function searchCurrencies(query) {
 
 /**
  * Fetch Solana historical data with rate limiting
- * NOTE: On Basic plan, fetching 1h interval history costs 24 credits/day; 
- * do not request 5m interval (costs 288 credits/day) unless you upgrade.
+ * Basic plan supports:
+ *   • "5m" for up to 30 days of 5-minute candles
+ *   • "1d" for daily candles
  */
-export async function fetchSolanaHistorical(interval = '1h') {
-  // Reject 5-minute intervals on Basic plan to preserve credits
-  if (interval === '5m') {
-    throw new Error('5 min interval is not supported on Basic plan; please use interval=\'1h\' or upgrade plan');
+export async function fetchSolanaHistorical(interval = '1d') {
+  // Validate interval for Basic plan
+  const allowed = ["5m", "1d"];
+  if (!allowed.includes(interval)) {
+    throw new Error(
+      `Invalid interval "${interval}". Must be one of: ${allowed.join(", ")}`
+    );
   }
 
   const solanaId = 5663; // Known Solana ID in CryptoRank system

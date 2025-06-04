@@ -100,9 +100,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/cryptorank/historical", async (req, res) => {
+    const interval = String(req.query.interval || "1d");
+    const allowed = ["5m", "1d"];
+    
+    if (!allowed.includes(interval)) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          error: `Invalid interval "${interval}". Must be one of: ${allowed.join(", ")}`,
+        });
+    }
+
     try {
       const { fetchSolanaHistorical } = await import('../api/cryptorank.js');
-      const interval = req.query.interval as string || '1h';
       const data = await fetchSolanaHistorical(interval);
       
       res.json({
@@ -113,9 +124,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timestamp: new Date().toISOString()
       });
     } catch (error: any) {
+      const errorMsg = error.response?.data
+        ? JSON.stringify(error.response.data)
+        : error.message;
       res.status(500).json({
         success: false,
-        error: error.message,
+        error: errorMsg,
         timestamp: new Date().toISOString()
       });
     }
