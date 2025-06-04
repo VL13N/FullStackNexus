@@ -222,6 +222,7 @@ function Router() {
       <Navigation />
       <Switch>
         <Route path="/" component={Dashboard} />
+        <Route path="/predictions" component={PredictionsPage} />
         <Route path="/taapi" component={TaapiDemo} />
         <Route path="/cryptorank" component={CryptoRankDemo} />
         <Route path="/onchain" component={OnChainDemo} />
