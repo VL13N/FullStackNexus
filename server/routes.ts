@@ -168,6 +168,278 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // CryptoRank API integration - Direct implementation
+  app.get("/api/cryptorank/data", async (req, res) => {
+    try {
+      if (!process.env.CRYPTORANK_API_KEY) {
+        return res.status(503).json({
+          success: false,
+          error: "CryptoRank API key not configured",
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const params = new URLSearchParams({
+        api_key: process.env.CRYPTORANK_API_KEY
+      });
+
+      const response = await fetch(`https://api.cryptorank.io/v0/coins/solana?${params}`);
+      const data = await response.json();
+
+      if (data.data) {
+        const solana = data.data;
+        
+        const fundamentalData = {
+          id: solana.id,
+          symbol: solana.symbol,
+          name: solana.name,
+          slug: solana.slug,
+          currentPrice: {
+            usd: solana.values?.USD?.price || null,
+            btc: solana.values?.BTC?.price || null,
+            eth: solana.values?.ETH?.price || null
+          },
+          marketCap: {
+            usd: solana.values?.USD?.marketCap || null,
+            rank: solana.values?.USD?.marketCapRank || null
+          },
+          volume24h: {
+            usd: solana.values?.USD?.volume24h || null
+          },
+          priceChange: {
+            percent1h: solana.values?.USD?.percentChange1h || null,
+            percent24h: solana.values?.USD?.percentChange24h || null,
+            percent7d: solana.values?.USD?.percentChange7d || null,
+            percent30d: solana.values?.USD?.percentChange30d || null,
+            percent1y: solana.values?.USD?.percentChange1y || null
+          },
+          supply: {
+            circulating: solana.circulatingSupply || null,
+            total: solana.totalSupply || null,
+            max: solana.maxSupply || null
+          },
+          allTimeHigh: {
+            price: solana.values?.USD?.athPrice || null,
+            date: solana.values?.USD?.athDate || null,
+            percentFromAth: solana.values?.USD?.percentFromAth || null
+          },
+          allTimeLow: {
+            price: solana.values?.USD?.atlPrice || null,
+            date: solana.values?.USD?.atlDate || null,
+            percentFromAtl: solana.values?.USD?.percentFromAtl || null
+          }
+        };
+
+        res.json({
+          success: true,
+          type: 'fundamental_data',
+          data: fundamentalData,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        throw new Error('No fundamental data found for Solana');
+      }
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get("/api/cryptorank/historical", async (req, res) => {
+    try {
+      const { timeframe = '30d', currency = 'USD' } = req.query;
+      
+      if (!process.env.CRYPTORANK_API_KEY) {
+        return res.status(503).json({
+          success: false,
+          error: "CryptoRank API key not configured",
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const params = new URLSearchParams({
+        api_key: process.env.CRYPTORANK_API_KEY,
+        timeframe: timeframe as string,
+        currency: currency as string
+      });
+
+      const response = await fetch(`https://api.cryptorank.io/v0/coins/solana/chart?${params}`);
+      const data = await response.json();
+
+      if (data.data) {
+        const historicalData = {
+          symbol: 'SOL',
+          currency,
+          timeframe,
+          prices: data.data.map((point: any) => ({
+            timestamp: point.timestamp,
+            date: new Date(point.timestamp * 1000).toISOString(),
+            price: point.price,
+            volume: point.volume || null,
+            marketCap: point.marketCap || null
+          })),
+          metadata: {
+            totalPoints: data.data.length,
+            startDate: data.data.length > 0 ? new Date(data.data[0].timestamp * 1000).toISOString() : null,
+            endDate: data.data.length > 0 ? new Date(data.data[data.data.length - 1].timestamp * 1000).toISOString() : null
+          }
+        };
+
+        res.json({
+          success: true,
+          type: 'historical_prices',
+          timeframe,
+          currency,
+          data: historicalData,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        throw new Error('No historical data found for Solana');
+      }
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get("/api/cryptorank/stats", async (req, res) => {
+    try {
+      if (!process.env.CRYPTORANK_API_KEY) {
+        return res.status(503).json({
+          success: false,
+          error: "CryptoRank API key not configured",
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const params = new URLSearchParams({
+        api_key: process.env.CRYPTORANK_API_KEY
+      });
+
+      const response = await fetch(`https://api.cryptorank.io/v0/coins/solana?${params}`);
+      const data = await response.json();
+
+      if (data.data) {
+        const solana = data.data;
+        
+        const marketStats = {
+          symbol: 'SOL',
+          name: 'Solana',
+          marketMetrics: {
+            rank: solana.values?.USD?.marketCapRank || null,
+            marketCap: solana.values?.USD?.marketCap || null,
+            volume24h: solana.values?.USD?.volume24h || null,
+            volumeMarketCapRatio: solana.values?.USD?.volume24h && solana.values?.USD?.marketCap ? 
+              (solana.values.USD.volume24h / solana.values.USD.marketCap) : null,
+            circulatingSupply: solana.circulatingSupply || null,
+            totalSupply: solana.totalSupply || null,
+            maxSupply: solana.maxSupply || null,
+            supplyPercentage: solana.circulatingSupply && solana.totalSupply ? 
+              (solana.circulatingSupply / solana.totalSupply * 100) : null
+          },
+          priceMetrics: {
+            currentPrice: solana.values?.USD?.price || null,
+            athPrice: solana.values?.USD?.athPrice || null,
+            athDate: solana.values?.USD?.athDate || null,
+            percentFromAth: solana.values?.USD?.percentFromAth || null,
+            atlPrice: solana.values?.USD?.atlPrice || null,
+            atlDate: solana.values?.USD?.atlDate || null,
+            percentFromAtl: solana.values?.USD?.percentFromAtl || null
+          },
+          performanceMetrics: {
+            change1h: solana.values?.USD?.percentChange1h || null,
+            change24h: solana.values?.USD?.percentChange24h || null,
+            change7d: solana.values?.USD?.percentChange7d || null,
+            change30d: solana.values?.USD?.percentChange30d || null,
+            change1y: solana.values?.USD?.percentChange1y || null
+          }
+        };
+
+        res.json({
+          success: true,
+          type: 'market_statistics',
+          data: marketStats,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        throw new Error('No market statistics found for Solana');
+      }
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get("/api/cryptorank/price", async (req, res) => {
+    try {
+      if (!process.env.CRYPTORANK_API_KEY) {
+        return res.status(503).json({
+          success: false,
+          error: "CryptoRank API key not configured",
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const params = new URLSearchParams({
+        api_key: process.env.CRYPTORANK_API_KEY
+      });
+
+      const response = await fetch(`https://api.cryptorank.io/v0/coins/solana?${params}`);
+      const data = await response.json();
+
+      if (data.data) {
+        const solana = data.data;
+        
+        const priceData = {
+          symbol: 'SOL',
+          name: 'Solana',
+          prices: {
+            usd: solana.values?.USD?.price || null,
+            btc: solana.values?.BTC?.price || null,
+            eth: solana.values?.ETH?.price || null
+          },
+          changes: {
+            percent1h: solana.values?.USD?.percentChange1h || null,
+            percent24h: solana.values?.USD?.percentChange24h || null,
+            percent7d: solana.values?.USD?.percentChange7d || null
+          },
+          volume: {
+            usd24h: solana.values?.USD?.volume24h || null
+          },
+          marketCap: {
+            usd: solana.values?.USD?.marketCap || null,
+            rank: solana.values?.USD?.marketCapRank || null
+          },
+          lastUpdated: solana.lastUpdated || new Date().toISOString()
+        };
+
+        res.json({
+          success: true,
+          type: 'real_time_price',
+          data: priceData,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        throw new Error('No real-time price data found for Solana');
+      }
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // Solana TAAPI Pro integration - Direct implementation
   app.get("/api/solana/rsi", async (req, res) => {
     try {
