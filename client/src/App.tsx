@@ -203,6 +203,7 @@ function Router() {
         <Route path="/cryptorank" component={CryptoRankDemo} />
         <Route path="/onchain" component={OnChainDemo} />
         <Route path="/astrology" component={AstrologyDemo} />
+        <Route path="/lunarcrush" component={LunarCrushDemo} />
         <Route component={NotFound} />
       </Switch>
     </>
