@@ -1,317 +1,291 @@
-// NOTE: Using Discover plan—news endpoint must be /v1/topic/solana/news/v1, not /v2.
-// NOTE: Ensure OPENAI_API_KEY and LUNARCRUSH_API_KEY are set in environment variables.
-//       If you receive "Invalid API key," verify the key in LunarCrush and OpenAI dashboards.
-
+// services/openaiIntegration.js
 /**
  * OpenAI Integration Service for Phase 7
- * Fetches and scores LunarCrush news, generates daily market updates, and suggests dynamic pillar weights
+ * Handles news sentiment analysis and daily market predictions
  */
 
-import dns from "dns/promises";
 import OpenAI from 'openai';
+import { createClient } from '@supabase/supabase-js';
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY
 });
 
-async function checkLunarCrushDNS() {
-  try {
-    await dns.lookup("lunarcrush.com");
-    return true;
-  } catch {
-    return false;
-  }
-}
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_KEY
+);
 
 /**
- * Fetch and score news from LunarCrush using OpenAI
- * @returns {Array} Array of scored news items
+ * Analyze news sentiment using OpenAI GPT-4
  */
-export async function fetchAndScoreNews() {
-  const key = process.env.LUNARCRUSH_API_KEY;
-  if (!key) throw new Error("LUNARCRUSH_API_KEY is undefined");
-
-  // 1. DNS connectivity check
-  const canResolve = await checkLunarCrushDNS();
-  if (!canResolve) {
-    console.error("LunarCrush DNS lookup failed for lunarcrush.com. Skipping news scoring.");
-    return [];
+export async function analyzeNewsSentiment(articles) {
+  if (!articles || articles.length === 0) {
+    return { error: 'No articles provided for analysis' };
   }
 
-  // 2. Fetch news from current API4 endpoint
-  const url = `https://lunarcrush.com/api4/public/topic/solana/news/v1`;
-  let newsJson;
   try {
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${key}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    if (!res.ok) {
-      console.error("LunarCrush news returned HTTP", res.status);
-      return [];
-    }
-    newsJson = await res.json();
-  } catch (err) {
-    console.error("LunarCrush fetch error:", err.message || err);
-    return [];
-  }
+    const articlesText = articles.map(article => 
+      `Title: ${article.title}\nContent: ${article.content || article.summary || 'No content'}`
+    ).join('\n\n---\n\n');
 
-  if (!Array.isArray(newsJson.data) || newsJson.data.length === 0) {
-    console.log("fetchAndScoreNews(): no headlines returned from v1 endpoint.");
-    return [];
-  }
+    const prompt = `
+Analyze the sentiment of these Solana-related news articles. For each article, provide:
 
-  // 3. Extract titles
-  const headlines = newsJson.data.map((n) => n.post_title);
+1. Overall sentiment: positive, negative, or neutral
+2. Sentiment score: -1.0 (very negative) to 1.0 (very positive)
+3. Confidence level: 0.0 to 1.0
+4. Key sentiment drivers (3-5 words)
 
-  // 4. Build OpenAI prompt
-  const prompt = `
-Given these Solana news headlines (1–20):
-${headlines.map((h, i) => `${i + 1}. ${h}`).join("\n")}
+Articles:
+${articlesText}
 
-Score each headline from -100 (extremely bearish) to +100 (extremely bullish) for Solana's short‐term price impact. 
-
-You must respond with ONLY a valid JSON array in this exact format:
-[
-  { "headline": "exact headline text", "score": number, "justification": "brief explanation" },
-  { "headline": "exact headline text", "score": number, "justification": "brief explanation" }
-]
-
-Do not include any other text before or after the JSON array.`;
-
-  // 5. Call GPT-4
-  let scored;
-  try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        { role: "system", content: "You are a financial analyst. Respond only with valid JSON arrays." },
-        { role: "user", content: prompt }
-      ],
-      temperature: 0.2
-    });
-    const content = completion.choices[0].message.content.trim();
-    scored = JSON.parse(content);
-  } catch (err) {
-    console.error("OpenAI scoring error:", err.message || err);
-    return [];
-  }
-
-  // 6. Store in database (placeholder for future integration)
-  for (const item of scored) {
-    if (item.headline && typeof item.score === 'number' && item.justification) {
-      console.log('News scored:', {
-        headline: item.headline,
-        score: item.score,
-        justification: item.justification
-      });
-    }
-  }
-
-  return scored;
-}
-
-/**
- * Generate daily market update using OpenAI
- * @returns {string} Generated market update text
- */
-export async function generateDailyUpdate() {
-  try {
-    // Fetch yesterday's news scores (would be from database)
-    // For now, simulating the database query
-    const newsScores = [
-      // This would come from: SELECT * FROM news_scores WHERE timestamp >= NOW() - INTERVAL '24 hours' ORDER BY timestamp DESC LIMIT 20
-    ];
-
-    // Fetch latest prediction data (would be from database)
-    // For now, simulating the database query
-    const latestPrediction = {
-      // This would come from: SELECT * FROM live_predictions ORDER BY timestamp DESC LIMIT 1
-      tech_score: 65.5,
-      social_score: 72.3,
-      fund_score: 58.9,
-      astro_score: 45.2,
-      predicted_pct: 2.8,
-      category: 'Moderate Bullish'
-    };
-
-    // Build news summary for prompt
-    const newsSummary = newsScores.length > 0 
-      ? newsScores.map(item => `• "${item.headline}" (score: ${item.score})`).join('\n')
-      : '• No recent news data available';
-
-    const prompt = `Using these inputs:
-
-• Latest 20 news items with scores:
-${newsSummary}
-
-• Latest prediction data:
-– Technical Score: ${latestPrediction.tech_score}
-– Social Score: ${latestPrediction.social_score}
-– Fundamental Score: ${latestPrediction.fund_score}
-– Astrology Score: ${latestPrediction.astro_score}
-– Predicted Move: ${latestPrediction.predicted_pct}% (${latestPrediction.category})
-
-1. Summarize the top bullish and bearish factors in 2–3 bullet points each.
-2. Provide a concise market outlook for Solana today, blending news sentiment, scores, and predicted move.
-3. Conclude with a brief recommendation (e.g., "Monitor X, Y, Z").
-Return only the plain‐text update (no extra JSON).`;
-
-    // Call OpenAI GPT-4
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.5
-    });
-
-    const updateText = completion.choices[0].message.content;
-
-    // Store in Supabase daily_updates table
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-    
-    try {
-      // Insert into database using raw SQL
-      const query = `
-        INSERT INTO daily_updates (date, content)
-        VALUES ($1, $2)
-        ON CONFLICT (date) DO UPDATE SET content = $2
-      `;
-      
-      // Note: This would need actual database connection
-      console.log('Would store in daily_updates:', {
-        date: today,
-        content: updateText
-      });
-    } catch (dbError) {
-      console.error('Failed to store daily update in database:', dbError);
-    }
-
-    return updateText;
-    
-  } catch (error) {
-    console.error('Failed to generate daily update:', error);
-    throw error;
-  }
-}
-
-/**
- * Suggest dynamic pillar weights using OpenAI
- * @returns {Object} Suggested weights and justifications
- */
-export async function suggestWeights() {
-  try {
-    // Fetch last 24 predictions (would be from database)
-    // For now, simulating the database query
-    const recentPredictions = [
-      // This would come from: SELECT * FROM live_predictions ORDER BY timestamp DESC LIMIT 24
-    ];
-
-    // Fetch last 20 news scores (would be from database)
-    const recentNews = [
-      // This would come from: SELECT * FROM news_scores ORDER BY timestamp DESC LIMIT 20
-    ];
-
-    // Build predictions summary for prompt
-    const predictionsSummary = recentPredictions.length > 0 
-      ? recentPredictions.map(pred => 
-          `– "${pred.timestamp}": tech=${pred.tech_score}, social=${pred.social_score}, fund=${pred.fund_score}, astro=${pred.astro_score}, predPct=${pred.predicted_pct}%`
-        ).join('\n')
-      : '– No recent prediction data available';
-
-    // Build news summary for prompt
-    const newsSummary = recentNews.length > 0 
-      ? recentNews.map(item => `– "${item.headline}" (score: ${item.score})`).join('\n')
-      : '– No recent news data available';
-
-    const prompt = `Based on these recent data:
-
-• Live predictions (chronological, newest first):
-${predictionsSummary}
-
-• Latest news scores:
-${newsSummary}
-
-Recommend updated percentage weights (sum = 100) for these four pillars:
-• Technical
-• Social
-• Fundamental
-• Astrology
-
-Provide JSON:
+Respond in JSON format:
 {
-  "Technical": <number>,
-  "Social": <number>,
-  "Fundamental": <number>,
-  "Astrology": <number>,
-  "justification": {
-    "Technical": "<reason>",
-    "Social": "<reason>",
-    "Fundamental": "<reason>",
-    "Astrology": "<reason>"
-  }
+  "articles": [
+    {
+      "sentiment": "positive|negative|neutral",
+      "score": 0.5,
+      "confidence": 0.8,
+      "drivers": ["adoption", "price", "ecosystem"]
+    }
+  ],
+  "overall_sentiment": "positive",
+  "overall_score": 0.3,
+  "market_impact": "bullish|bearish|neutral"
 }`;
 
-    // Call OpenAI GPT-4
-    const completion = await openai.chat.completions.create({
+    const response = await openai.chat.completions.create({
       model: "gpt-4",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.3
+      messages: [
+        {
+          role: "system",
+          content: "You are a professional cryptocurrency market analyst specializing in sentiment analysis. Provide accurate, unbiased sentiment scores based on factual content."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.3,
+      max_tokens: 1500
     });
 
-    const responseText = completion.choices[0].message.content;
+    const analysis = JSON.parse(response.choices[0].message.content);
     
-    // Parse JSON response
-    let weightsData;
-    try {
-      weightsData = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('Failed to parse OpenAI weights response as JSON:', responseText);
-      throw new Error('Invalid JSON response from OpenAI for weights');
-    }
-
-    // Validate weights sum to 100
-    const totalWeight = weightsData.Technical + weightsData.Social + weightsData.Fundamental + weightsData.Astrology;
-    if (Math.abs(totalWeight - 100) > 1) {
-      console.warn(`Weights sum to ${totalWeight}, not 100. Normalizing...`);
-      const factor = 100 / totalWeight;
-      weightsData.Technical *= factor;
-      weightsData.Social *= factor;
-      weightsData.Fundamental *= factor;
-      weightsData.Astrology *= factor;
-    }
-
-    // Store in Supabase dynamic_weights table
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-    
-    try {
-      // Insert into database using raw SQL
-      const query = `
-        INSERT INTO dynamic_weights (date, technical, social, fundamental, astrology, justification)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        ON CONFLICT (date) DO UPDATE SET 
-          technical = $2, social = $3, fundamental = $4, astrology = $5, justification = $6
-      `;
+    // Store sentiment data in database
+    for (let i = 0; i < articles.length; i++) {
+      const article = articles[i];
+      const sentiment = analysis.articles[i];
       
-      // Note: This would need actual database connection
-      console.log('Would store in dynamic_weights:', {
-        date: today,
-        technical: weightsData.Technical,
-        social: weightsData.Social,
-        fundamental: weightsData.Fundamental,
-        astrology: weightsData.Astrology,
-        justification: weightsData.justification
-      });
-    } catch (dbError) {
-      console.error('Failed to store dynamic weights in database:', dbError);
+      await supabase
+        .from('news_sentiment')
+        .insert({
+          article_title: article.title,
+          article_content: article.content || article.summary,
+          sentiment_score: sentiment.score,
+          sentiment_label: sentiment.sentiment,
+          confidence_score: sentiment.confidence,
+          source: article.source || 'LunarCrush',
+          published_at: article.published_at || new Date().toISOString()
+        });
     }
 
-    return weightsData;
-    
+    return {
+      success: true,
+      analysis,
+      timestamp: new Date().toISOString()
+    };
+
   } catch (error) {
-    console.error('Failed to suggest weights:', error);
-    throw error;
+    console.error('OpenAI sentiment analysis error:', error);
+    return {
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
+/**
+ * Generate daily market analysis using comprehensive data
+ */
+export async function generateDailyAnalysis(marketData) {
+  try {
+    const {
+      technicalData = {},
+      fundamentalData = {},
+      socialData = {},
+      onChainData = {},
+      astrologicalData = {},
+      newssentiment = {}
+    } = marketData;
+
+    const prompt = `
+As a professional Solana market analyst, provide a comprehensive daily analysis based on this data:
+
+TECHNICAL INDICATORS:
+- RSI: ${technicalData.rsi || 'N/A'}
+- MACD: ${technicalData.macdHistogram || 'N/A'} 
+- EMA 200: ${technicalData.ema200 || 'N/A'}
+- Price: $${fundamentalData.currentPrice || 'N/A'}
+
+FUNDAMENTAL DATA:
+- Market Cap: $${fundamentalData.marketCap || 'N/A'}
+- 24h Volume: $${fundamentalData.volume24h || 'N/A'}
+- 24h Change: ${fundamentalData.priceChange24h || 'N/A'}%
+
+SOCIAL METRICS:
+- Galaxy Score: ${socialData.galaxyScore || 'N/A'}
+- Social Volume: ${socialData.socialVolume || 'N/A'}
+- AltRank: ${socialData.altRank || 'N/A'}
+
+ON-CHAIN DATA:
+- Active Validators: ${onChainData.activeValidators || 'N/A'}
+- Average APY: ${onChainData.averageApy || 'N/A'}%
+- Total Stake: ${onChainData.totalStake || 'N/A'} SOL
+
+ASTROLOGICAL INFLUENCES:
+- Moon Phase: ${astrologicalData.moonPhaseName || 'N/A'}
+- Planetary Aspects: ${astrologicalData.majorAspectsCount || 'N/A'}
+
+NEWS SENTIMENT:
+- Overall Sentiment: ${newssentiment.overall_sentiment || 'neutral'}
+- Sentiment Score: ${newssentiment.overall_score || '0.0'}
+
+Provide analysis in JSON format:
+{
+  "overall_sentiment": "bullish|bearish|neutral",
+  "confidence_level": "high|medium|low",
+  "price_prediction": "Brief prediction with target range",
+  "key_insights": ["insight1", "insight2", "insight3"],
+  "market_drivers": ["driver1", "driver2"],
+  "risk_factors": ["risk1", "risk2"],
+  "recommendation": "buy|hold|sell",
+  "time_horizon": "24h outlook"
+}`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: "You are a senior cryptocurrency market analyst with expertise in technical analysis, fundamental analysis, social sentiment, and market psychology. Provide professional, actionable insights."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.4,
+      max_tokens: 1000
+    });
+
+    const analysis = JSON.parse(response.choices[0].message.content);
+    
+    // Store daily analysis in database
+    const today = new Date().toISOString().split('T')[0];
+    await supabase
+      .from('daily_market_analysis')
+      .upsert({
+        analysis_date: today,
+        overall_sentiment: analysis.overall_sentiment,
+        key_insights: analysis.key_insights,
+        price_prediction: analysis.price_prediction,
+        confidence_level: analysis.confidence_level,
+        market_drivers: analysis.market_drivers,
+        risk_factors: analysis.risk_factors
+      });
+
+    return {
+      success: true,
+      analysis,
+      timestamp: new Date().toISOString()
+    };
+
+  } catch (error) {
+    console.error('OpenAI daily analysis error:', error);
+    return {
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
+/**
+ * Get historical sentiment trends from database
+ */
+export async function getSentimentTrends(days = 7) {
+  try {
+    const { data, error } = await supabase
+      .from('news_sentiment')
+      .select('sentiment_score, sentiment_label, analyzed_at')
+      .gte('analyzed_at', new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString())
+      .order('analyzed_at', { ascending: true });
+
+    if (error) throw error;
+
+    // Calculate daily averages
+    const dailyAverages = {};
+    data.forEach(row => {
+      const date = row.analyzed_at.split('T')[0];
+      if (!dailyAverages[date]) {
+        dailyAverages[date] = { scores: [], count: 0 };
+      }
+      dailyAverages[date].scores.push(row.sentiment_score);
+      dailyAverages[date].count++;
+    });
+
+    const trends = Object.entries(dailyAverages).map(([date, data]) => ({
+      date,
+      average_score: data.scores.reduce((a, b) => a + b, 0) / data.count,
+      article_count: data.count
+    }));
+
+    return {
+      success: true,
+      trends,
+      summary: {
+        total_articles: data.length,
+        avg_sentiment: data.reduce((acc, row) => acc + row.sentiment_score, 0) / data.length,
+        period_days: days
+      }
+    };
+
+  } catch (error) {
+    console.error('Sentiment trends error:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Get latest daily analysis from database
+ */
+export async function getLatestAnalysis() {
+  try {
+    const { data, error } = await supabase
+      .from('daily_market_analysis')
+      .select('*')
+      .order('analysis_date', { ascending: false })
+      .limit(1);
+
+    if (error) throw error;
+
+    return {
+      success: true,
+      analysis: data[0] || null,
+      timestamp: new Date().toISOString()
+    };
+
+  } catch (error) {
+    console.error('Get latest analysis error:', error);
+    return {
+      success: false,
+      error: error.message
+    };
   }
 }
