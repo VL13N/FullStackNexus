@@ -6,8 +6,8 @@ async function testNews() {
     console.error("Error: LUNARCRUSH_API_KEY is undefined");
     process.exit(1);
   }
-  const url = `https://api.lunarcrush.com/v1/topic/solana/news/v1?key=${key}&limit=5`;
-  console.log("Calling LunarCrush news endpoint:");
+  const url = `https://lunarcrush.com/api4/public/coins/solana/news?limit=5&api_key=${key}`;
+  console.log("Calling LunarCrush API4 news endpoint:");
   console.log(url);
   try {
     const res = await fetch(url);

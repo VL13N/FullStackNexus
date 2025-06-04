@@ -15,7 +15,7 @@ const openai = new OpenAI({
 
 async function checkLunarCrushDNS() {
   try {
-    await dns.lookup("api.lunarcrush.com");
+    await dns.lookup("lunarcrush.com");
     return true;
   } catch {
     return false;
@@ -33,15 +33,21 @@ export async function fetchAndScoreNews() {
   // 1. DNS connectivity check
   const canResolve = await checkLunarCrushDNS();
   if (!canResolve) {
-    console.error("LunarCrush DNS lookup failed for api.lunarcrush.com. Skipping news scoring.");
+    console.error("LunarCrush DNS lookup failed for lunarcrush.com. Skipping news scoring.");
     return [];
   }
 
-  // 2. Fetch v1 news from "topic/solana"
-  const url = `https://api.lunarcrush.com/v1/topic/solana/news/v1?key=${key}&limit=20`;
+  // 2. Fetch news from current API4 endpoint
+  const url = `https://lunarcrush.com/api4/public/topic/solana/news/v1?limit=20`;
   let newsJson;
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${key}`,
+        'Content-Type': 'application/json'
+      }
+    });
     if (!res.ok) {
       console.error("LunarCrush news returned HTTP", res.status);
       return [];
