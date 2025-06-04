@@ -2150,6 +2150,23 @@ Keep response concise and professional.`;
         throw error;
       }
 
+      // Automatically trigger weight suggestions after storing prediction
+      try {
+        const response = await fetch('http://localhost:5000/api/openai/suggest-weights', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (response.ok) {
+          console.log('[Auto Weight Suggestion] Weight suggestions generated after prediction storage');
+        } else {
+          console.warn('[Auto Weight Suggestion] Failed to generate weights:', response.status);
+        }
+      } catch (weightError: any) {
+        console.warn('[Auto Weight Suggestion] Error generating weights:', weightError.message);
+        // Don't fail the prediction storage if weight suggestions fail
+      }
+
       res.json({
         success: true,
         data: data,

@@ -237,6 +237,7 @@ function Router() {
         <Route path="/onchain" component={OnChainDemo} />
         <Route path="/astrology" component={AstrologyDemo} />
         <Route path="/lunarcrush" component={LunarCrushDemo} />
+        <Route path="/settings" component={SettingsPage} />
         <Route component={NotFound} />
       </Switch>
     </>
