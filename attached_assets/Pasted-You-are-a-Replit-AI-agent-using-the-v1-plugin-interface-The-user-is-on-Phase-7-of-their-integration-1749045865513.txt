@@ -1,0 +1,152 @@
+You are a Replit AI agent using the v1 plugin interface. The user is on Phase 7 of their integration plan and needs to test the LunarCrush “news” endpoint and the OpenAI‐powered scoring functions (`fetchAndScoreNews`, `generateDailyUpdate`, and `suggestWeights`). They have a Discover‐tier LunarCrush key that includes News access. Your job is to generate working test scripts (in plain JavaScript) for each function, verify environment variables, and output any diagnostic console.logs so they can debug directly in Replit. Do the following in a single response:
+
+---
+
+1. **Quick Environment Check**  
+   - Create `/scripts/checkEnv.js` that:
+     ```js
+     // /scripts/checkEnv.js
+     console.log("OPENAI_API_KEY:", process.env.OPENAI_API_KEY ? "✔ loaded" : "✘ missing");
+     console.log("LUNARCRUSH_API_KEY:", process.env.LUNARCRUSH_API_KEY ? "✔ loaded" : "✘ missing");
+     process.exit(0);
+     ```
+   - This script ensures both keys are defined.  
+
+2. **Test Raw LunarCrush News Fetch**  
+   - Create `/scripts/testLunarNews.js` that:
+     ```js
+     // /scripts/testLunarNews.js
+     import fetch from "node-fetch";
+
+     async function testNews() {
+       const key = process.env.LUNARCRUSH_API_KEY;
+       if (!key) {
+         console.error("Error: LUNARCRUSH_API_KEY is undefined");
+         process.exit(1);
+       }
+       const url = `https://api.lunarcrush.com/v2?data=news&key=${key}&symbol=SOL&limit=5`;
+       console.log("Calling LunarCrush news endpoint:");
+       console.log(url);
+       try {
+         const res = await fetch(url);
+         console.log("HTTP status:", res.status);
+         const json = await res.json();
+         if (json && Array.isArray(json.data)) {
+           console.log("Received", json.data.length, "news items. Sample:");
+           console.log(JSON.stringify(json.data.slice(0, 3), null, 2));
+         } else {
+           console.error("Unexpected response format:", JSON.stringify(json, null, 2));
+         }
+       } catch (err) {
+         console.error("Network or JSON error:", err);
+       }
+       process.exit(0);
+     }
+
+     testNews();
+     ```
+   - This script prints status and up to 3 sample headlines.  
+
+3. **Test `fetchAndScoreNews()`**  
+   - Create `/scripts/testFetchAndScoreNews.js` that:
+     ```js
+     // /scripts/testFetchAndScoreNews.js
+     import { fetchAndScoreNews } from "../services/openaiIntegration.js";
+
+     async function runTest() {
+       console.log("Testing fetchAndScoreNews()");
+       try {
+         const scored = await fetchAndScoreNews();
+         console.log("fetchAndScoreNews() returned:", JSON.stringify(scored, null, 2));
+       } catch (err) {
+         console.error("Error in fetchAndScoreNews():", err.message || err);
+       }
+       process.exit(0);
+     }
+
+     runTest();
+     ```
+   - This verifies the combined LunarCrush + OpenAI logic.  
+
+4. **Test `generateDailyUpdate()`**  
+   - Create `/scripts/testGenerateDailyUpdate.js`:
+     ```js
+     // /scripts/testGenerateDailyUpdate.js
+     import { generateDailyUpdate } from "../services/openaiIntegration.js";
+
+     async function runTest() {
+       console.log("Testing generateDailyUpdate()");
+       try {
+         const update = await generateDailyUpdate();
+         console.log("Daily update text:\n", update);
+       } catch (err) {
+         console.error("Error in generateDailyUpdate():", err.message || err);
+       }
+       process.exit(0);
+     }
+
+     runTest();
+     ```
+   - This confirms OpenAI can synthesize a market update from stored `news_scores` and `live_predictions`.  
+
+5. **Test `suggestWeights()`**  
+   - Create `/scripts/testSuggestWeights.js`:
+     ```js
+     // /scripts/testSuggestWeights.js
+     import { suggestWeights } from "../services/openaiIntegration.js";
+
+     async function runTest() {
+       console.log("Testing suggestWeights()");
+       try {
+         const weights = await suggestWeights();
+         console.log("suggestWeights() returned JSON:\n", JSON.stringify(weights, null, 2));
+       } catch (err) {
+         console.error("Error in suggestWeights():", err.message || err);
+       }
+       process.exit(0);
+     }
+
+     runTest();
+     ```
+   - This checks the GPT‐4–based pillar‐weight suggestion logic.  
+
+---
+
+### Usage Instructions for the User
+
+After you generate these four scripts plus the environment check, instruct the user to do the following in Replit’s shell:
+
+1. **Verify environment variables:**  
+   ```bash
+   node /scripts/checkEnv.js
+
+    Confirm “✔ loaded” for both OPENAI_API_KEY and LUNARCRUSH_API_KEY. If either is missing, they must add or correct it in Replit Secrets, then restart.
+
+    Test raw LunarCrush news fetch:
+
+node /scripts/testLunarNews.js
+
+    Expect HTTP status 200 and sample “data” array of headlines.
+
+Test combined fetch & score function:
+
+node /scripts/testFetchAndScoreNews.js
+
+    Expect an array of objects like { headline: "...", score: <number>, justification: "..." }. If there’s an error, check console for hints (e.g. invalid key, no data, parse error).
+
+Test daily update generation:
+
+node /scripts/testGenerateDailyUpdate.js
+
+    Expect a paragraphed market update string. If it errors, ensure news_scores and live_predictions tables are populated; otherwise, seed sample data.
+
+Test dynamic weights suggestion:
+
+    node /scripts/testSuggestWeights.js
+
+        Expect JSON with { Technical, Social, Fundamental, Astrology, justification }. If it errors, ensure historical live_predictions and news_scores exist in Supabase.
+
+Final Response
+
+Provide all four complete test scripts plus the environment‐check script, exactly as shown. Once you finish, reply with:
+
