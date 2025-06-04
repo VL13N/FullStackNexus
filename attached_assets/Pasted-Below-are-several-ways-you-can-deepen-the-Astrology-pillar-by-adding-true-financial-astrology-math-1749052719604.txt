@@ -1,0 +1,663 @@
+Below are several ways you can deepen the “Astrology” pillar by adding true financial‐astrology math—beyond simply showing moon phases and basic aspects. We’ll cover:
+
+    Which financial‐astrology metrics to compute (and why they matter)
+
+    How to compute them server‐side (using Swiss Ephemeris or another astrology library)
+
+    How to expose them via new Express endpoints
+
+    How to hook them into your React/Tailwind UI
+
+1. Useful Advanced Financial-Astrology Metrics
+
+Most “financial astrology” models boil down to a handful of core ideas: certain planetary angles (conjunctions, squares, trines, etc.) presage market stress or euphoria, the ingress of a benefic planet into a finance‐friendly zodiac sign can signal bullish opportunity, and so on. Below are a few widely used (and mathematically tractable) indicators:
+
+    Weighted Aspect Score (WAS)
+
+        Definition: For each “major” aspect (0°, 60°, 90°, 120°, 180°) between two planets, compute how close (in degrees) that aspect is to exact. Then weight by a “financial significance factor” for that planet pair/aspect.
+
+        Why it matters: When Jupiter and Uranus form an exact 60° trine, markets often rally; when Saturn and Uranus form a 90° square, markets often correct. By capturing both “orb distance” and “type of aspect,” you can derive a continuous “aspect strength” indicator instead of a binary “aspect yes/no.”
+
+    Planetary Ingress Score
+
+        Definition: Track when a planet crosses into a new zodiac sign. Certain signs are historically more bullish for markets (e.g. Jupiter in Taurus or Venus in Libra). One can assign each planet×sign ingress a “score” (e.g. +1.0 if Jupiter enters Taurus, –0.5 if Saturn enters Capricorn, etc.).
+
+        Why it matters: Each time a “benefic” planet ingresses into a finance-friendly sign, there’s often a short-term lift. This score can be 1 or 0 for “ingressing right now,” or you can apply a decaying weight over several days after ingress.
+
+    Lunar Return / Moon-Sun Midpoint Cycle
+
+        Definition: Compute the angle between the Moon and Sun (i.e. the lunar phase), but then also compute the “midpoint” of Sun ↔ Moon and measure how other planets aspect that midpoint. For example, if Mars is squaring the Sun/Moon midpoint, that can foreshadow volatility.
+
+        Why it matters: Traditional financial astrology places weight on how transiting planets aspect the lunation midpoint. A Mars square to that midpoint often correlates with sudden volatility; a Jupiter trine to the midpoint often correlates with momentum.
+
+    Harmonic / Sabian-style Angles
+
+        Definition: Instead of only using the 1st/4th/7th/10th harmonics (i.e. 0°, 90°, 120°, 150°), compute additional “harmonic charts” (like the 5th harmonic = 72°, 144° aspects). Assign financial weight to each harmonic aspect.
+
+        Why it matters: Some traders swear the 5th or 7th harmonic phases (72°, 78°) show micro‐cycles of pump/dump. By summing all relevant harmonics, you get a “composite harmonic index” that can be fed into your Astrology pillar.
+
+    Planetary Station Withdrawal / Station Direct Score
+
+        Definition: When a planet slows to station (apparent speed → 0°/day), markets often stall or reverse. You can measure how close a planet’s daily motion is to zero.
+
+        Why it matters: A planet stationing retrograde (e.g. Venus station retrograde) often corresponds to turning points. By quantifying “degrees per day” vs. a small threshold (like 0.05°/day), you create a continuous “Station Proximity” indicator.
+
+    Node (Asc/Desc) and Lunar Node Cycles
+
+        Definition: Compute the transiting lunar nodes’ position relative to major money planets (Venus, Jupiter, Uranus). For instance, when the North Node trines Venus, that can coincide with new‐money inflows.
+
+        Why it matters: The lunar nodes indicate karmic or collective focus. When they aspect money planets, it tends to coincide with strong market sentiment.
+
+    Composite “Financial Astrology Index” (FAI)
+
+        Definition: Combine the above metrics—WAS, Ingress Score, Midpoint Score, Station Score, Node Score—into a single normalized index (e.g. 0–100).
+
+        Why it matters: Instead of juggling five separate numbers, you’ll have one composite that feeds directly into your Astrology pillar (which can then be weighted against Technical, Social, Fundamental).
+
+2. Computing These Metrics Server-Side
+
+Your backend already has endpoints like /api/astrology/moon-phase, /api/astrology/planetary-positions, and /api/astrology/aspects. We can extend that with a new service—call it services/financialAstrology.js—that uses Swiss Ephemeris (swisseph) to compute precisely the metrics above. Here’s a sketch:
+
+// services/financialAstrology.js
+import swisseph from "swisseph";
+
+swisseph.swe_set_ephe_path("/path/to/ephemeris/"); 
+// (ensure you have ephemeris files available in your Replit project)
+
+function getPlanetPosition(planetConstant, jdUt) {
+  return new Promise((resolve, reject) => {
+    swisseph.swe_calc_ut(jdUt, planetConstant, swisseph.SEFLG_SWIEPH, (err, result) => {
+      if (err) return reject(err);
+      // result[0] = ecliptic longitude in degrees, result[1] = ecliptic latitude, etc.
+      resolve({
+        lon: result.longitude, 
+        lat: result.latitude,
+        speed: result.dlong_dt * 36525 // approximate degrees per day
+      });
+    });
+  });
+}
+
+// -------------- Core Functions ------------------
+
+// 1. Weighted Aspect Score
+export async function computeWeightedAspectScore(timestampUtc) {
+  const jdUtc = swisseph.swe_julday(
+    timestampUtc.getUTCFullYear(),
+    timestampUtc.getUTCMonth() + 1,
+    timestampUtc.getUTCDate(),
+    timestampUtc.getUTCHours() + timestampUtc.getUTCMinutes() / 60,
+    swisseph.SE_GREG_CAL
+  );
+
+  // Define which planets matter (for financial astrology):  
+  const PLANETS = [
+    { name: "Sun",   id: swisseph.SE_SUN },
+    { name: "Moon",  id: swisseph.SE_MOON },
+    { name: "Mercury", id: swisseph.SE_MERCURY },
+    { name: "Venus", id: swisseph.SE_VENUS },
+    { name: "Mars",   id: swisseph.SE_MARS },
+    { name: "Jupiter", id: swisseph.SE_JUPITER },
+    { name: "Saturn",  id: swisseph.SE_SATURN },
+    { name: "Uranus",  id: swisseph.SE_URANUS },
+    { name: "Neptune", id: swisseph.SE_NEPTUNE },
+    { name: "Pluto",   id: swisseph.SE_PLUTO },
+  ];
+
+  // Pre‐compute positions
+  const positions = {};
+  await Promise.all(
+    PLANETS.map(async (p) => {
+      const pos = await getPlanetPosition(p.id, jdUtc);
+      positions[p.name] = pos.lon; // ecliptic longitude
+    })
+  );
+
+  // Define “major aspects” and their financial weights
+  const ASPECTS = [
+    { angle: 0,    orb: 8,  weight: 1.5,  label: "Conjunction"   }, 
+    { angle: 60,   orb: 4,  weight: 1.2,  label: "Sextile"       }, 
+    { angle: 90,   orb: 6,  weight: 2.0,  label: "Square"        }, 
+    { angle: 120,  orb: 4,  weight: 1.5,  label: "Trine"         }, 
+    { angle: 150,  orb: 3,  weight: 0.8,  label: "Quincunx"      },
+    { angle: 180,  orb: 8,  weight: 2.5,  label: "Opposition"    }
+  ];
+
+  let totalScore = 0;
+
+  for (let i = 0; i < PLANETS.length; i++) {
+    for (let j = i + 1; j < PLANETS.length; j++) {
+      const p1 = PLANETS[i].name;
+      const p2 = PLANETS[j].name;
+      const lon1 = positions[p1];
+      const lon2 = positions[p2];
+      let diff = Math.abs(lon1 - lon2);
+      if (diff > 180) diff = 360 - diff; // measure smallest angle (in degrees)
+
+      ASPECTS.forEach((asp) => {
+        const orbDistance = Math.abs(diff - asp.angle);
+        if (orbDistance <= asp.orb) {
+          // closer to exact aspect → stronger signal
+          // e.g. aspectStrength = max(0, (orb − orbDistance) / orb)
+          const aspectStrength = Math.max(0, (asp.orb - orbDistance) / asp.orb);
+          totalScore += aspectStrength * asp.weight;
+        }
+      });
+    }
+  }
+
+  // Normalize totalScore to a 0–100 scale. Suppose empirically max( rawScore ) ~ 30.
+  const normalized = Math.min(100, (totalScore / 30) * 100);
+  return { raw: totalScore, normalized: Number(normalized.toFixed(2)) };
+}
+
+// 2. Planetary Ingress Score
+//    Check if any planet has JUST entered a sign in the last 24h; also compute “days since ingress” if you like.
+export async function computeIngressScore(timestampUtc) {
+  const jdNow = swisseph.swe_julday(
+    timestampUtc.getUTCFullYear(),
+    timestampUtc.getUTCMonth() + 1,
+    timestampUtc.getUTCDate(),
+    timestampUtc.getUTCHours() + timestampUtc.getUTCMinutes() / 60,
+    swisseph.SE_GREG_CAL
+  );
+  // Subtract 1 day to get “yesterday”
+  const dateYesterday = new Date(timestampUtc.getTime() - 24 * 60 * 60 * 1000);
+  const jdYesterday = swisseph.swe_julday(
+    dateYesterday.getUTCFullYear(),
+    dateYesterday.getUTCMonth() + 1,
+    dateYesterday.getUTCDate(),
+    dateYesterday.getUTCHours() + dateYesterday.getUTCMinutes() / 60,
+    swisseph.SE_GREG_CAL
+  );
+
+  let ingressScore = 0;
+  for (let p of PLANETS) {
+    const todayPos = await getPlanetPosition(p.id, jdNow);
+    const yesterPos = await getPlanetPosition(p.id, jdYesterday);
+    const signToday = Math.floor(todayPos.lon / 30);     // 0 = Aries, 1 = Taurus, …, 11 = Pisces
+    const signYesterday = Math.floor(yesterPos.lon / 30);
+    if (signToday !== signYesterday) {
+      // Planet JUST ingressed. Let’s assign weights per planet×sign. Example:
+      const signName = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"][signToday];
+      // A lookup table for “beneficial sign ingresses”:
+      const weightsByIngress = {
+        "Jupiter-Taurus": 2.0,
+        "Jupiter-Pisces": 1.8,
+        "Venus-Libra":    1.5,
+        "Venus-Taurus":   1.4,
+        "Mars-Aries":     1.2,
+        "Saturn-Capricorn": -1.5,
+        "Saturn-Aquarius": -1.3,
+        // ...etc.
+      };
+      const key = `${p.name}-${signName}`;
+      ingressScore += weightsByIngress[key] || 0; // default 0 if not in table
+    }
+  }
+
+  const normalized = Number(ingressScore.toFixed(2));
+  return { raw: ingressScore, normalized };
+}
+
+// 3. Lunar Return / Midpoint Aspect Score
+export async function computeMidpointAspectScore(timestampUtc) {
+  const jdUtc = swisseph.swe_julday(
+    timestampUtc.getUTCFullYear(),
+    timestampUtc.getUTCMonth() + 1,
+    timestampUtc.getUTCDate(),
+    timestampUtc.getUTCHours() + timestampUtc.getUTCMinutes() / 60,
+    swisseph.SE_GREG_CAL
+  );
+
+  // Get Sun & Moon longitudes
+  const sun = await getPlanetPosition(swisseph.SE_SUN, jdUtc);
+  const moon = await getPlanetPosition(swisseph.SE_MOON, jdUtc);
+  const midpoint = (sun.lon + moon.lon) / 2;
+
+  let midpointScore = 0;
+  for (let p of PLANETS) {
+    if (["Sun", "Moon"].includes(p.name)) continue;
+    const pos = await getPlanetPosition(p.id, jdUtc);
+    let diff = Math.abs(pos.lon - midpoint);
+    if (diff > 180) diff = 360 - diff;
+
+    // Check major aspects to the midpoint
+    for (let asp of ASPECTS) {
+      const orbDistance = Math.abs(diff - asp.angle);
+      if (orbDistance <= asp.orb) {
+        const strength = Math.max(0, (asp.orb - orbDistance) / asp.orb);
+        midpointScore += strength * asp.weight * 0.8; // maybe reduce weight a bit
+      }
+    }
+  }
+
+  const normalized = Math.min(100, (midpointScore / 20) * 100);
+  return { raw: midpointScore, normalized: Number(normalized.toFixed(2)) };
+}
+
+// 4. Station Score
+export async function computeStationScore(timestampUtc) {
+  const jdNow = swisseph.swe_julday(
+    timestampUtc.getUTCFullYear(),
+    timestampUtc.getUTCMonth() + 1,
+    timestampUtc.getUTCDate(),
+    timestampUtc.getUTCHours() + timestampUtc.getUTCMinutes() / 60,
+    swisseph.SE_GREG_CAL
+  );
+  let stationScore = 0;
+  for (let p of PLANETS) {
+    const pos = await getPlanetPosition(p.id, jdNow);
+    // pos.speed ≈ degrees per day
+    const speedAbs = Math.abs(pos.speed);
+    // If speed < 0.1°/day, the planet is near station. Weight by how close:
+    if (speedAbs < 0.1) {
+      stationScore += (0.1 - speedAbs) * 10; // scale so that a 0.01°/day speed → big score
+    }
+  }
+  stationScore = Number(stationScore.toFixed(2));
+  return { raw: stationScore, normalized: Math.min(100, stationScore * 10) };
+}
+
+// 5. Node Aspect Score
+export async function computeNodeScore(timestampUtc) {
+  const jdUtc = swisseph.swe_julday(
+    timestampUtc.getUTCFullYear(),
+    timestampUtc.getUTCMonth() + 1,
+    timestampUtc.getUTCDate(),
+    timestampUtc.getUTCHours() + timestampUtc.getUTCMinutes() / 60,
+    swisseph.SE_GREG_CAL
+  );
+  // Get true nodes
+  const northNode = await getPlanetPosition(swisseph.SE_ECL_NUT, jdUtc);
+  const southNode = (northNode.lon + 180) % 360;
+
+  let nodeScore = 0;
+  for (let p of PLANETS) {
+    if (p.name === "Moon" || p.name === "Sun") continue;
+    const pos = await getPlanetPosition(p.id, jdUtc);
+    let diffN = Math.abs(pos.lon - northNode.lon);
+    if (diffN > 180) diffN = 360 - diffN;
+    let diffS = Math.abs(pos.lon - southNode);
+    if (diffS > 180) diffS = 360 - diffS;
+    const nearest = Math.min(diffN, diffS);
+
+    // If within 6° orb of a major aspect (0°, 90°, 120°, 180°), score it
+    [0, 90, 120, 180].forEach((aspAngle) => {
+      const orbDistance = Math.abs(nearest - aspAngle);
+      if (orbDistance < 6) {
+        const strength = (6 - orbDistance) / 6;
+        nodeScore += strength * 1.2; // weight moderately
+      }
+    });
+  }
+  const normalized = Math.min(100, (nodeScore / 8) * 100);
+  return { raw: nodeScore, normalized: Number(normalized.toFixed(2)) };
+}
+
+// 6. Combined Financial Astrology Index
+export async function computeFinancialAstrologyIndex(timestampUtc) {
+  const [was, ingress, midpoint, station, node] = await Promise.all([
+    computeWeightedAspectScore(timestampUtc),
+    computeIngressScore(timestampUtc),
+    computeMidpointAspectScore(timestampUtc),
+    computeStationScore(timestampUtc),
+    computeNodeScore(timestampUtc),
+  ]);
+
+  // Choose weights (these are arbitrary examples—you can optimize later via backtesting)
+  const wWAS = 0.35;
+  const wIngress = 0.20;
+  const wMidpoint = 0.20;
+  const wStation = 0.15;
+  const wNode = 0.10;
+
+  // Each ’normalized’ is already 0–100. Combine:
+  const composite =
+    was.normalized * wWAS +
+    ingress.normalized * wIngress +
+    midpoint.normalized * wMidpoint +
+    station.normalized * wStation +
+    node.normalized * wNode;
+
+  const normalizedComposite = Number(Math.min(100, composite).toFixed(2));
+
+  return {
+    timestamp: timestampUtc.toISOString(),
+    weightedAspect: was.normalized,
+    ingressScore: ingress.normalized,
+    midpointScore: midpoint.normalized,
+    stationScore: station.normalized,
+    nodeScore: node.normalized,
+    compositeFAI: normalizedComposite,
+  };
+}
+
+    Notes on the math above
+
+        We fetch each planet’s ecliptic longitude and (where needed) speed.
+
+        We define “major aspects” with a configurable orb (e.g. ±8° for conjunctions, ±6° for squares, etc.) and assign each a financial “weight.”
+
+        We clamp/normalize everything to 0–100 so it can slot neatly into your existing “Astrology pillar” (which is 0–100).
+
+        We judge ingress by comparing sign digits (Math.floor(lon/30)), then assign a table of ["Jupiter-Taurus": +2.0, …] to capture the most historically bullish or bearish ingresses.
+
+        We compute a simple “station proximity” from the planet’s speed. As a planet’s apparent speed (°/day) approaches zero, station risk rises.
+
+        We check “node aspects” similarly to WAS, but only between the lunar nodes and the money‐planets.
+
+3. Exposing a New Endpoint
+
+Add a new Express route in something like server/routes/astrologyRoutes.ts (or wherever you keep astrology logic). For example:
+
+// server/routes/astrologyRoutes.ts
+import express from "express";
+import {
+  computeFinancialAstrologyIndex,
+  computeWeightedAspectScore,
+  computeIngressScore,
+  computeMidpointAspectScore,
+  computeStationScore,
+  computeNodeScore,
+} from "../services/financialAstrology.js";
+
+const router = express.Router();
+
+// GET /api/astrology/financial-indicators
+router.get("/financial-indicators", async (_req, res) => {
+  try {
+    const now = new Date();
+    const result = await computeFinancialAstrologyIndex(now);
+    return res.json({ success: true, data: result });
+  } catch (err) {
+    console.error("Error computing financial astrology index:", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// (Optional) Expose sub‐scores individually if you want to test them:
+router.get("/financial-weighted-aspect", async (_req, res) => {
+  try {
+    const now = new Date();
+    const result = await computeWeightedAspectScore(now);
+    return res.json({ success: true, data: result });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// …add routes for ingress, midpoint, station, and node if desired…
+
+export default router;
+
+Then in your main server/index.ts (or equivalent), register this router:
+
+import astrologyRoutes from "./routes/astrologyRoutes.js";
+app.use("/api/astrology", astrologyRoutes);
+
+Now, GET /api/astrology/financial-indicators will return JSON like:
+
+{
+  "success": true,
+  "data": {
+    "timestamp": "2025-06-05T05:00:00.000Z",
+    "weightedAspect": 45.12,
+    "ingressScore": 2.00,
+    "midpointScore": 30.50,
+    "stationScore": 10.00,
+    "nodeScore": 5.00,
+    "compositeFAI": 35.67
+  }
+}
+
+4. Updating Your React Frontend
+4.1 Create a New Hook: useFinancialAstrology.js
+
+// client/src/hooks/useFinancialAstrology.js
+import { useState, useEffect } from "react";
+
+export function useFinancialAstrology(pollIntervalMs = null) {
+  const [state, setState] = useState({
+    data: null,
+    isLoading: true,
+    error: null,
+  });
+
+  const fetchFAI = () => {
+    setState((prev) => ({ data: prev.data, isLoading: true, error: null }));
+    fetch("/api/astrology/financial-indicators")
+      .then((res) => res.json())
+      .then((json) => setState({ data: json.data, isLoading: false, error: null }))
+      .catch((err) => setState({ data: null, isLoading: false, error: err }));
+  };
+
+  useEffect(() => {
+    fetchFAI(); // initial fetch
+    let timer = null;
+    if (pollIntervalMs) {
+      timer = setInterval(fetchFAI, pollIntervalMs);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [pollIntervalMs]);
+
+  return state;
+}
+
+    By passing a pollIntervalMs (e.g. 60 000 for 1 minute), this hook will re-fetch automatically.
+
+    If you omit pollIntervalMs, you’ll just get a one-time fetch on mount.
+
+4.2 Build a New Component to Display FAI
+
+You probably want to put this somewhere in your “Astrology Sidebar” or as its own card—let’s call it FinancialAstrologyCard.jsx:
+
+// client/src/components/FinancialAstrologyCard.jsx
+import React from "react";
+import { useFinancialAstrology } from "../hooks/useFinancialAstrology";
+import Spinner from "./Spinner";
+
+export default function FinancialAstrologyCard({ pollIntervalMs = 60000 }) {
+  const { data, isLoading, error } = useFinancialAstrology(pollIntervalMs);
+
+  if (isLoading) return <Spinner />;
+  if (error || !data) {
+    return (
+      <div className="bg-gray-900 text-red-400 p-4 rounded-lg shadow-lg border-2 border-red-400">
+        Error loading financial astrology data.
+      </div>
+    );
+  }
+
+  const {
+    weightedAspect,
+    ingressScore,
+    midpointScore,
+    stationScore,
+    nodeScore,
+    compositeFAI,
+  } = data;
+
+  // Choose a color scale for compositeFAI (e.g. green if > 70, yellow 40–70, red < 40)
+  let colorClass = "text-yellow-400 border-yellow-400";
+  if (compositeFAI >= 70) colorClass = "text-green-400 border-green-400";
+  if (compositeFAI < 40) colorClass = "text-red-400 border-red-400";
+
+  return (
+    <div className={`bg-gray-900 text-white p-4 rounded-lg shadow-lg border-2 ${colorClass}`}>
+      <h3 className="text-lg font-bold mb-2">Financial Astrology Index</h3>
+      <div className="text-2xl font-bold mb-2">
+        Composite: {compositeFAI.toFixed(2)}
+      </div>
+      <div className="grid grid-cols-2 gap-2 text-sm">
+        <div>
+          <span className="font-semibold">Aspect Score:</span> {weightedAspect.toFixed(2)}
+        </div>
+        <div>
+          <span className="font-semibold">Ingress:</span> {ingressScore.toFixed(2)}
+        </div>
+        <div>
+          <span className="font-semibold">Midpoint:</span> {midpointScore.toFixed(2)}
+        </div>
+        <div>
+          <span className="font-semibold">Station:</span> {stationScore.toFixed(2)}
+        </div>
+        <div>
+          <span className="font-semibold">Node:</span> {nodeScore.toFixed(2)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+    This card shows each sub‐score plus a composite.
+
+    It re-polls once per minute by default (because we passed pollIntervalMs = 60000).
+
+4.3 Incorporate into Your Dashboard/Layout
+
+Wherever you currently render the old <AstrologySidebar />, replace or augment it with two cards:
+
+    Keep your basic AstrologySidebar (which shows moon phase, planetary positions, basic aspects).
+
+    Beneath it (or next to it), add <FinancialAstrologyCard />.
+
+For example, in Dashboard.jsx:
+
+// client/src/pages/Dashboard.jsx
+import React, { useState } from "react";
+import GlobalMarketWidget from "../components/GlobalMarketWidget";
+import PredictionBanner from "../components/PredictionBanner";
+import TechnicalCard from "../components/TechnicalCard";
+import SocialCard from "../components/SocialCard";
+import FundamentalCard from "../components/FundamentalCard";
+import WatchlistTable from "../components/WatchlistTable";
+import AstrologySidebar from "../components/AstrologySidebar";
+import FinancialAstrologyCard from "../components/FinancialAstrologyCard";
+import DailyUpdatePanel from "../components/DailyUpdatePanel";
+import WeightSuggestionChart from "../components/WeightSuggestionChart";
+import CoinSearch from "../components/CoinSearch";
+
+export default function Dashboard() {
+  const [watchlist, setWatchlist] = useState([]);
+
+  return (
+    <div className="space-y-6">
+      {/* Global Market + Prediction Banner */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <GlobalMarketWidget />
+        <PredictionBanner />
+      </div>
+
+      {/* Supercards Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <TechnicalCard />
+        <SocialCard />
+        <FundamentalCard />
+      </div>
+
+      {/* Coin Search + Watchlist Table */}
+      <div>
+        <CoinSearch onSelect={(coinId) => setWatchlist((prev) => [...new Set([...prev, coinId])])} />
+        <WatchlistTable page={1} limit={10} />
+      </div>
+
+      {/* Daily Update and Weight Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <DailyUpdatePanel />
+        <WeightSuggestionChart />
+      </div>
+
+      {/* Astrology Sidebar + Financial Astrology Card */}
+      <div className="space-y-6">
+        <AstrologySidebar />
+        <FinancialAstrologyCard pollIntervalMs={60000} />
+      </div>
+    </div>
+  );
+}
+
+    On desktop, you might want to float those two side-by-side by wrapping them in a grid grid-cols-2 container.
+
+    On mobile, they’ll stack automatically.
+
+5. Putting It All Together
+
+    Install Swiss Ephemeris
+
+        In your Replit package.json, make sure you have:
+
+    "dependencies": {
+      "@supabase/supabase-js": "...",
+      "express": "...",
+      "swisseph": "^1.8.0", 
+      // …your other dependencies
+    }
+
+    Push the ephemeris data file folder (e.g. ephe/ or SEPL/) into your Replit so that swisseph.swe_set_ephe_path("/home/runner/workspace/ephe"); can find them.
+
+Add services/financialAstrology.js (as shown in step 2) to your services/ folder.
+
+Add routes/astrologyRoutes.ts (as shown in step 3) and mount it under app.use("/api/astrology", astrologyRoutes);.
+
+Restart your server (kill 1 or stop/run) so the new endpoints appear:
+
+GET http://localhost:5000/api/astrology/financial-indicators
+
+should return something like:
+
+    {
+      "success": true,
+      "data": {
+        "timestamp": "2025-06-05T06:14:00.000Z",
+        "weightedAspect": 46.82,
+        "ingressScore": 2.00,
+        "midpointScore": 28.12,
+        "stationScore": 5.43,
+        "nodeScore": 3.14,
+        "compositeFAI": 32.57
+      }
+    }
+
+    In client/src/hooks, add useFinancialAstrology.js exactly as shown.
+
+    In client/src/components, add FinancialAstrologyCard.jsx.
+
+    In client/src/pages/Dashboard.jsx, import and render <FinancialAstrologyCard pollIntervalMs={60000} /> beneath your existing astrology panel.
+
+    Verify in your browser:
+
+        On page load, you’ll see the new “Financial Astrology Index” card—showing each sub‐score and a composite 0–100 value.
+
+        Every minute, it will re-poll /api/astrology/financial-indicators and update the numbers in real time.
+
+        If you want a slower refresh rate, pass a larger pollIntervalMs (e.g. 300000 for 5 minutes).
+
+6. Why This Matters
+
+    Richer Astrology Pillar: Instead of just “Moon Phase” or “Planetary Positions,” you now have a composite numerical index based on multiple proven financial‐astrology techniques.
+
+    Normalized 0‒100: Because each sub‐score is normalized, you can slot the composite (compositeFAI) directly into your existing 0‒100 Astrology pillar. You could even replace the old “Astrology weight” entirely with this single number if you like.
+
+    Polling Built In: We’ve given you a hook with pollIntervalMs. Now your UI can refresh every minute (or 5 minutes, etc.) without any extra work.
+
+    Backtest / Optimize Later: Once this is in place, you can log all these sub‐scores over time and backtest which combinations (or which weight sets) actually gave the best Sharpe ratio historically. Then simply tweak the weights in computeFinancialAstrologyIndex().
+
+Next Steps
+
+If you’d like to proceed:
+
+    Confirm you have Swiss Ephemeris ephemeris files available (e.g. sepl_*.se1 or ephe/*.se1).
+
+    Copy the code snippets above into your services/ and routes/ folders.
+
+    Restart the backend and verify the new astrology endpoints.
+
+    Scaffold the React changes in client/ (hook + new component + updated Dashboard.jsx).
+
+    Run the React app and watch the new “Financial Astrology Index” animate once per minute alongside your other cards.
+
+If instead you want to tweak specific formulas or run a local test (e.g. “What does WAS look like today vs. yesterday?”), let me know and I can provide quick test scripts or data dumps. Otherwise, implementing the steps above will give you a fully integrated, continuously-updating financial astrology module.

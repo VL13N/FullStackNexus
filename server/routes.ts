@@ -2029,6 +2029,73 @@ Keep response concise and professional.`;
     }
   });
 
+  // ADVANCED FINANCIAL ASTROLOGY ENDPOINTS
+  app.get("/api/astrology/financial-index", async (req, res) => {
+    try {
+      const { computeFinancialAstrologyIndex } = await import('../services/financialAstrology.js');
+      const date = req.query.date ? new Date(req.query.date as string) : new Date();
+      
+      const financialIndex = computeFinancialAstrologyIndex(date);
+      
+      res.json({
+        success: true,
+        data: financialIndex,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      console.error("Financial astrology index error:", error.message || error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get("/api/astrology/weighted-aspects", async (req, res) => {
+    try {
+      const { computeWeightedAspectScore } = await import('../services/financialAstrology.js');
+      const date = req.query.date ? new Date(req.query.date as string) : new Date();
+      
+      const aspectScore = computeWeightedAspectScore(date);
+      
+      res.json({
+        success: true,
+        data: aspectScore,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      console.error("Weighted aspects error:", error.message || error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get("/api/astrology/planetary-stations", async (req, res) => {
+    try {
+      const { computeStationScore } = await import('../services/financialAstrology.js');
+      const date = req.query.date ? new Date(req.query.date as string) : new Date();
+      
+      const stationScore = computeStationScore(date);
+      
+      res.json({
+        success: true,
+        data: stationScore,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      console.error("Planetary stations error:", error.message || error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // Store new prediction in database
   app.post("/api/predictions/store", async (req, res) => {
     try {

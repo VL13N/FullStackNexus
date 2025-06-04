@@ -1,0 +1,969 @@
+You are a Replit AI agent. Build the entire React + Tailwind frontend inside a new client/ folder so it consumes the existing Express APIs on port 5000. Follow these exact steps:
+
+    Initialize the React app
+
+        In the project root, create a folder named client.
+
+        Inside client, run npx create-react-app . to scaffold a Create-React-App.
+
+        Install Tailwind CSS and React Router:
+
+    npm install -D tailwindcss postcss autoprefixer
+    npx tailwindcss init -p
+    npm install react-router-dom
+
+Configure Tailwind
+
+    In client/tailwind.config.js, set:
+
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: ["./src/**/*.{js,jsx,ts,tsx}"],
+  theme: {
+    extend: {
+      colors: {
+        "neon-green": "#39FF14",
+        "neon-pink": "#FF69B4",
+        "neon-yellow": "#FFFF33",
+        "neon-blue": "#00FFFF",
+        "neon-purple": "#BF00FF",
+        "neon-cyan": "#00FFEF",
+      },
+      fontFamily: {
+        pixel: ["Press Start 2P", "cursive"],
+      },
+    },
+  },
+  plugins: [],
+};
+
+In client/src/index.css, replace with:
+
+    @tailwind base;
+    @tailwind components;
+    @tailwind utilities;
+
+    @import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap");
+
+    body {
+      font-family: "Press Start 2P", cursive;
+      background-color: #1a202c;
+    }
+
+Create the folder structure under client/src/
+
+src/
+├─ App.jsx
+├─ index.jsx
+├─ hooks/
+│  ├─ useCryptoRank.js
+│  ├─ useTaapi.js
+│  ├─ useLunarCrush.js
+│  ├─ useAstrology.js
+│  ├─ useLivePrediction.js
+│  ├─ useDailyUpdate.js
+│  └─ useSuggestedWeights.js
+├─ components/
+│  ├─ GlobalMarketWidget.jsx
+│  ├─ TechnicalCard.jsx
+│  ├─ SocialCard.jsx
+│  ├─ FundamentalCard.jsx
+│  ├─ WatchlistTable.jsx
+│  ├─ AstrologySidebar.jsx
+│  ├─ PredictionBanner.jsx
+│  ├─ DailyUpdatePanel.jsx
+│  ├─ WeightSuggestionChart.jsx
+│  ├─ CoinSearch.jsx
+│  ├─ CoinDetail.jsx
+│  ├─ Header.jsx
+│  ├─ Layout.jsx
+│  └─ Spinner.jsx
+├─ pages/
+│  ├─ Dashboard.jsx
+│  ├─ WatchlistPage.jsx
+│  └─ SettingsPage.jsx
+└─ styles/
+   └─ index.css
+
+Implement data-fetch hooks
+
+    hooks/useCryptoRank.js
+
+import { useState, useEffect } from "react";
+
+export function useCryptoRankGlobal() {
+  const [state, setState] = useState({ data: null, isLoading: true, error: null });
+  useEffect(() => {
+    fetch("/api/cryptorank/global")
+      .then(res => res.json())
+      .then(json => setState({ data: json.data, isLoading: false, error: null }))
+      .catch(err => setState({ data: null, isLoading: false, error: err }));
+  }, []);
+  return state;
+}
+
+export function useCryptoRankCurrent(coinId = "solana") {
+  const [state, setState] = useState({ data: null, isLoading: true, error: null });
+  useEffect(() => {
+    fetch(`/api/cryptorank/currencies/${coinId}`)
+      .then(res => res.json())
+      .then(json => setState({ data: json.data, isLoading: false, error: null }))
+      .catch(err => setState({ data: null, isLoading: false, error: err }));
+  }, [coinId]);
+  return state;
+}
+
+export function useCryptoRankCurrencies(page = 1, limit = 10) {
+  const [state, setState] = useState({ data: [], isLoading: true, error: null });
+  useEffect(() => {
+    fetch(`/api/cryptorank/currencies?page=${page}&limit=${limit}`)
+      .then(res => res.json())
+      .then(json => setState({ data: json.data, isLoading: false, error: null }))
+      .catch(err => setState({ data: [], isLoading: false, error: err }));
+  }, [page, limit]);
+  return state;
+}
+
+hooks/useTaapi.js
+
+import { useState, useEffect } from "react";
+
+export function useTaapiBulk(interval = "1h") {
+  const [state, setState] = useState({ data: null, isLoading: true, error: null });
+  useEffect(() => {
+    fetch(`/api/taapi/bulk?interval=${interval}`)
+      .then(res => res.json())
+      .then(json => setState({ data: json.data, isLoading: false, error: null }))
+      .catch(err => setState({ data: null, isLoading: false, error: err }));
+  }, [interval]);
+  return state;
+}
+
+hooks/useLunarCrush.js
+
+import { useState, useEffect } from "react";
+
+export function useLunarCrushSocial(coinSlug = "solana") {
+  const [state, setState] = useState({ data: null, isLoading: true, error: null });
+  useEffect(() => {
+    fetch(`/api/lunarcrush/social?symbol=${coinSlug}`)
+      .then(res => res.json())
+      .then(json => setState({ data: json.data, isLoading: false, error: null }))
+      .catch(err => setState({ data: null, isLoading: false, error: err }));
+  }, [coinSlug]);
+  return state;
+}
+
+export function useLunarCrushNews(coinSlug = "solana") {
+  const [state, setState] = useState({ data: [], isLoading: true, error: null });
+  useEffect(() => {
+    fetch(`/api/lunarcrush/news?topic=${coinSlug}`)
+      .then(res => res.json())
+      .then(json => setState({ data: json.data, isLoading: false, error: null }))
+      .catch(err => setState({ data: [], isLoading: false, error: err }));
+  }, [coinSlug]);
+  return state;
+}
+
+hooks/useAstrology.js
+
+import { useState, useEffect } from "react";
+
+export function useMoonPhase() {
+  const [state, setState] = useState({ data: null, isLoading: true, error: null });
+  useEffect(() => {
+    fetch("/api/astrology/moon-phase")
+      .then(res => res.json())
+      .then(json => setState({ data: json, isLoading: false, error: null }))
+      .catch(err => setState({ data: null, isLoading: false, error: err }));
+  }, []);
+  return state;
+}
+
+export function usePlanetaryPositions() {
+  const [state, setState] = useState({ data: null, isLoading: true, error: null });
+  useEffect(() => {
+    fetch("/api/astrology/planetary-positions")
+      .then(res => res.json())
+      .then(json => setState({ data: json, isLoading: false, error: null }))
+      .catch(err => setState({ data: null, isLoading: false, error: err }));
+  }, []);
+  return state;
+}
+
+export function useAspects() {
+  const [state, setState] = useState({ data: null, isLoading: true, error: null });
+  useEffect(() => {
+    fetch("/api/astrology/aspects")
+      .then(res => res.json())
+      .then(json => setState({ data: json, isLoading: false, error: null }))
+      .catch(err => setState({ data: null, isLoading: false, error: err }));
+  }, []);
+  return state;
+}
+
+hooks/useLivePrediction.js
+
+import { useState, useEffect } from "react";
+
+export function useLivePrediction() {
+  const [state, setState] = useState({ data: null, isLoading: true, error: null });
+  useEffect(() => {
+    fetch("/api/predictions/latest")
+      .then(res => res.json())
+      .then(json => setState({ data: json.data, isLoading: false, error: null }))
+      .catch(err => setState({ data: null, isLoading: false, error: err }));
+  }, []);
+  return state;
+}
+
+hooks/useDailyUpdate.js
+
+import { useState, useEffect } from "react";
+
+export function useDailyUpdate() {
+  const [state, setState] = useState({ data: null, isLoading: true, error: null });
+  useEffect(() => {
+    fetch("/api/updates/today")
+      .then(res => res.json())
+      .then(json => setState({ data: json.data, isLoading: false, error: null }))
+      .catch(err => setState({ data: null, isLoading: false, error: err }));
+  }, []);
+  return state;
+}
+
+hooks/useSuggestedWeights.js
+
+    import { useState, useEffect } from "react";
+
+    export function useSuggestedWeights() {
+      const [state, setState] = useState({ data: null, isLoading: true, error: null });
+      useEffect(() => {
+        fetch("/api/openai/suggest-weights")
+          .then(res => res.json())
+          .then(json => setState({ data: json.data, isLoading: false, error: null }))
+          .catch(err => setState({ data: null, isLoading: false, error: err }));
+      }, []);
+      return state;
+    }
+
+Implement UI components
+
+    components/Spinner.jsx
+
+export default function Spinner() {
+  return (
+    <div className="flex justify-center items-center py-4">
+      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-neon-blue"></div>
+    </div>
+  );
+}
+
+components/GlobalMarketWidget.jsx
+
+import React from "react";
+import { useCryptoRankGlobal } from "../hooks/useCryptoRank";
+import Spinner from "./Spinner";
+
+export default function GlobalMarketWidget() {
+  const { data, isLoading, error } = useCryptoRankGlobal();
+  if (isLoading) return <Spinner />;
+  if (error) return <div className="bg-black text-red-400 p-4 rounded">Error loading global data.</div>;
+
+  return (
+    <div className="bg-gray-900 text-white p-4 rounded-lg shadow-lg border-2 border-neon-green">
+      <h2 className="text-xl font-bold mb-2">Global Crypto Market</h2>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <span className="text-sm text-gray-400">Total Market Cap:</span>{" "}
+          <span className="font-medium">${Number(data.totalMarketCapUsd).toLocaleString()}</span>
+        </div>
+        <div>
+          <span className="text-sm text-gray-400">24h Volume:</span>{" "}
+          <span className="font-medium">${Number(data.volume24hUsd).toLocaleString()}</span>
+        </div>
+        <div>
+          <span className="text-sm text-gray-400">BTC Dominance:</span>{" "}
+          <span className="font-medium">{data.btcDominance.toFixed(2)}%</span>
+        </div>
+        <div>
+          <span className="text-sm text-gray-400">Active Cryptos:</span>{" "}
+          <span className="font-medium">{data.activeCurrencies}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+components/TechnicalCard.jsx
+
+import React from "react";
+import { useTaapiBulk } from "../hooks/useTaapi";
+import Spinner from "./Spinner";
+
+export default function TechnicalCard({ interval = "1h" }) {
+  const { data, isLoading, error } = useTaapiBulk(interval);
+  if (isLoading) return <Spinner />;
+  if (error) return <div>Error loading technical indicators.</div>;
+
+  const { rsi, macd, ema } = data;
+
+  return (
+    <div className="bg-gray-900 text-white p-4 rounded-lg shadow-lg border-2 border-neon-pink">
+      <h3 className="text-lg font-bold mb-2">Technical Indicators</h3>
+      <div className="mb-2">
+        <span className="text-sm text-gray-400">RSI (1h):</span>{" "}
+        <span className="font-medium">{rsi.value.toFixed(1)}</span>
+      </div>
+      <div className="mb-2">
+        <span className="text-sm text-gray-400">MACD:</span>{" "}
+        <span className="font-medium">{macd.histogram.toFixed(2)}</span>
+      </div>
+      <div>
+        <span className="text-sm text-gray-400">EMA (200):</span>{" "}
+        <span className="font-medium">{ema.value.toFixed(2)}</span>
+      </div>
+    </div>
+  );
+}
+
+components/SocialCard.jsx
+
+import React from "react";
+import { useLunarCrushSocial } from "../hooks/useLunarCrush";
+import Spinner from "./Spinner";
+
+export default function SocialCard({ coinSlug = "solana" }) {
+  const { data, isLoading, error } = useLunarCrushSocial(coinSlug);
+  if (isLoading) return <Spinner />;
+  if (error) return <div>Error loading social metrics.</div>;
+
+  const { galaxy_score, alt_rank, social_volume, sentiment } = data;
+
+  return (
+    <div className="bg-gray-900 text-white p-4 rounded-lg shadow-lg border-2 border-neon-yellow">
+      <h3 className="text-lg font-bold mb-2">Social Metrics</h3>
+      <div className="mb-2">
+        <span className="text-sm text-gray-400">Galaxy Score™:</span>{" "}
+        <span className="font-medium">{galaxy_score.toFixed(1)}</span>
+      </div>
+      <div className="mb-2">
+        <span className="text-sm text-gray-400">AltRank™:</span>{" "}
+        <span className="font-medium">{alt_rank}</span>
+      </div>
+      <div className="mb-2">
+        <span className="text-sm text-gray-400">Social Volume:</span>{" "}
+        <span className="font-medium">{social_volume.toLocaleString()}</span>
+      </div>
+      <div>
+        <span className="text-sm text-gray-400">Sentiment:</span>{" "}
+        <span className="font-medium">
+          {sentiment > 0 ? `+${sentiment.toFixed(1)}` : sentiment.toFixed(1)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+components/FundamentalCard.jsx
+
+import React from "react";
+import { useCryptoRankCurrent } from "../hooks/useCryptoRank";
+import Spinner from "./Spinner";
+
+export default function FundamentalCard({ coinId = "solana" }) {
+  const { data, isLoading, error } = useCryptoRankCurrent(coinId);
+  if (isLoading) return <Spinner />;
+  if (error) return <div>Error loading fundamental data.</div>;
+
+  const {
+    priceUsd,
+    marketCapUsd,
+    volume24hUsd,
+    circulatingSupply,
+    percentChange24h,
+  } = data;
+
+  return (
+    <div className="bg-gray-900 text-white p-4 rounded-lg shadow-lg border-2 border-neon-blue">
+      <h3 className="text-lg font-bold mb-2">Fundamental Data</h3>
+      <div className="mb-1">
+        <span className="text-sm text-gray-400">Price:</span>{" "}
+        <span className="font-medium">${Number(priceUsd).toLocaleString()}</span>
+      </div>
+      <div className="mb-1">
+        <span className="text-sm text-gray-400">Market Cap:</span>{" "}
+        <span className="font-medium">${Number(marketCapUsd).toLocaleString()}</span>
+      </div>
+      <div className="mb-1">
+        <span className="text-sm text-gray-400">24h Volume:</span>{" "}
+        <span className="font-medium">${Number(volume24hUsd).toLocaleString()}</span>
+      </div>
+      <div className="mb-1">
+        <span className="text-sm text-gray-400">Circulating Supply:</span>{" "}
+        <span className="font-medium">{Number(circulatingSupply).toLocaleString()}</span>
+      </div>
+      <div>
+        <span className="text-sm text-gray-400">% Δ 24h:</span>{" "}
+        <span className={`font-medium ${percentChange24h >= 0 ? "text-green-400" : "text-red-400"}`}>
+          {percentChange24h.toFixed(2)}%
+        </span>
+      </div>
+    </div>
+  );
+}
+
+components/WatchlistTable.jsx
+
+import React from "react";
+import Spinner from "./Spinner";
+import { useCryptoRankCurrencies } from "../hooks/useCryptoRank";
+import { Link } from "react-router-dom";
+
+export default function WatchlistTable({ page = 1, limit = 10 }) {
+  const { data: coins, isLoading, error } = useCryptoRankCurrencies(page, limit);
+  if (isLoading) return <Spinner />;
+  if (error) return <div>Error loading coin list.</div>;
+
+  return (
+    <div className="bg-gray-900 text-white p-4 rounded-lg shadow-lg border-2 border-neon-purple">
+      <h3 className="text-lg font-bold mb-2">Coin Watchlist</h3>
+      <table className="w-full text-left border-collapse">
+        <thead>
+          <tr className="border-b border-gray-700">
+            <th className="py-2 px-1">Name</th>
+            <th className="py-2 px-1">Price (USD)</th>
+            <th className="py-2 px-1">Market Cap</th>
+            <th className="py-2 px-1">24h %</th>
+            <th className="py-2 px-1">Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          {coins.map((coin) => (
+            <tr key={coin.id} className="border-b border-gray-700 hover:bg-gray-800">
+              <td className="py-2 px-1">{coin.name} ({coin.symbol})</td>
+              <td className="py-2 px-1">${Number(coin.priceUsd).toLocaleString()}</td>
+              <td className="py-2 px-1">${Number(coin.marketCapUsd).toLocaleString()}</td>
+              <td className={`py-2 px-1 ${coin.percentChange24h >= 0 ? "text-green-400" : "text-red-400"}`}>
+                {coin.percentChange24h.toFixed(2)}%
+              </td>
+              <td className="py-2 px-1">
+                <Link to={`/coin/${coin.id}`} className="text-neon-green underline">Details</Link>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+components/AstrologySidebar.jsx
+
+import React from "react";
+import { useMoonPhase, usePlanetaryPositions, useAspects } from "../hooks/useAstrology";
+import Spinner from "./Spinner";
+
+export default function AstrologySidebar() {
+  const { data: moon, isLoading: moonLoading } = useMoonPhase();
+  const { data: planets, isLoading: planetsLoading } = usePlanetaryPositions();
+  const { data: aspects, isLoading: aspectsLoading } = useAspects();
+  if (moonLoading || planetsLoading || aspectsLoading) return <Spinner />;
+
+  return (
+    <div className="bg-gray-900 text-white p-4 rounded-lg shadow-lg border-2 border-neon-cyan">
+      <h3 className="text-lg font-bold mb-2">Astrology</h3>
+      <div className="mb-4">
+        <span className="text-sm text-gray-400">Moon Phase:</span>{" "}
+        <span className="font-medium">{moon.phase_name}</span>{" "}
+        <span>({moon.percent}%)</span>
+      </div>
+      <div className="mb-4">
+        <span className="text-sm text-gray-400">Next Major Aspect:</span>{" "}
+        <span className="font-medium">
+          {aspects[0]?.planets.join("‐")} {aspects[0]?.type} at{" "}
+          {new Date(aspects[0]?.timestamp * 1000).toLocaleTimeString()}
+        </span>
+      </div>
+      <div>
+        <h4 className="text-md font-semibold mb-1">Planet Positions</h4>
+        <ul className="text-sm space-y-1">
+          {Object.entries(planets).map(([planet, pos]) => (
+            <li key={planet}>
+              {planet.charAt(0).toUpperCase() + planet.slice(1)}: {pos.lon.toFixed(1)}°
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+components/PredictionBanner.jsx
+
+import React from "react";
+import { useLivePrediction } from "../hooks/useLivePrediction";
+import Spinner from "./Spinner";
+
+export default function PredictionBanner() {
+  const { data, isLoading, error } = useLivePrediction();
+  if (isLoading) return <Spinner />;
+  if (error || !data) {
+    return (
+      <div className="bg-red-900 text-red-300 p-2 rounded">
+        Unable to load prediction.
+      </div>
+    );
+  }
+
+  const { techScore, socialScore, fundScore, astroScore, compositeScore, category } = data;
+  let bannerColor = "yellow-400";
+  if (compositeScore >= 60) bannerColor = "green-400";
+  if (compositeScore <= 40) bannerColor = "red-400";
+
+  return (
+    <div className={`bg-gray-900 text-${bannerColor} p-4 rounded-lg shadow-lg border-2 border-${bannerColor}`}>
+      <div className="flex justify-between items-center">
+        <div>
+          <span className="font-bold">Composite Score:</span>{" "}
+          <span className="text-2xl">{compositeScore.toFixed(1)}</span>
+        </div>
+        <div className="text-xl font-semibold">{category}</div>
+      </div>
+      <div className="mt-2 flex space-x-4 text-sm">
+        <div>Tech: {techScore.toFixed(1)}</div>
+        <div>Social: {socialScore.toFixed(1)}</div>
+        <div>Fund: {fundScore.toFixed(1)}</div>
+        <div>Astro: {astroScore.toFixed(1)}</div>
+      </div>
+    </div>
+  );
+}
+
+components/DailyUpdatePanel.jsx
+
+import React from "react";
+import { useDailyUpdate } from "../hooks/useDailyUpdate";
+import Spinner from "./Spinner";
+
+export default function DailyUpdatePanel() {
+  const { data, isLoading, error } = useDailyUpdate();
+  if (isLoading) return <Spinner />;
+  if (error || !data) {
+    return (
+      <div className="bg-gray-900 text-yellow-400 p-4 rounded-lg shadow-lg border-2 border-neon-yellow">
+        Daily update not available yet.
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-gray-900 text-white p-4 rounded-lg shadow-lg border-2 border-neon-orange">
+      <h3 className="text-lg font-bold mb-2">Daily Market Update</h3>
+      <pre className="whitespace-pre-wrap text-sm font-mono">{data.content}</pre>
+    </div>
+  );
+}
+
+components/WeightSuggestionChart.jsx
+
+import React from "react";
+import { useSuggestedWeights } from "../hooks/useSuggestedWeights";
+import Spinner from "./Spinner";
+
+export default function WeightSuggestionChart() {
+  const { data, isLoading, error } = useSuggestedWeights();
+  if (isLoading) return <Spinner />;
+  if (error || !data) {
+    return (
+      <div className="bg-gray-900 text-red-400 p-4 rounded-lg shadow-lg border-2 border-red-400">
+        Unable to load suggested weights.
+      </div>
+    );
+  }
+
+  const { Technical, Social, Fundamental, Astrology, justification } = data;
+
+  return (
+    <div className="bg-gray-900 text-white p-4 rounded-lg shadow-lg border-2 border-neon-teal">
+      <h3 className="text-lg font-bold mb-2">Suggested Pillar Weights</h3>
+      <div className="grid grid-cols-4 gap-4 mb-4">
+        {["Technical", "Social", "Fundamental", "Astrology"].map((pillar) => (
+          <div key={pillar} className="text-center">
+            <div className="text-sm text-gray-400">{pillar}</div>
+            <div className="text-2xl font-bold">{data[pillar]}%</div>
+          </div>
+        ))}
+      </div>
+      <div className="text-sm">
+        {Object.entries(justification).map(([pillar, text]) => (
+          <div key={pillar} className="mb-2">
+            <span className="font-semibold">{pillar}:</span> {text}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+components/CoinSearch.jsx
+
+import React, { useState } from "react";
+
+export default function CoinSearch({ onSelect }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+
+  const handleChange = (e) => {
+    const q = e.target.value;
+    setQuery(q);
+    if (q.length < 2) {
+      setResults([]);
+      return;
+    }
+    fetch(`/api/cryptorank/currencies/search?q=${encodeURIComponent(q)}&limit=5`)
+      .then(res => res.json())
+      .then(json => setResults(json.data || []))
+      .catch(() => setResults([]));
+  };
+
+  return (
+    <div className="relative mb-4">
+      <input
+        type="text"
+        className="border border-gray-700 rounded px-3 py-2 w-full bg-gray-800 text-white"
+        placeholder="Search coins (e.g. SOL, BTC)…"
+        value={query}
+        onChange={handleChange}
+      />
+      {results.length > 0 && (
+        <ul className="absolute bg-gray-900 w-full mt-1 rounded shadow-lg">
+          {results.map((coin) => (
+            <li
+              key={coin.id}
+              className="px-3 py-2 hover:bg-gray-700 cursor-pointer"
+              onClick={() => {
+                setQuery(coin.name);
+                setResults([]);
+                onSelect(coin.id);
+              }}
+            >
+              {coin.name} ({coin.symbol})
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+components/CoinDetail.jsx
+
+import React from "react";
+import { useParams } from "react-router-dom";
+import { useCryptoRankCurrent } from "../hooks/useCryptoRank";
+import Spinner from "./Spinner";
+
+export default function CoinDetail() {
+  const { id } = useParams();
+  const { data: metadata, isLoading, error } = useCryptoRankCurrent(id);
+  if (isLoading) return <Spinner />;
+  if (error || !metadata) {
+    return <div>Error loading coin details.</div>;
+  }
+
+  const {
+    name,
+    symbol,
+    description,
+    websiteUrl,
+    whitepaperUrl,
+    category,
+    tags,
+    priceUsd,
+    marketCapUsd,
+    circulatingSupply,
+    percentChange24h,
+  } = metadata;
+
+  return (
+    <div className="p-4 space-y-4">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">{name} ({symbol})</h1>
+        <div>
+          <a href={websiteUrl} className="text-neon-blue underline mr-4" target="_blank" rel="noreferrer">
+            Website
+          </a>
+          {whitepaperUrl && (
+            <a href={whitepaperUrl} className="text-neon-blue underline" target="_blank" rel="noreferrer">
+              Whitepaper
+            </a>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-gray-900 text-white p-4 rounded-lg shadow-lg border-2 border-neon-green">
+        <div className="mb-1">
+          <span className="text-sm text-gray-400">Price:</span>{" "}
+          <span className="font-medium">${Number(priceUsd).toLocaleString()}</span>
+        </div>
+        <div className="mb-1">
+          <span className="text-sm text-gray-400">Market Cap:</span>{" "}
+          <span className="font-medium">${Number(marketCapUsd).toLocaleString()}</span>
+        </div>
+        <div className="mb-1">
+          <span className="text-sm text-gray-400">Circulating Supply:</span>{" "}
+          <span className="font-medium">{Number(circulatingSupply).toLocaleString()}</span>
+        </div>
+        <div>
+          <span className="text-sm text-gray-400">% Δ 24h:</span>{" "}
+          <span className={`font-medium ${percentChange24h >= 0 ? "text-green-400" : "text-red-400"}`}>
+            {percentChange24h.toFixed(2)}%
+          </span>
+        </div>
+      </div>
+
+      <div className="bg-gray-900 text-white p-4 rounded-lg shadow-lg border-2 border-neon-purple">
+        <h2 className="text-xl font-semibold mb-2">Description</h2>
+        <p className="text-sm">{description}</p>
+      </div>
+
+      <div className="bg-gray-900 text-white p-4 rounded-lg shadow-lg border-2 border-neon-blue">
+        <h2 className="text-xl font-semibold mb-2">Category & Tags</h2>
+        <div>
+          <span className="font-semibold">Category:</span> {category || "—"}
+        </div>
+        <div>
+          <span className="font-semibold">Tags:</span> {(tags || []).join(", ") || "—"}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+components/Header.jsx
+
+import React from "react";
+import { Link } from "react-router-dom";
+
+export default function Header() {
+  return (
+    <header className="bg-black text-white flex justify-between items-center px-6 py-3 shadow-lg">
+      <div className="text-2xl font-bold text-neon-green">Solana Nexus</div>
+      <nav className="space-x-6">
+        <Link to="/" className="hover:text-neon-green">Dashboard</Link>
+        <Link to="/watchlist" className="hover:text-neon-green">Watchlist</Link>
+        <Link to="/settings" className="hover:text-neon-green">Settings</Link>
+      </nav>
+    </header>
+  );
+}
+
+components/Layout.jsx
+
+    import React from "react";
+    import Header from "./Header";
+
+    export default function Layout({ children }) {
+      return (
+        <div className="min-h-screen bg-gray-800">
+          <Header />
+          <main className="p-4">{children}</main>
+        </div>
+      );
+    }
+
+Create pages and routing
+
+    App.jsx
+
+import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Layout from "./components/Layout";
+import Dashboard from "./pages/Dashboard";
+import WatchlistPage from "./pages/WatchlistPage";
+import SettingsPage from "./pages/SettingsPage";
+import CoinDetail from "./components/CoinDetail";
+
+function App() {
+  return (
+    <Router>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/watchlist" element={<WatchlistPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/coin/:id" element={<CoinDetail />} />
+        </Routes>
+      </Layout>
+    </Router>
+  );
+}
+
+export default App;
+
+index.jsx
+
+import React from "react";
+import ReactDOM from "react-dom";
+import "./index.css";
+import App from "./App";
+
+ReactDOM.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+  document.getElementById("root")
+);
+
+pages/Dashboard.jsx
+
+import React, { useState } from "react";
+import GlobalMarketWidget from "../components/GlobalMarketWidget";
+import PredictionBanner from "../components/PredictionBanner";
+import TechnicalCard from "../components/TechnicalCard";
+import SocialCard from "../components/SocialCard";
+import FundamentalCard from "../components/FundamentalCard";
+import WatchlistTable from "../components/WatchlistTable";
+import AstrologySidebar from "../components/AstrologySidebar";
+import DailyUpdatePanel from "../components/DailyUpdatePanel";
+import WeightSuggestionChart from "../components/WeightSuggestionChart";
+import CoinSearch from "../components/CoinSearch";
+
+export default function Dashboard() {
+  const [watchlist, setWatchlist] = useState([]);
+
+  return (
+    <div className="space-y-6">
+      {/* Global Market + Prediction Banner */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <GlobalMarketWidget />
+        <PredictionBanner />
+      </div>
+
+      {/* Supercards Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <TechnicalCard />
+        <SocialCard />
+        <FundamentalCard />
+      </div>
+
+      {/* Coin Search + Watchlist Table */}
+      <div>
+        <CoinSearch onSelect={(coinId) => setWatchlist((prev) => [...new Set([...prev, coinId])])} />
+        <WatchlistTable page={1} limit={10} />
+      </div>
+
+      {/* Daily Update and Weight Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <DailyUpdatePanel />
+        <WeightSuggestionChart />
+      </div>
+
+      {/* Astrology Sidebar */}
+      <div className="lg:hidden">
+        <AstrologySidebar />
+      </div>
+      <div className="hidden lg:block">
+        <AstrologySidebar />
+      </div>
+    </div>
+  );
+}
+
+pages/WatchlistPage.jsx
+
+import React from "react";
+import WatchlistTable from "../components/WatchlistTable";
+
+export default function WatchlistPage() {
+  return (
+    <div>
+      <h2 className="text-2xl font-bold mb-4 text-white">My Watchlist</h2>
+      <WatchlistTable page={1} limit={20} />
+    </div>
+  );
+}
+
+pages/SettingsPage.jsx
+
+    import React from "react";
+
+    export default function SettingsPage() {
+      return (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold text-white">Settings</h2>
+          <div className="bg-gray-900 p-4 rounded-lg shadow-lg text-white border-2 border-neon-cyan">
+            <h3 className="font-semibold mb-2">API Keys</h3>
+            <div className="space-y-2">
+              <div>
+                <span className="font-medium">TAAPI Pro Key:</span> •••••••••
+                <button className="ml-2 px-2 py-1 bg-neon-blue text-black rounded">Test</button>
+              </div>
+              <div>
+                <span className="font-medium">CryptoRank Key:</span> •••••••••
+                <button className="ml-2 px-2 py-1 bg-neon-blue text-black rounded">Test</button>
+              </div>
+              <div>
+                <span className="font-medium">LunarCrush Key:</span> •••••••••
+                <button className="ml-2 px-2 py-1 bg-neon-blue text-black rounded">Test</button>
+              </div>
+              <div>
+                <span className="font-medium">OpenAI Key:</span> •••••••••
+                <button className="ml-2 px-2 py-1 bg-neon-blue text-black rounded">Test</button>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-900 p-4 rounded-lg shadow-lg text-white border-2 border-neon-purple">
+            <h3 className="font-semibold mb-2">Notifications</h3>
+            <div className="space-y-2">
+              <div>
+                <input type="checkbox" id="discordAlerts" className="mr-2" />
+                <label htmlFor="discordAlerts">Discord alerts for major signals</label>
+              </div>
+              <div>
+                <input type="checkbox" id="emailSummary" className="mr-2" />
+                <label htmlFor="emailSummary">Email summary at 00:00 UTC</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+Run and verify
+
+    In one Replit console tab, from the project root run:
+
+npm run dev
+
+(starts Express on port 5000)
+
+In a second console tab, run:
+
+        cd client
+        npm start
+
+        (starts React on port 3000)
+
+        Open the Replit browser preview.
+
+        Verify:
+
+            / renders the Dashboard with GlobalMarketWidget, PredictionBanner, TechnicalCard, SocialCard, FundamentalCard, CoinSearch + WatchlistTable, DailyUpdatePanel, WeightSuggestionChart, and AstrologySidebar.
+
+            /coin/solana shows the CoinDetail page correctly.
+
+            /watchlist and /settings render as designed.
+
+        Switch to mobile view: all cards stack; AstrologySidebar is at the bottom.
+
+        Tablet view: supercards adjust to two/three columns.
+
+When the React UI displays correctly and fetches live data from your Express endpoints, reply:
+
+Frontend scaffold and API integration complete.
+
+
+ChatGPT can make mistakes. Check important info.
