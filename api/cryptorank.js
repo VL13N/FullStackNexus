@@ -57,12 +57,11 @@ export async function fetchSolanaCurrent() {
   const cacheKey = 'solCurrent';
   if (crCache.has(cacheKey)) return crCache.get(cacheKey);
   
+  await rateLimit();
+  
   try {
-    // First, find Solana's correct ID
-    const solanaId = await findSolanaId();
-    
-    // Then fetch its data
-    const url = `https://api.cryptorank.io/v1/currencies/${solanaId}?api_key=${CR_API_KEY}`;
+    // Use known Solana ID (5663) directly to avoid double API calls
+    const url = `https://api.cryptorank.io/v1/currencies/5663?api_key=${CR_API_KEY}`;
     
     const response = await fetch(url, {
       method: 'GET',
@@ -98,11 +97,19 @@ export async function fetchSolanaCurrent() {
 }
 
 export async function fetchSolanaHistorical(interval = '1h') {
+  // Reject 5-minute intervals on Basic plan to preserve credits
+  if (interval === '5m') {
+    throw new Error('5 min interval is not supported on Basic plan; please use interval=\'1h\' or upgrade plan');
+  }
+
   const cacheKey = `solHist@${interval}`;
   if (crCache.has(cacheKey)) return crCache.get(cacheKey);
   
+  await rateLimit();
+  
   try {
     // Use Solana's ID (5663) for historical data
+    // NOTE: On Basic plan, fetching 1h interval history costs 24 credits/day
     const url = `https://api.cryptorank.io/v1/currencies/5663/sparkline?api_key=${CR_API_KEY}`;
     
     const response = await fetch(url, {
