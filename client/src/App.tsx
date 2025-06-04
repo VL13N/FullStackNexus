@@ -10,13 +10,14 @@ import ProjectInitializer from "@/pages/project-initializer";
 import NotFound from "@/pages/not-found";
 import PredictionsPage from "@/pages/predictions";
 import Dashboard from "@/pages/dashboard";
+import SettingsPage from "@/pages/settings";
 import TaapiDemo from "../../components/TaapiDemo";
 import CryptoRankDemo from "../../components/CryptoRankDemo";
 import OnChainDemo from "../../components/OnChainDemo";
 import AstrologyDemo from "../../components/AstrologyDemo";
 import LunarCrushDemo from "../../components/LunarCrushDemo";
 import PredictionWidget from "../../components/PredictionWidget";
-import { Activity, BarChart3, Database, TrendingUp, Sparkles, Brain } from "lucide-react";
+import { Activity, BarChart3, Database, TrendingUp, Sparkles, Brain, Settings } from "lucide-react";
 
 function LandingPage() {
   return (
@@ -208,6 +209,12 @@ function Navigation() {
             <Link href="/lunarcrush">
               <Button variant={location === '/lunarcrush' ? 'default' : 'ghost'} size="sm">
                 LunarCrush
+              </Button>
+            </Link>
+            <Link href="/settings">
+              <Button variant={location === '/settings' ? 'default' : 'ghost'} size="sm">
+                <Settings className="h-4 w-4 mr-1" />
+                Settings
               </Button>
             </Link>
           </div>

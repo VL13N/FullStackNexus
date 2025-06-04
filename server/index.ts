@@ -2,6 +2,13 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
+// Verify OpenAI API key on startup
+if (!process.env.OPENAI_API_KEY) {
+  console.error('ERROR: OPENAI_API_KEY is required but not found in environment variables');
+  console.error('Please add your OpenAI API key to Replit Secrets');
+  process.exit(1);
+}
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -36,8 +43,87 @@ app.use((req, res, next) => {
   next();
 });
 
+// OpenAI scheduling functions
+async function scheduleOpenAITasks() {
+  log('Setting up OpenAI automated scheduling...');
+  
+  // Hourly news sentiment analysis
+  setInterval(async () => {
+    try {
+      log('[OpenAI Scheduler] Running hourly news sentiment analysis...');
+      const response = await fetch('http://localhost:5000/api/openai/analyze-news', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (response.ok) {
+        log('[OpenAI Scheduler] News sentiment analysis completed successfully');
+      } else {
+        console.error('[OpenAI Scheduler] News sentiment analysis failed:', response.status);
+      }
+    } catch (error: any) {
+      console.error('[OpenAI Scheduler] News sentiment analysis error:', error.message);
+    }
+  }, 60 * 60 * 1000); // Every hour
+  
+  // Daily AI summary at midnight UTC
+  function scheduleDailySummary() {
+    const now = new Date();
+    const nextMidnight = new Date(now);
+    nextMidnight.setUTCHours(24, 0, 0, 0);
+    
+    const msUntilMidnight = nextMidnight.getTime() - now.getTime();
+    
+    setTimeout(async () => {
+      try {
+        log('[OpenAI Scheduler] Running daily AI summary generation...');
+        const response = await fetch('http://localhost:5000/api/openai/daily-update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (response.ok) {
+          log('[OpenAI Scheduler] Daily summary generated successfully');
+        } else {
+          console.error('[OpenAI Scheduler] Daily summary failed:', response.status);
+        }
+      } catch (error: any) {
+        console.error('[OpenAI Scheduler] Daily summary error:', error.message);
+      }
+      
+      // Schedule next daily run
+      setInterval(async () => {
+        try {
+          log('[OpenAI Scheduler] Running daily AI summary generation...');
+          const response = await fetch('http://localhost:5000/api/openai/daily-update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          if (response.ok) {
+            log('[OpenAI Scheduler] Daily summary generated successfully');
+          } else {
+            console.error('[OpenAI Scheduler] Daily summary failed:', response.status);
+          }
+        } catch (error: any) {
+          console.error('[OpenAI Scheduler] Daily summary error:', error.message);
+        }
+      }, 24 * 60 * 60 * 1000); // Every 24 hours
+      
+    }, msUntilMidnight);
+    
+    log(`[OpenAI Scheduler] Daily summary scheduled for next midnight UTC (${Math.round(msUntilMidnight / 1000 / 60)} minutes)`);
+  }
+  
+  scheduleDailySummary();
+  log('[OpenAI Scheduler] Automated scheduling activated');
+}
+
 (async () => {
   const server = await registerRoutes(app);
+
+  // Start OpenAI scheduling after routes are registered
+  await scheduleOpenAITasks();
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

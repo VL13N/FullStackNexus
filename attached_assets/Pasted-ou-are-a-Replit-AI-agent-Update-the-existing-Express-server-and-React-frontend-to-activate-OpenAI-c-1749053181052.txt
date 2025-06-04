@@ -1,0 +1,47 @@
+ou are a Replit AI agent. Update the existing Express server and React frontend to activate OpenAI calls on a schedule and add manual-trigger buttons in the UI. Specifically:
+
+    Environment Check
+
+        Verify process.env.OPENAI_API_KEY is defined; if missing, throw an error on startup.
+
+    Hourly News Sentiment Analysis
+
+        In your main server file (e.g. server/index.ts), set up a setInterval that runs every 60 × 60 × 1000 ms (one hour). Inside it, call the same logic used by your /api/openai/analyze-news route so that news sentiment is re-scored and saved to Supabase each hour.
+
+        Ensure the scheduled function logs success or any OpenAI error but does not crash the server.
+
+    Daily AI-Generated Summary
+
+        In server/index.ts, set up a second scheduler using setInterval (24 × 60 × 60 × 1000 ms) or calculate “milliseconds until next 00:00 UTC” and then repeat daily. This should call the handler logic for /api/openai/daily-update once per day (at approximately 00:00 UTC), storing the summary in the daily_updates table.
+
+        Make sure the first invocation happens at the next midnight UTC and subsequent invocations happen every 24 h.
+
+    Adaptive Weight Suggestions on Each Prediction
+
+        In the part of your prediction scheduler or wherever you store a newly computed live_predictions record, after the insert completes, immediately call the /api/openai/suggest-weights logic to compute fresh weights based on the latest market data. Save those weights to your dynamic_weights table.
+
+        If invoking the route directly is difficult, extract its core logic into a service function (e.g. services/openaiService.js) and call it programmatically.
+
+    Error Handling & Logging
+
+        Each scheduled call (hourly news, daily summary, per‐prediction weights) must catch and log any errors from OpenAI but continue running—do not let scheduling stop on failure.
+
+        Log a timestamped message on each successful run.
+
+    React UI: Manual Trigger Buttons
+
+        In the Settings page (client/src/pages/SettingsPage.jsx), add three buttons under “OpenAI Features”:
+
+            “Analyze Latest News Now” → onClick calls fetch("/api/openai/analyze-news") and alerts success/failure.
+
+            “Generate Today’s Summary Now” → onClick calls fetch("/api/openai/daily-update").
+
+            “Recompute Weights Now” → onClick calls fetch("/api/openai/suggest-weights").
+
+        Each button should show a spinner or disable itself while the fetch is in progress, then display a toast or alert with “Success” or “Error: <message>.”
+
+    Verify OPENAI_API_KEY in Replit Secrets
+
+        Confirm in Replit’s Secrets that OPENAI_API_KEY is set. If it’s missing or invalid, your server’s startup error will remind the user.
+
+Once implemented, those three OpenAI endpoints will run automatically (hourly, daily, and per-prediction) and can also be triggered manually from Settings. Reply when complete.
