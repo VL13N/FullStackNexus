@@ -24,10 +24,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // LunarCrush API integration - Direct implementation
+  // LunarCrush API v4 integration - Updated endpoint
   app.get("/api/lunarcrush/metrics", async (req, res) => {
     try {
-      const { symbol = 'SOL', interval = '1d' } = req.query;
+      const { symbol = 'sol' } = req.query;
       
       if (!process.env.LUNARCRUSH_API_KEY) {
         return res.status(503).json({
@@ -37,17 +37,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const params = new URLSearchParams({
-        data: 'assets',
-        key: process.env.LUNARCRUSH_API_KEY,
-        symbol: symbol as string,
-        interval: interval as string
+      const url = `https://lunarcrush.com/api4/public/coins/${symbol}/v1`;
+      console.log('LunarCrush API v4 Request URL:', url);
+
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${process.env.LUNARCRUSH_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
       });
 
-      const url = `https://api.lunarcrush.com/v2?${params}`;
-      console.log('LunarCrush API Request URL:', url.replace(process.env.LUNARCRUSH_API_KEY, '[API_KEY]'));
-
-      const response = await fetch(url);
       console.log('LunarCrush API Response Status:', response.status, response.statusText);
 
       const data = await response.json();
@@ -61,32 +60,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw new Error(`LunarCrush API Error: ${data.error}`);
       }
 
-      if (data.data && data.data.length > 0) {
-        const solanaData = data.data[0];
+      if (data.data) {
+        const coinData = data.data;
         
         const metrics = {
-          symbol: solanaData.s || symbol,
-          name: solanaData.n || 'Solana',
-          price: solanaData.p || null,
-          priceChange24h: solanaData.pc || null,
-          volume24h: solanaData.v || null,
-          marketCap: solanaData.mc || null,
-          galaxyScore: solanaData.gs || null,
-          altRank: solanaData.acr || null,
-          socialVolume: solanaData.sv || null,
-          socialScore: solanaData.ss || null,
-          socialContributors: solanaData.sc || null,
-          socialDominance: solanaData.sd || null,
-          marketDominance: solanaData.md || null,
-          correlationRank: solanaData.cr || null,
-          volatility: solanaData.volatility || null
+          symbol: coinData.symbol || symbol.toUpperCase(),
+          name: coinData.name || 'Solana',
+          price: coinData.price || null,
+          priceChange24h: coinData.percent_change_24h || null,
+          volume24h: coinData.volume_24h || null,
+          marketCap: coinData.market_cap || null,
+          galaxyScore: coinData.galaxy_score || null,
+          altRank: coinData.alt_rank || null,
+          socialVolume: coinData.social_volume_24h || null,
+          socialScore: coinData.social_score || null,
+          socialContributors: coinData.social_contributors || null,
+          socialDominance: coinData.social_dominance || null,
+          marketDominance: coinData.market_dominance || null,
+          correlationRank: coinData.correlation_rank || null,
+          volatility: coinData.volatility || null
         };
 
         res.json({
           success: true,
           type: 'social_metrics',
-          symbol,
-          interval,
+          symbol: symbol.toUpperCase(),
           data: metrics,
           timestamp: new Date().toISOString()
         });
@@ -113,13 +111,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const params = new URLSearchParams({
-        data: 'assets',
-        key: process.env.LUNARCRUSH_API_KEY,
-        symbol: 'SOL'
-      });
+      const url = `https://lunarcrush.com/api4/public/coins/sol/time-series/v2`;
+      console.log('LunarCrush Social API v4 Request URL:', url);
 
-      const response = await fetch(`https://api.lunarcrush.com/v2?${params}`);
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${process.env.LUNARCRUSH_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
       const data = await response.json();
 
       if (data.data && data.data.length > 0) {

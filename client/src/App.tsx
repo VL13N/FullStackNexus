@@ -94,20 +94,22 @@ function Dashboard() {
           </Card>
         </Link>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Database className="h-5 w-5" />
-              LunarCrush
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-3">
-              Social metrics and sentiment analysis
-            </p>
-            <Badge variant="secondary">API Setup Required</Badge>
-          </CardContent>
-        </Card>
+        <Link href="/lunarcrush">
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Database className="h-5 w-5" />
+                LunarCrush
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-3">
+                Social metrics and sentiment analysis
+              </p>
+              <Badge variant="secondary">API Key Required</Badge>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       <Card>
@@ -177,6 +179,11 @@ function Navigation() {
             <Link href="/astrology">
               <Button variant={location === '/astrology' ? 'default' : 'ghost'} size="sm">
                 Astrology
+              </Button>
+            </Link>
+            <Link href="/lunarcrush">
+              <Button variant={location === '/lunarcrush' ? 'default' : 'ghost'} size="sm">
+                LunarCrush
               </Button>
             </Link>
           </div>
