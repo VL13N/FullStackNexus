@@ -1161,6 +1161,85 @@ Keep response concise and professional.`;
     }
   });
 
+  // Astrological Data API integration - Direct implementation
+  app.get("/api/astrology/moon-phase", async (req, res) => {
+    try {
+      const astrologyService = require('../api/astrology.js');
+      const date = req.query.date ? new Date(req.query.date as string) : new Date();
+      const moonPhase = astrologyService.getMoonPhase(date);
+      res.json(moonPhase);
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get("/api/astrology/planetary-positions", async (req, res) => {
+    try {
+      const astrologyService = require('../api/astrology.js');
+      const date = req.query.date ? new Date(req.query.date as string) : new Date();
+      const planets = req.query.planets ? (req.query.planets as string).split(',') : null;
+      const positions = astrologyService.getPlanetaryPositions(date, planets);
+      res.json(positions);
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get("/api/astrology/aspects", async (req, res) => {
+    try {
+      const astrologyService = require('../api/astrology.js');
+      const date = req.query.date ? new Date(req.query.date as string) : new Date();
+      const orb = req.query.orb ? parseFloat(req.query.orb as string) : 8;
+      const aspects = astrologyService.getPlanetaryAspects(date, orb);
+      res.json(aspects);
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get("/api/astrology/lunar-calendar", async (req, res) => {
+    try {
+      const astrologyService = require('../api/astrology.js');
+      const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear();
+      const month = req.query.month ? parseInt(req.query.month as string) : new Date().getMonth() + 1;
+      const calendar = astrologyService.getLunarCalendar(year, month);
+      res.json(calendar);
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get("/api/astrology/report", async (req, res) => {
+    try {
+      const astrologyService = require('../api/astrology.js');
+      const date = req.query.date ? new Date(req.query.date as string) : new Date();
+      const report = astrologyService.getAstrologicalReport(date);
+      res.json(report);
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
