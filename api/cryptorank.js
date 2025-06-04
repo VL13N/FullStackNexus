@@ -87,6 +87,15 @@ export async function fetchSolanaCurrent() {
       volume24hUsd: data.values?.USD?.volume24h || 0
     };
     
+    // Persist fundamental data for ML/backtesting
+    try {
+      const { persistFundamentalData } = await import('../services/dataPersistence.js');
+      await persistFundamentalData(responseData, 'solana');
+    } catch (persistError) {
+      console.warn('Failed to persist fundamental data:', persistError.message);
+      // Continue without failing the main request
+    }
+    
     crCache.set(cacheKey, simplified);
     return simplified;
     

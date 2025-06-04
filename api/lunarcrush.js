@@ -70,7 +70,7 @@ class LunarCrushService {
     if (data.data && data.data.length > 0) {
       const solanaData = data.data[0]; // First result should be SOL
       
-      return {
+      const result = {
         symbol: solanaData.s || symbol,
         name: solanaData.n || 'Solana',
         price: solanaData.p || null,
@@ -89,6 +89,17 @@ class LunarCrushService {
         timestamp: new Date().toISOString(),
         raw: solanaData
       };
+      
+      // Persist social data for ML/backtesting
+      try {
+        const { persistSocialData } = await import('../services/dataPersistence.js');
+        await persistSocialData(data, 'solana');
+      } catch (persistError) {
+        console.warn('Failed to persist social data:', persistError.message);
+        // Continue without failing the main request
+      }
+      
+      return result;
     }
     
     throw new Error('No data found for Solana');

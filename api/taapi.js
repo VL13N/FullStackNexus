@@ -168,6 +168,15 @@ export async function fetchBulkIndicators(interval = "1h") {
       }
     });
     
+    // Persist technical data for ML/backtesting
+    try {
+      const { persistTechnicalData } = await import('../services/dataPersistence.js');
+      await persistTechnicalData(data, 'SOL/USDT', interval);
+    } catch (persistError) {
+      console.warn('Failed to persist technical data:', persistError.message);
+      // Continue without failing the main request
+    }
+    
     taapiCache.set(cacheKey, result);
     console.log(`TAAPI Bulk Success:`, result);
     return result;
