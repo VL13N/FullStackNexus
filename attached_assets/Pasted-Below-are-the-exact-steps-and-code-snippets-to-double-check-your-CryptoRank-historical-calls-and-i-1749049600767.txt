@@ -1,0 +1,192 @@
+Below are the exact steps (and code snippets) to double‐check your CryptoRank historical calls and isolate why you’re still getting a 400, even though your Basic plan clearly includes up to 30 days of 5-minute candles and daily candles.
+1. Verify the Exact “hist_price” Endpoint & Parameter Names
+
+According to the CryptoRank v2 docs, the historical‐price endpoint must be called exactly as:
+
+GET https://api.cryptorank.io/v2/hist_price/{coin_slug}
+  ?api_key=<YOUR_KEY>
+  &interval=<INTERVAL>
+
+    {coin_slug} must be the literal slug string—“solana”, not “sol” or a numeric ID (e.g. “28”).
+
+    interval must be exactly one of:
+
+        5m → (5-minute candles, up to 30 days back)
+
+        1d → (daily candles, all available history)
+
+Any small typo or different path (hist-price, missing _, wrong slug, missing api_key) will return a 400.
+2. Run a Barebones Curl Test (Twice: once with slug “solana”, once with numeric ID “28”)
+
+From your Replit shell, copy & paste these lines exactly (substituting your own CRYPTORANK_API_KEY):
+
+# 1) Using slug “solana” (the documented approach)
+curl -i "https://api.cryptorank.io/v2/hist_price/solana?interval=5m&api_key=${CRYPTORANK_API_KEY}"
+
+# 2) If “solana” still fails, try using the numeric ID 28 (some versions accept ID)
+curl -i "https://api.ryptorank.io/v2/hist_price/28?interval=5m&api_key=${CRYPTORANK_API_KEY}"
+
+Then try the daily interval:
+
+curl -i "https://api.cryptorank.io/v2/hist_price/solana?interval=1d&api_key=${CRYPTORANK_API_KEY}"
+
+curl -i "https://api.cryptorank.io/v2/hist_price/28?interval=1d&api_key=${CRYPTORANK_API_KEY}"
+
+🔍 How to Interpret the Results
+
+    HTTP/1.1 200 OK
+
+        If you see 200 OK and a JSON body that begins with { "data": [ … ] }, then the endpoint is correct and your key truly has historical access. You can copy that URL/pattern into your code.
+
+    HTTP/1.1 400 Bad Request
+
+        If you still get a 400, note the exact response body JSON. A typical response looks like:
+
+        {
+          "status": {
+            "success": false,
+            "code": 400,
+            "message": "Bad Request Exception"
+          }
+        }
+
+        In that case, your key either:
+
+            Isn’t actually enabled for hist_price, or
+
+            You have a tiny typo (path, slug, or parameter).
+
+3. Confirm (and Re-Enable) “Historical Price” on Your CryptoRank API Key
+
+Even though you’re on Basic, CryptoRank often requires you to explicitly toggle on “Historical Price” for each key. Follow these steps in the CryptoRank Dashboard:
+
+    Go to https://cryptorank.io and sign in.
+
+    Click your avatar → API Dashboard.
+
+    Under “API Keys”, locate the key you’re using.
+
+    Find the column or section that says “Permissions” or “Endpoints”. You should see a toggle/switch for “Historical Price (hist_price)”.
+
+        If that toggle is OFF (greyed-out), turn it ON.
+
+        If it’s already ON, hover or click “i” (info) to verify: it should say “Basic plan: historical access enabled.”
+
+    If you do not see “Historical Price” at all, your key is probably still in “Sandbox” mode (which doesn’t include historical). In that case, regenerate a new key on Basic or contact support.
+
+    Once you confirm “Historical Price” is ON, copy the new key exactly (no extra spaces).
+
+    In your Replit workspace, open Secrets and paste that new key into CRYPTORANK_API_KEY, replacing any old value.
+
+    Restart your Replit container (e.g. run kill 1), so your code picks up the newly enabled key.
+
+4. Update Your Service Code to Match the Verified URL
+
+Assuming step 2’s curl returns 200 (with slug “solana”), make sure your code matches exactly that pattern. Here’s a minimal example of the updated service:
+
+// services/cryptorank.js
+import axios from "axios";
+
+const CR_API_KEY = process.env.CRYPTORANK_API_KEY;
+if (!CR_API_KEY) {
+  throw new Error("CRYPTORANK_API_KEY is undefined—set it in Replit Secrets");
+}
+
+/**
+ * Fetch Solana historical price data.
+ * Basic plan supports:
+ *   • “5m” (5-minute candles, up to 30 days)
+ *   • “1d” (daily candles)
+ */
+export async function fetchSolanaHistorical(interval = "1d") {
+  const allowed = ["5m", "1d"];
+  if (!allowed.includes(interval)) {
+    throw new Error(
+      `Invalid interval "${interval}". Must be one of: ${allowed.join(", ")}`
+    );
+  }
+
+  // Use EXACT slug “solana” (not “sol” or numeric ID)
+  const url = "https://api.cryptorank.io/v2/hist_price/solana";
+  const params = { api_key: CR_API_KEY, interval };
+
+  try {
+    const response = await axios.get(url, { params });
+    return response.data.data; // array of {date, open, high, low, close, volume}
+  } catch (err) {
+    console.error(
+      "CryptoRank historical fetch failed:",
+      err.response?.data || err.message
+    );
+    throw err;
+  }
+}
+
+And your Express route should enforce exactly those two intervals:
+
+// server/routes/cryptorankRoutes.ts
+import express from "express";
+import { fetchSolanaHistorical } from "../services/cryptorank.js";
+
+const router = express.Router();
+
+router.get("/historical", async (req, res) => {
+  const interval = String(req.query.interval || "1d");
+  const allowed = ["5m", "1d"];
+  if (!allowed.includes(interval)) {
+    return res.status(400).json({
+      success: false,
+      error: `Invalid interval "${interval}". Must be one of: ${allowed.join(
+        ", "
+      )}`,
+    });
+  }
+
+  try {
+    const data = await fetchSolanaHistorical(interval);
+    return res.json({ success: true, data });
+  } catch (err) {
+    const errorMsg = err.response?.data
+      ? JSON.stringify(err.response.data)
+      : err.message;
+    return res.status(400).json({ success: false, error: errorMsg });
+  }
+});
+
+export default router;
+
+After saving those changes, restart the server and then test using curl again:
+
+curl -i "http://localhost:5000/api/cryptorank/historical?interval=5m"
+curl -i "http://localhost:5000/api/cryptorank/historical?interval=1d"
+
+If you now see HTTP 200 OK with a "data":[…] array, you’ve successfully fixed the 400 error.
+5. If You Still See HTTP 400
+
+    Your key still doesn’t have “Historical Price” enabled. Go back to step 3 and double‐check the toggle in CryptoRank’s Dashboard.
+
+    Copy/Paste Error: Make sure there are no hidden spaces in CRYPTORANK_API_KEY.
+
+    Verify Slug Exactly: It must be solana (all lowercase). If you literally see “Solana” or “SOL” anywhere, that will 400.
+
+    IP/Region Restrictions: If CryptoRank has IP‐based restrictions, they may be blocking Replit’s IP. Ask CryptoRank support to whitelist the Replit network or remove IP restrictions for your key.
+
+    Contact CryptoRank Support: If you’ve confirmed the toggle is on and the URL is exactly correct, yet you still get 400, open a ticket at support@cryptorank.io and tell them:
+
+        “I’m on Basic plan. My key (first 8 chars: XXXXXX) is shown as Basic with Hist_Price enabled, but calling GET /v2/hist_price/solana?interval=5m&api_key=… still returns 400. Can you verify my key’s status?”
+
+Once CryptoRank confirms your key truly has hist_price permission, you will see a 200 response and can proceed.
+TL;DR
+
+    Enable “Historical Price” (hist_price) on your CryptoRank key (Basic plan) via Dashboard.
+
+    Copy that key, paste into CRYPTORANK_API_KEY, restart Replit.
+
+    Call exactly
+
+    GET https://api.cryptorank.io/v2/hist_price/solana?interval=5m&api_key=<KEY>
+    GET https://api.cryptorank.io/v2/hist_price/solana?interval=1d&api_key=<KEY>
+
+    If it still 400’s, contact CryptoRank support to verify your key’s permission.
+
+Once those steps are done, your historical endpoints will work as intended.
