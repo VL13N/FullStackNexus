@@ -473,4 +473,4 @@ class DataNormalizer {
 
 // Export singleton instance
 const normalizer = new DataNormalizer();
-module.exports = normalizer;
+export default normalizer;

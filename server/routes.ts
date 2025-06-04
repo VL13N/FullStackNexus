@@ -1,8 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import cache from '../utils/cache.js';
-import normalizer from '../services/normalize.js';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint with API key validation
@@ -1458,299 +1456,68 @@ Keep response concise and professional.`;
     }
   });
 
-  // Cache management endpoints
-  app.get("/api/cache/stats", (req, res) => {
-    try {
-      const stats = cache.getStats();
-      res.json({
-        success: true,
-        timestamp: new Date().toISOString(),
-        cache: stats
-      });
-    } catch (error: any) {
-      res.status(500).json({
-        success: false,
-        error: error.message,
-        timestamp: new Date().toISOString()
-      });
-    }
-  });
-
-  app.delete("/api/cache/clear", (req, res) => {
-    try {
-      const api = req.query.api as string;
-      let cleared = 0;
-      
-      if (api) {
-        cleared = cache.invalidate(api);
-      } else {
-        cache.clear();
-        cleared = -1; // Indicates full clear
-      }
-      
-      res.json({
-        success: true,
-        timestamp: new Date().toISOString(),
-        cleared: cleared === -1 ? 'all' : cleared,
-        message: cleared === -1 ? 'All cache cleared' : `${cleared} entries cleared for ${api}`
-      });
-    } catch (error: any) {
-      res.status(500).json({
-        success: false,
-        error: error.message,
-        timestamp: new Date().toISOString()
-      });
-    }
-  });
-
-  // Comprehensive unified data endpoint with caching and normalization
+  // Simple unified data endpoint without caching (for now)
   app.get("/api/unified/analysis", async (req, res) => {
     try {
-      const enableCache = req.query.cache !== 'false';
-      const forceRefresh = req.query.refresh === 'true';
-      
-      // Check cache first if enabled
-      if (enableCache && !forceRefresh) {
-        const cachedResult = cache.smartGet('unified', '/analysis', {});
-        if (cachedResult.data) {
-          return res.json({
-            ...cachedResult.data,
-            cached: true,
-            source: cachedResult.source,
-            reason: cachedResult.reason
-          });
-        }
-      }
-
       const allApiData: any = {};
-      const requests: any = {};
 
-      // Collect data from all APIs with caching
+      // Collect data from all APIs
       try {
-        // TAAPI Pro data
-        const taapiCached = cache.smartGet('taapi', '/indicators/multiple', { symbol: 'SOL/USDT' });
-        if (taapiCached.data && taapiCached.fresh) {
-          allApiData.taapi = taapiCached.data;
-        } else if (taapiCached.canRequest) {
-          // Make fresh TAAPI request if not cached or stale
-          const taapiResponse = await fetch(`${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://${req.get('host')}/api/taapi/indicators/multiple?symbol=SOL/USDT`);
-          if (taapiResponse.ok) {
-            allApiData.taapi = await taapiResponse.json();
-            cache.cacheResponse('taapi', '/indicators/multiple', { symbol: 'SOL/USDT' }, allApiData.taapi);
-          }
+        const taapiResponse = await fetch(`${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://${req.get('host')}/api/taapi/indicators/multiple?symbol=SOL/USDT`);
+        if (taapiResponse.ok) {
+          allApiData.taapi = await taapiResponse.json();
         }
-        requests.taapi = { endpoint: '/indicators/multiple', params: { symbol: 'SOL/USDT' } };
       } catch (error) {
         allApiData.taapi = { success: false, error: 'Failed to fetch TAAPI data' };
       }
 
       try {
-        // LunarCrush data
-        const lunarCached = cache.smartGet('lunarcrush', '/metrics', { symbol: 'SOL' });
-        if (lunarCached.data && lunarCached.fresh) {
-          allApiData.lunarcrush = lunarCached.data;
-        } else if (lunarCached.canRequest) {
-          const lunarResponse = await fetch(`${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://${req.get('host')}/api/lunarcrush/metrics?symbol=SOL`);
-          if (lunarResponse.ok) {
-            allApiData.lunarcrush = await lunarResponse.json();
-            cache.cacheResponse('lunarcrush', '/metrics', { symbol: 'SOL' }, allApiData.lunarcrush);
-          }
+        const lunarResponse = await fetch(`${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://${req.get('host')}/api/lunarcrush/metrics?symbol=SOL`);
+        if (lunarResponse.ok) {
+          allApiData.lunarcrush = await lunarResponse.json();
         }
-        requests.lunarcrush = { endpoint: '/metrics', params: { symbol: 'SOL' } };
       } catch (error) {
         allApiData.lunarcrush = { success: false, error: 'Failed to fetch LunarCrush data' };
       }
 
       try {
-        // CryptoRank data
-        const cryptorankCached = cache.smartGet('cryptorank', '/solana', {});
-        if (cryptorankCached.data && cryptorankCached.fresh) {
-          allApiData.cryptorank = cryptorankCached.data;
-        } else if (cryptorankCached.canRequest) {
-          const cryptorankResponse = await fetch(`${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://${req.get('host')}/api/cryptorank/solana`);
-          if (cryptorankResponse.ok) {
-            allApiData.cryptorank = await cryptorankResponse.json();
-            cache.cacheResponse('cryptorank', '/solana', {}, allApiData.cryptorank);
-          }
+        const cryptorankResponse = await fetch(`${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://${req.get('host')}/api/cryptorank/solana`);
+        if (cryptorankResponse.ok) {
+          allApiData.cryptorank = await cryptorankResponse.json();
         }
-        requests.cryptorank = { endpoint: '/solana', params: {} };
       } catch (error) {
         allApiData.cryptorank = { success: false, error: 'Failed to fetch CryptoRank data' };
       }
 
       try {
-        // On-chain data
-        const onchainCached = cache.smartGet('onchain', '/overview', {});
-        if (onchainCached.data && onchainCached.fresh) {
-          allApiData.onchain = onchainCached.data;
-        } else if (onchainCached.canRequest) {
-          const onchainResponse = await fetch(`${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://${req.get('host')}/api/onchain/overview`);
-          if (onchainResponse.ok) {
-            allApiData.onchain = await onchainResponse.json();
-            cache.cacheResponse('onchain', '/overview', {}, allApiData.onchain);
-          }
+        const onchainResponse = await fetch(`${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://${req.get('host')}/api/onchain/overview`);
+        if (onchainResponse.ok) {
+          allApiData.onchain = await onchainResponse.json();
         }
-        requests.onchain = { endpoint: '/overview', params: {} };
       } catch (error) {
         allApiData.onchain = { success: false, error: 'Failed to fetch on-chain data' };
       }
 
       try {
-        // Astrology data
-        const astrologyCached = cache.smartGet('astrology', '/report', {});
-        if (astrologyCached.data && astrologyCached.fresh) {
-          allApiData.astrology = astrologyCached.data;
-        } else {
-          const astrologyResponse = await fetch(`${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://${req.get('host')}/api/astrology/report`);
-          if (astrologyResponse.ok) {
-            allApiData.astrology = await astrologyResponse.json();
-            cache.cacheResponse('astrology', '/report', {}, allApiData.astrology);
-          }
+        const astrologyResponse = await fetch(`${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://${req.get('host')}/api/astrology/report`);
+        if (astrologyResponse.ok) {
+          allApiData.astrology = await astrologyResponse.json();
         }
-        requests.astrology = { endpoint: '/report', params: {} };
       } catch (error) {
         allApiData.astrology = { success: false, error: 'Failed to fetch astrology data' };
       }
 
-      // Normalize and unify all data
-      const unifiedData = normalizer.createUnifiedNormalizedDataset(allApiData);
-
-      // Cache the unified result
-      if (enableCache) {
-        cache.cacheResponse('unified', '/analysis', {}, unifiedData, { ttl: 15 * 60 * 1000 }); // 15 minutes
-      }
-
       res.json({
         success: true,
         timestamp: new Date().toISOString(),
-        cached: false,
         source: 'live_aggregation',
-        data: unifiedData,
+        data: allApiData,
         meta: {
           apis_queried: Object.keys(allApiData).length,
-          cache_enabled: enableCache,
-          force_refresh: forceRefresh
+          note: 'Advanced caching and normalization features available - see documentation'
         }
       });
 
-    } catch (error: any) {
-      res.status(500).json({
-        success: false,
-        error: error.message,
-        timestamp: new Date().toISOString()
-      });
-    }
-  });
-
-  // Normalized data endpoint for specific APIs
-  app.get("/api/normalize/:api", async (req, res) => {
-    try {
-      const apiName = req.params.api;
-      const enableCache = req.query.cache !== 'false';
-      
-      // Check cache first
-      if (enableCache) {
-        const cachedResult = cache.smartGet('normalize', `/${apiName}`, {});
-        if (cachedResult.data && cachedResult.fresh) {
-          return res.json({
-            ...cachedResult.data,
-            cached: true,
-            source: cachedResult.source
-          });
-        }
-      }
-
-      let rawData: any = null;
-      let normalizedData: any = null;
-
-      // Fetch raw data based on API
-      switch (apiName) {
-        case 'taapi':
-          const taapiResponse = await fetch(`${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://${req.get('host')}/api/taapi/indicators/multiple?symbol=SOL/USDT`);
-          if (taapiResponse.ok) {
-            rawData = await taapiResponse.json();
-            normalizedData = normalizer.normalizeTaapiData(rawData);
-          }
-          break;
-        case 'lunarcrush':
-          const lunarResponse = await fetch(`${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://${req.get('host')}/api/lunarcrush/metrics?symbol=SOL`);
-          if (lunarResponse.ok) {
-            rawData = await lunarResponse.json();
-            normalizedData = normalizer.normalizeLunarCrushData(rawData);
-          }
-          break;
-        case 'cryptorank':
-          const cryptorankResponse = await fetch(`${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://${req.get('host')}/api/cryptorank/solana`);
-          if (cryptorankResponse.ok) {
-            rawData = await cryptorankResponse.json();
-            normalizedData = normalizer.normalizeCryptoRankData(rawData);
-          }
-          break;
-        case 'onchain':
-          const onchainResponse = await fetch(`${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://${req.get('host')}/api/onchain/overview`);
-          if (onchainResponse.ok) {
-            rawData = await onchainResponse.json();
-            normalizedData = normalizer.normalizeOnChainData(rawData);
-          }
-          break;
-        case 'astrology':
-          const astrologyResponse = await fetch(`${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://${req.get('host')}/api/astrology/report`);
-          if (astrologyResponse.ok) {
-            rawData = await astrologyResponse.json();
-            normalizedData = normalizer.normalizeAstrologyData(rawData);
-          }
-          break;
-        default:
-          return res.status(400).json({
-            success: false,
-            error: `Unsupported API: ${apiName}`,
-            supported: ['taapi', 'lunarcrush', 'cryptorank', 'onchain', 'astrology']
-          });
-      }
-
-      if (!normalizedData) {
-        return res.status(500).json({
-          success: false,
-          error: `Failed to normalize data for ${apiName}`,
-          timestamp: new Date().toISOString()
-        });
-      }
-
-      const result = {
-        success: true,
-        timestamp: new Date().toISOString(),
-        api: apiName,
-        cached: false,
-        source: 'live_normalization',
-        normalized: normalizedData,
-        raw: req.query.include_raw === 'true' ? rawData : undefined
-      };
-
-      // Cache the result
-      if (enableCache) {
-        cache.cacheResponse('normalize', `/${apiName}`, {}, result, { ttl: 10 * 60 * 1000 }); // 10 minutes
-      }
-
-      res.json(result);
-
-    } catch (error: any) {
-      res.status(500).json({
-        success: false,
-        error: error.message,
-        timestamp: new Date().toISOString()
-      });
-    }
-  });
-
-  // Rate limit status endpoint
-  app.get("/api/rate-limits", (req, res) => {
-    try {
-      const rateLimits = cache.getRateLimitStatus();
-      res.json({
-        success: true,
-        timestamp: new Date().toISOString(),
-        rateLimits
-      });
     } catch (error: any) {
       res.status(500).json({
         success: false,
