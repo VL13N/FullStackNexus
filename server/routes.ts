@@ -24,10 +24,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // LunarCrush API v4 integration - Updated endpoint
+  // LunarCrush API v4 test endpoint
+  app.get("/api/lunarcrush/test", async (req, res) => {
+    try {
+      if (!process.env.LUNARCRUSH_API_KEY) {
+        return res.status(503).json({
+          success: false,
+          error: "LunarCrush API key not configured. Please set LUNARCRUSH_API_KEY environment variable.",
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Test with a simple public endpoint
+      const url = 'https://lunarcrush.com/api4/public/coins/sol/v1';
+      console.log('LunarCrush API v4 Test URL:', url);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${process.env.LUNARCRUSH_API_KEY}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+
+      console.log('LunarCrush Test Response Status:', response.status, response.statusText);
+      
+      const responseText = await response.text();
+      console.log('LunarCrush Test Response Body:', responseText);
+
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        throw new Error(`Invalid JSON response: ${responseText}`);
+      }
+
+      res.json({
+        success: response.ok,
+        status: response.status,
+        statusText: response.statusText,
+        authenticated: response.status !== 401 && response.status !== 403,
+        data: response.ok ? data : null,
+        error: !response.ok ? data.error || responseText : null,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      console.error('LunarCrush API Test Error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // LunarCrush API v4 integration - Updated endpoint with proper typing
   app.get("/api/lunarcrush/metrics", async (req, res) => {
     try {
-      const { symbol = 'sol' } = req.query;
+      const symbol = typeof req.query.symbol === 'string' ? req.query.symbol : 'sol';
       
       if (!process.env.LUNARCRUSH_API_KEY) {
         return res.status(503).json({
@@ -37,7 +92,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const url = `https://lunarcrush.com/api4/public/coins/${symbol}/v1`;
+      const url = `https://lunarcrush.com/api4/public/coins/${symbol.toLowerCase()}/v1`;
       console.log('LunarCrush API v4 Request URL:', url);
 
       const response = await fetch(url, {
@@ -49,12 +104,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('LunarCrush API Response Status:', response.status, response.statusText);
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('LunarCrush API Error Response:', errorText);
+        throw new Error(`API Error ${response.status}: ${errorText || response.statusText}`);
+      }
+
       const data = await response.json();
       console.log('LunarCrush API Response Data:', JSON.stringify(data, null, 2));
-
-      if (!response.ok) {
-        throw new Error(`API Error ${response.status}: ${data.error || response.statusText}`);
-      }
 
       if (data.error) {
         throw new Error(`LunarCrush API Error: ${data.error}`);
