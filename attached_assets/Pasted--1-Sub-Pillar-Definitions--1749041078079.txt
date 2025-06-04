@@ -1,0 +1,651 @@
+
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+𝗣𝗵𝗮𝘀𝗲 1 – Sub‐Pillar Definitions
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+1. Create `/services/pillars.js`.  
+2. Export four objects grouping each metric into sub‐pillars:
+
+   • `technicalMetrics` with keys:
+     – `shortTermTrends`: ['ema8', 'ema21', 'sma50', 'sma200']  
+     – `momentumOscillators`: ['rsi_1h', 'rsi_4h', 'macd_1h', 'macd_4h']  
+     – `volatilityMeasures`: ['bollingerWidth_1h', 'atr_1h', 'vwapSpread']  
+     – `orderBookLiquidity`: ['bookDepthImbalance', 'dexCexVolumeRatio']  
+
+   • `socialMetrics` with keys:
+     – `engagement`: ['socialVolume', 'tweetCount', 'telegramPostVolume']  
+     – `sentiment`: ['lunarcrushSentiment', 'twitterPolarity']  
+     – `influence`: ['galaxyScore', 'whaleTxCount']  
+     – `newsFlow`: ['lunarcrushNewsScore', 'cryptoNewsHeadlineCount']  
+
+   • `fundamentalMetrics` with keys:
+     – `marketSupply`: ['marketCapUsd', 'circulatingSupplyPct', 'fullyDilutedValuation']  
+     – `onChainUsage`: ['tps', 'activeAddresses', 'stakingYield', 'defiTvl', 'whaleFlowUsd']  
+     – `devActivity`: ['githubCommitsCount', 'githubPullsCount']  
+     – `macroFlows`: ['btcDominance', 'totalCryptoMarketCapExStablecoins']  
+
+   • `astrologyMetrics` with keys:
+     – `lunar`: ['lunarPhasePercentile', 'lunarPerigeeApogeeDist']  
+     – `aspects`: ['saturnJupiterAspect', 'marsSunAspect', 'nodeSolanaLongitude']  
+     – `ingress`: ['solarIngressAries', 'solarIngressLibra', 'nodeIngressData']  
+     – `fixedStar`: ['siriusRisingIndicator', 'aldebaranConjunctionIndicator']  
+
+3. Above each object, add a brief comment explaining why those metrics belong to that subgroup.
+
+Once `/services/pillars.js` matches your `/api` fetcher field names exactly, mark “Phase 1 complete” and proceed.
+
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+𝗣𝗵𝗮𝘀𝗲 2 – Historical Data & Normalization
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+1. Create `/scripts/fetchHistorical.js` that:
+   a. Imports metric lists from `/services/pillars.js`.  
+   b. For each metric name, determines which API to call:
+      – **TAAPI Pro** for all technical metrics (EMA, RSI, MACD, Bollinger, ATR, VWAP, etc.)  
+      – **LunarCrush Discover** for `socialVolume`, `galaxyScore`, `sentiment`, AND `lunarcrushNewsScore` (use the `/v2?data=news` endpoint).  
+      – **CryptoRank** for `marketCapUsd`, `circulatingSupplyPct`, historical price, and 24h volume.  
+      – **On‐chain APIs** (Solana Tracker or Bitquery) for `tps`, `activeAddresses`, `defiTvl`, `whaleFlowUsd`.  
+      – **Swiss Ephemeris** (`sweph` package) for `lunarPhasePercentile` and `lunarPerigeeApogeeDist`.  
+   c. Loops hourly from now minus 365 days up to now: fetches rawValue for each metric at each timestamp.  
+   d. Inserts each record into Supabase table `historical_metrics(timestamp TIMESTAMP, metric_name TEXT, raw_value FLOAT)`.  
+   e. Implements at least a 200 ms delay between API calls to respect rate limits.  
+
+2. Create `/services/normalize.js`:
+   a. Write `fitNormalization(values: number[]): { min: number, max: number }` to compute min/max.  
+   b. Write `normalizeToScore(value: number, min: number, max: number): number` to map raw→0–100, clamping outside values.  
+   c. Write `async initializeNormalization()` that:
+      • Queries Supabase for each distinct `metric_name` in `historical_metrics`.  
+      • For each metric, fetches all its `raw_value`s from Supabase and calls `fitNormalization`.  
+      • Stores the resulting `{min,max}` in an in‐memory `normBounds` object:
+        ```js
+        const normBounds = {
+          rsi_1h: { min: X, max: Y },
+          macd_1h: { min: A, max: B },
+          … 
+        };
+        ```  
+   d. Write `async normalizeMetrics(raw: Record<string, number>): Promise<Record<string, number>>` that:
+      • For each key in `raw`, looks up `normBounds[key]`, calls `normalizeToScore(raw[key], min, max)`.  
+      • Returns an object where every metric is replaced by its normalized 0–100 score.  
+
+3. Run `initializeNormalization()` once (e.g., by calling it in a Node script) to populate `normBounds`. Spot‐check a few values to ensure correct ranges. When done, mark “Phase 2 complete.”
+
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+𝗣𝗵𝗮𝘀𝗲 3 – Feature Selection & Sub‐Pillar Scoring
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+1. Run a correlation analysis externally (Python notebook or Node script). For each hourly timestamp in `historical_metrics`:
+   a. Pivot Supabase data so you have rows like:
+      ```
+      timestamp | rsi_1h | macd_1h | ema8 | … | lunarPhasePercentile | lunarcrushNewsScore | … | price_usd
+      ```
+   b. Compute a new column `nextHourPct = (price_usd[t+1] – price_usd[t]) / price_usd[t] * 100`.  
+   c. Normalize all sub‐features using `normalizeToScore`.  
+   d. Compute Pearson correlation (or mutual information) between each normalized sub‐feature and `nextHourPct`.  
+   e. Select the top 2–4 sub‐features per sub‐pillar; drop the rest.  
+
+2. Create `/services/scorers.js` with sub‐pillar scoring functions for only the retained features:
+   a. Example for “momentumOscillators” if you kept only `rsi_1h` and `macd_1h`:
+   ```js
+   // /services/scorers.js
+   export function computeMomentumScore(norm) {
+     // Suppose correlation analysis yielded weights: RSI 0.7, MACD 0.3
+     return 0.7 * norm.rsi_1h + 0.3 * norm.macd_1h;
+   }
+
+b. Repeat for every sub‐pillar group you retained:
+– computeTrendScore(norm) (e.g. uses ema8, ema21),
+– computeVolatilityScore(norm),
+– computeLiquidityScore(norm),
+– computeEngagementScore(norm),
+– computeSentimentScore(norm),
+– computeInfluenceScore(norm),
+– computeNewsScore(norm) (including lunarcrushNewsScore),
+– computeMarketSupplyScore(norm),
+– computeOnChainUsageScore(norm),
+– computeDevActivityScore(norm),
+– computeMacroFlowsScore(norm),
+– computeLunarScore(norm),
+– computeAspectsScore(norm),
+– computeIngressScore(norm),
+– computeFixedStarScore(norm).
+
+c. Then export composite‐pillar functions combining those sub‐scores with intra‐pillar weights from your correlation analysis. Example:
+
+export function computeTechnicalScore(norm) {
+  const m = computeMomentumScore(norm);
+  const t = computeTrendScore(norm);
+  const v = computeVolatilityScore(norm);
+  const l = computeLiquidityScore(norm);
+  // Example intra‐technical weights: momentum 0.3, trend 0.25, volatility 0.25, liquidity 0.2
+  return 0.3 * m + 0.25 * t + 0.25 * v + 0.2 * l;
+}
+
+d. Similarly create computeSocialScore(norm), computeFundamentalScore(norm), computeAstrologyScore(norm).
+
+Once /services/scorers.js is in place and tested on a few normalized samples, mark “Phase 3 complete.”
+
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+𝗣𝗵𝗮𝘀𝗲 4 – Meta‐Model Training (Dynamic Weighting)
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+
+    If you prefer fixed pillar weights (40/25/20/15), skip to Phase 5 and in /services/prediction.js combine pillar scores accordingly. Otherwise:
+
+    Create /scripts/trainModel.js (Node + TensorFlow.js):
+    a. Import @tensorflow/tfjs-node and your scorer functions from /services/scorers.js.
+    b. Query Supabase to fetch all historical_metrics plus historical price for SOL. For each timestamp:
+
+        Build techScore = computeTechnicalScore(norm), socialScore, fundScore, astroScore.
+
+        Compute nextHourPct using price data.
+
+        Append [techScore, socialScore, fundScore, astroScore] to features array and [nextHourPct] to labels array.
+        c. Create a TensorFlow sequential model:
+
+const model = tf.sequential();
+model.add(tf.layers.dense({ units: 1, inputShape: [4] }));
+model.compile({ optimizer: tf.train.adam(0.01), loss: 'meanSquaredError' });
+
+d. Convert features and labels into tensors, then train:
+
+await model.fit(featureTensor, labelTensor, {
+  epochs: 100,
+  batchSize: 32,
+  validationSplit: 0.2,
+  callbacks: tf.callbacks.earlyStopping({ monitor: 'val_loss', patience: 5 })
+});
+
+e. Save model weights to /models/solPredictModel via:
+
+    await model.save('file://models/solPredictModel');
+    console.log('Model trained and saved.');
+
+    f. Log training/validation loss so you can track performance.
+
+    If doing classification (Bullish/Neutral/Bearish), adjust final layer to units: 3 with softmax, use 'categoricalCrossentropy', and encode labels as one‐hot.
+
+When /scripts/trainModel.js successfully trains and saves, mark “Phase 4 complete.”
+
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+𝗣𝗵𝗮𝘀𝗲 5 – Live Prediction & Scheduler
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+
+    Create /services/fetchAndNormalize.js:
+
+// /services/fetchAndNormalize.js
+import {
+  fetchTAAPIMetrics,
+  fetchLunarCrushMetrics,
+  fetchCryptoRankMetrics,
+  fetchOnChainMetrics,
+  fetchAstrologyMetrics
+} from '../api/';
+import { normalizeMetrics } from './normalize.js';
+
+export async function fetchRawMetrics() {
+  const [taapi, lunar, cr, onchain, astro] = await Promise.all([
+    fetchTAAPIMetrics(),
+    fetchLunarCrushMetrics(),
+    fetchCryptoRankMetrics(),
+    fetchOnChainMetrics(),
+    fetchAstrologyMetrics()
+  ]);
+  return { ...taapi, ...lunar, ...cr, ...onchain, ...astro };
+}
+
+export async function fetchAndNormalize() {
+  const raw = await fetchRawMetrics();
+  return await normalizeMetrics(raw);
+}
+
+Update /services/prediction.js:
+
+// /services/prediction.js
+import * as tf from '@tensorflow/tfjs-node';
+import { fetchAndNormalize } from './fetchAndNormalize.js';
+import {
+  computeTechnicalScore,
+  computeSocialScore,
+  computeFundamentalScore,
+  computeAstrologyScore
+} from './scorers.js';
+import { supabase } from '../supabaseClient.js';
+
+let model;
+(async () => {
+  model = await tf.loadLayersModel('file://models/solPredictModel/model.json');
+  console.log('Model loaded.');
+})();
+
+export async function runPredictionLive() {
+  const norm = await fetchAndNormalize();
+
+  const techScore = computeTechnicalScore(norm);
+  const socialScore = computeSocialScore(norm);
+  const fundScore = computeFundamentalScore(norm);
+  const astroScore = computeAstrologyScore(norm);
+
+  // For regression:
+  const input = tf.tensor2d([[techScore, socialScore, fundScore, astroScore]]);
+  const predTensor = model.predict(input);
+  const predictedPct = predTensor.dataSync()[0];
+
+  // Convert to category if needed:
+  let category = 'Neutral';
+  if (predictedPct >= 2) category = 'Bullish';
+  else if (predictedPct <= -2) category = 'Bearish';
+
+  await supabase.from('live_predictions').insert({
+    timestamp: new Date().toISOString(),
+    tech_score: techScore,
+    social_score: socialScore,
+    fund_score: fundScore,
+    astro_score: astroScore,
+    predicted_pct: predictedPct,
+    category
+  });
+
+  return { techScore, socialScore, fundScore, astroScore, predictedPct, category };
+}
+
+Create /services/scheduler.js using node-cron:
+
+    // /services/scheduler.js
+    import cron from 'node-cron';
+    import { runPredictionLive } from './prediction.js';
+    import { sendDiscordAlert } from '../api/alerts.js';
+
+    let lastCategory = null;
+
+    // Hourly prediction at minute 0
+    cron.schedule('0 * * * *', async () => {
+      try {
+        const { category, predictedPct } = await runPredictionLive();
+
+        // Alert if category flips
+        if (lastCategory && category !== lastCategory) {
+          await sendDiscordAlert(
+            `Prediction category changed: ${lastCategory} → ${category} (pct ${predictedPct.toFixed(2)}%)`
+          );
+        }
+        // Alert if large move predicted
+        if (Math.abs(predictedPct) > 5) {
+          await sendDiscordAlert(
+            `🚨 Large predicted move: ${predictedPct.toFixed(2)}% (${category})`
+          );
+        }
+        lastCategory = category;
+      } catch (err) {
+        console.error('Prediction error:', err);
+        await sendDiscordAlert(`Error in hourly prediction: ${err.message}`);
+      }
+    });
+
+    Manually test runPredictionLive() once to confirm it writes to live_predictions. When done, mark “Phase 5 complete.”
+
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+𝗣𝗵𝗮𝘀𝗲 6 – Dashboard UI & Visualization
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+
+    Create /components/PredictionWidget.jsx:
+
+// /components/PredictionWidget.jsx
+import { useEffect, useState } from 'react';
+import { supabase } from '../supabaseClient';
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer
+} from 'recharts';
+
+export default function PredictionWidget() {
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data: rows } = await supabase
+        .from('live_predictions')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(1);
+      if (rows && rows.length > 0) {
+        setData(rows[0]);
+      }
+    })();
+  }, []);
+
+  if (!data) return <div>Loading prediction…</div>;
+
+  const chartData = [
+    { name: 'Technical', value: data.tech_score },
+    { name: 'Social', value: data.social_score },
+    { name: 'Fundamental', value: data.fund_score },
+    { name: 'Astrology', value: data.astro_score }
+  ];
+
+  return (
+    <div className="bg-white shadow-md rounded p-4">
+      <div className="text-xl font-bold mb-2">
+        Predicted Move: 
+        <span className={data.predicted_pct >= 0 ? 'text-green-600' : 'text-red-600'}>
+          {data.predicted_pct.toFixed(2)}%
+        </span>
+      </div>
+      <div className="mb-2">
+        Category: 
+        <span className={data.category === 'Bullish' ? 'text-green-500' : data.category === 'Bearish' ? 'text-red-500' : 'text-gray-700'}>
+          {data.category}
+        </span>
+      </div>
+      <ResponsiveContainer width="100%" height={150}>
+        <BarChart data={chartData}>
+          <XAxis dataKey="name" />
+          <YAxis />
+          <Tooltip />
+          <Bar dataKey="value" fill="#4A90E2" />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+In /pages/index.jsx (Next.js) or App.jsx (CRA):
+
+    import PredictionWidget from '../components/PredictionWidget';
+
+    export default function Home() {
+      return (
+        <div className="p-4 md:p-8">
+          <h1 className="text-2xl font-bold mb-6">Solana Trading Dashboard</h1>
+          <div className="mb-8">
+            <PredictionWidget />
+          </div>
+          {/* Add other components (supercards, watchlist, astro sidebar) later */}
+        </div>
+      );
+    }
+
+    Style with Tailwind (light gray background for cards, navy/dark background for page). Verify mobile responsiveness (single column on small screens, two‐column grid on ≥md).
+
+When the widget appears correctly and is responsive, mark “Phase 6 complete.”
+
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+𝗣𝗵𝗮𝘀𝗲 7 – LunarCrush News + AI Integration
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+
+    Create /services/openaiIntegration.js:
+    a. Import OpenAI from openai and configure using process.env.OPENAI_API_KEY.
+    b. Export async functions:
+
+    // /services/openaiIntegration.js
+    import OpenAI from 'openai';
+    import { supabase } from '../supabaseClient';
+
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+    // 1. Fetch and score LunarCrush news headlines
+    export async function fetchAndScoreNews() {
+      // Call LunarCrush news endpoint: /v2?data=news&key=API_KEY&symbol=SOL
+      const response = await fetch(
+        `https://api.lunarcrush.com/v2?data=news&key=${process.env.LUNARCRUSH_API_KEY}&symbol=SOL`
+      );
+      const newsItems = (await response.json()).data; // array of { title, published_at, ... }
+
+      // Build a prompt with all titles
+      const headlines = newsItems.map((n, i) => `${i + 1}. ${n.title}`).join('\n');
+      const prompt = `
+
+Given these Solana news headlines:
+${headlines}
+
+For each headline, return a JSON array of objects:
+[
+{ "headline": "…", "score": -100 to +100, "justification": "…"},
+…
+]
+where "score" is a numeric sentiment‐impact score specifically for Solana.
+; const completion = await openai.chat.completions.create({ model: 'gpt-4', messages: [{ role: 'user', content: prompt }], temperature: 0.2 }); // Parse GPT response (JSON) into an array, then store each { headline, score, justification } in Supabase table news_scores(timestamp, headline, score, justification)`
+const newsScores = JSON.parse(completion.choices[0].message.content);
+for (const item of newsScores) {
+await supabase.from('news_scores').insert({
+timestamp: new Date().toISOString(),
+headline: item.headline,
+score: item.score,
+justification: item.justification
+});
+}
+return newsScores;
+}
+
+// 2. AI‐Generated Daily Market Update
+export async function generateDailyUpdate() {
+// Fetch yesterday’s (or last 24h) news_scores and latest pillar scores from Supabase
+const { data: newsScores } = await supabase
+.from('news_scores')
+.select('*')
+.order('timestamp', { ascending: false })
+.limit(20); // latest 20 news items
+
+ const { data: latestPredictionRows } = await supabase
+   .from('live_predictions')
+   .select('*')
+   .order('timestamp', { ascending: false })
+   .limit(1);
+ const latestPred = latestPredictionRows[0];
+
+ // Build prompt:
+ const headlinesSummary = newsScores
+   .map((n) => `• ${n.headline} (score: ${n.score})`)
+   .join('\n');
+ const prompt = `
+
+Using this data, write a concise daily market update for Solana (SOL):
+
+    Summarize the top news headlines and their sentiment scores:
+    ${headlinesSummary}
+
+    Include the latest live prediction:
+    • Technical Score: ${latestPred.tech_score}
+    • Social Score: ${latestPred.social_score}
+    • Fundamental Score: ${latestPred.fund_score}
+    • Astrology Score: ${latestPred.astro_score}
+    • Predicted Move: ${latestPred.predicted_pct.toFixed(2)}% (${latestPred.category})
+
+    Provide a clear “Bullish Factors” section (~2‐3 bullet points) and a “Bearish Factors” section (~2‐3 bullet points) based on the news and scores.
+
+    Conclude with a brief recommendation (“Monitor X, Y, Z.”).
+
+Return only the market update text.
+`;
+const completion = await openai.chat.completions.create({
+model: 'gpt-4',
+messages: [{ role: 'user', content: prompt }],
+temperature: 0.5
+});
+const updateText = completion.choices[0].message.content.trim();
+
+ // Store in Supabase table `daily_updates(date, content)`
+ await supabase.from('daily_updates').insert({
+   date: new Date().toISOString().split('T')[0],
+   content: updateText
+ });
+ return updateText;
+
+}
+
+// 3. Dynamic Feature Weighting Suggestion
+export async function suggestWeights() {
+// Fetch recent context: last 24h pillar scores and news scores
+const { data: recentPreds } = await supabase
+.from('live_predictions')
+.select('')
+.order('timestamp', { ascending: false })
+.limit(24);
+const { data: recentNews } = await supabase
+.from('news_scores')
+.select('')
+.order('timestamp', { ascending: false })
+.limit(20);
+
+ // Build prompt:
+ const predsSummary = recentPreds
+   .map((p) => `• ${p.timestamp}: tech ${p.tech_score}, social ${p.social_score}, fundamental ${p.fund_score}, astro ${p.astro_score}, predPct ${p.predicted_pct.toFixed(1)}`)
+   .join('\n');
+ const newsSummary = recentNews
+   .map((n) => `• ${n.headline} (score: ${n.score})`)
+   .join('\n');
+ const prompt = `
+
+Based on recent Solana market conditions:
+${predsSummary}
+
+Recent headlines:
+${newsSummary}
+
+Recommend updated weighting percentages (summing to 100) for these four pillars:
+• Technical
+• Social
+• Fundamental
+• Astrology
+
+Return JSON: { "Technical": x, "Social": y, "Fundamental": z, "Astrology": w } and a 1–2 sentence justification for each.
+`;
+const completion = await openai.chat.completions.create({
+model: 'gpt-4',
+messages: [{ role: 'user', content: prompt }],
+temperature: 0.3
+});
+const weightsResponse = JSON.parse(completion.choices[0].message.content);
+
+ // Store in Supabase table `dynamic_weights(date, technical, social, fundamental, astrology, justification)`
+ await supabase.from('dynamic_weights').insert({
+   date: new Date().toISOString().split('T')[0],
+   technical: weightsResponse.Technical,
+   social: weightsResponse.Social,
+   fundamental: weightsResponse.Fundamental,
+   astrology: weightsResponse.Astrology,
+   justification: JSON.stringify(weightsResponse.justification || '')
+ });
+ return weightsResponse;
+
+}
+
+
+2. In `/services/scheduler.js`, after the hourly prediction block, add a daily cron job at 08:00 UTC (or your local morning) to:
+```js
+// In /services/scheduler.js (continued)
+
+// Daily at 08:00 UTC
+cron.schedule('0 8 * * *', async () => {
+  try {
+    // 1. Fetch and score news
+    await import('./openaiIntegration.js').then((mod) => mod.fetchAndScoreNews());
+
+    // 2. Generate daily update
+    const update = await import('./openaiIntegration.js').then((mod) => mod.generateDailyUpdate());
+    console.log('Daily market update:', update);
+
+    // 3. Suggest new weights
+    const weights = await import('./openaiIntegration.js').then((mod) => mod.suggestWeights());
+    console.log('Suggested dynamic weights:', weights);
+  } catch (err) {
+    console.error('Daily AI integration error:', err);
+  }
+});
+
+    Create Supabase tables if not already existing:
+
+        news_scores(timestamp TIMESTAMP, headline TEXT, score FLOAT, justification TEXT)
+
+        daily_updates(date DATE, content TEXT)
+
+        dynamic_weights(date DATE, technical FLOAT, social FLOAT, fundamental FLOAT, astrology FLOAT, justification JSONB)
+
+When these functions run without errors and store data correctly, mark “Phase 7 complete.”
+
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+𝗣𝗵𝗮𝘀𝗲 8 – Retraining & Maintenance
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+
+    Create /scripts/retrainModel.js:
+
+// /scripts/retrainModel.js
+import { initializeNormalization } from '../services/normalize.js';
+import { supabase } from '../supabaseClient.js';
+import { trainModel } from './trainModel.js'; // if you exported training logic
+
+export async function retrain() {
+  // 1. Recompute normBounds
+  await initializeNormalization();
+
+  // 2. Run training logic (rebuild features, train, save model)
+  const oldPerf = (await supabase.from('model_performance').select('new_error').order('date', { ascending: false }).limit(1))[0]?.new_error;
+  const { newError } = await trainModel(); // trainModel should return { newError }
+  
+  // 3. Log old vs new errors
+  await supabase.from('model_performance').insert({
+    date: new Date().toISOString().split('T')[0],
+    old_error: oldPerf || 0,
+    new_error: newError
+  });
+
+  // 4. If newError > oldPerf × 1.1, send Discord alert
+  if (oldPerf && newError > oldPerf * 1.1) {
+    await import('../api/alerts.js').then((mod) =>
+      mod.sendDiscordAlert(
+        `Model performance degraded: old=${oldPerf.toFixed(4)}, new=${newError.toFixed(4)}`
+      )
+    );
+  }
+  console.log('Retraining complete. Old:', oldPerf, 'New:', newError);
+}
+retrain();
+
+Schedule weekly retraining in /services/scheduler.js:
+
+    // Every Monday at 00:00 UTC
+    cron.schedule('0 0 * * 1', async () => {
+      console.log('Starting weekly retraining...');
+      await import('../scripts/retrainModel.js').then((mod) => mod.retrain());
+    });
+
+    Ensure environment variables (in Replit’s Secrets) include:
+
+        TAAPI_API_KEY
+
+        LUNARCRUSH_API_KEY
+
+        CRYPTORANK_API_KEY
+
+        OPENAI_API_KEY
+
+        DISCORD_WEBHOOK_URL
+
+        SUPABASE_URL
+
+        SUPABASE_KEY
+
+    Enable Replit’s Always‐On so all cron jobs and watchers keep running.
+
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+𝗙𝗶𝗻𝗮𝗹 𝗖𝗵𝗲𝗰𝗸𝗹𝗶𝘀𝘁:
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+
+    Confirm all eight Phases have produced the files/modules above.
+
+    Test end‐to‐end:
+    • Manually call runPredictionLive() → check live_predictions.
+    • Observe hourly scheduler logs.
+    • Observe daily scheduler: check news_scores, daily_updates, dynamic_weights.
+    • Reload dashboard UI: ensure <PredictionWidget /> displays correctly.
+    • Simulate a category flip or a large predicted move to trigger Discord alerts.
+
+    Deploy on Replit (using built‐in hosting). Verify that:
+    • GET /health (you can add a simple endpoint returning 200) returns OK.
+    • The UI loads and shows the latest prediction.
+    • AI‐generated daily updates appear in Supabase and (optionally) are emailed or posted.
+
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+Notes:
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+• You may skip Phase 4 if you prefer fixed weights (40/25/20/15). In that case, in /services/prediction.js compute compositeScore = 0.4 * techScore + 0.25 * socialScore + 0.2 * fundScore + 0.15 * astroScore and categorize by thresholds.
+• Keep the UI minimal at first. Focus on data correctness. Once everything works, you can apply a retro palette, pixel fonts, or subtle glitch effects.
+• If any API changes or rate limits occur, implement caching (store API results for 15–30 minutes in memory or in Supabase) and throttle requests appropriately.
+• Always comment each file explaining its purpose and how it fits into the overall pipeline.
+
+Begin with Phase 1. After you finish /services/pillars.js, reply “Phase 1 complete.” Then immediately continue to Phase 2, and so on until all eight Phases are done. When finished, the repository should contain all files and database tables described above.
