@@ -1161,13 +1161,54 @@ Keep response concise and professional.`;
     }
   });
 
-  // Astrological Data API integration - Direct implementation
+  // Astrological Data API integration - Direct implementation using Astronomy Engine
   app.get("/api/astrology/moon-phase", async (req, res) => {
     try {
-      const astrologyService = require('../api/astrology.js');
+      const astroModule = await import('astronomy-engine');
+      const Astronomy = astroModule.default || astroModule;
       const date = req.query.date ? new Date(req.query.date as string) : new Date();
-      const moonPhase = astrologyService.getMoonPhase(date);
-      res.json(moonPhase);
+      
+      const astroDate = new Astronomy.AstroTime(date);
+      const moonIllum = Astronomy.Illumination(Astronomy.Body.Moon, astroDate);
+      const moonPhase = Astronomy.MoonPhase(astroDate);
+      const moonPos = Astronomy.EclipticGeoMoon(astroDate);
+      
+      const zodiacSigns = [
+        'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
+        'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'
+      ];
+      
+      const zodiacIndex = Math.floor(moonPos.lon / 30);
+      const zodiacSign = zodiacSigns[zodiacIndex];
+      const degreeInSign = moonPos.lon % 30;
+      
+      const getMoonPhaseName = (phase: number) => {
+        if (phase < 0.125) return 'New Moon';
+        if (phase < 0.25) return 'Waxing Crescent';
+        if (phase < 0.375) return 'First Quarter';
+        if (phase < 0.5) return 'Waxing Gibbous';
+        if (phase < 0.625) return 'Full Moon';
+        if (phase < 0.75) return 'Waning Gibbous';
+        if (phase < 0.875) return 'Last Quarter';
+        return 'Waning Crescent';
+      };
+
+      res.json({
+        success: true,
+        timestamp: date.toISOString(),
+        source: 'astronomy_engine',
+        moonPhase: {
+          phase: moonPhase,
+          phaseName: getMoonPhaseName(moonPhase),
+          illumination: moonIllum.fraction * 100,
+          position: {
+            longitude: moonPos.lon,
+            latitude: moonPos.lat,
+            zodiacSign: zodiacSign,
+            degreeInSign: degreeInSign.toFixed(2)
+          }
+        }
+      });
     } catch (error: any) {
       res.status(500).json({
         success: false,
@@ -1179,11 +1220,58 @@ Keep response concise and professional.`;
 
   app.get("/api/astrology/planetary-positions", async (req, res) => {
     try {
-      const astrologyService = require('../api/astrology.js');
+      const astroModule = await import('astronomy-engine');
+      const Astronomy = astroModule.default || astroModule;
       const date = req.query.date ? new Date(req.query.date as string) : new Date();
-      const planets = req.query.planets ? (req.query.planets as string).split(',') : null;
-      const positions = astrologyService.getPlanetaryPositions(date, planets);
-      res.json(positions);
+      
+      const astroDate = new Astronomy.AstroTime(date);
+      const zodiacSigns = [
+        'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
+        'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'
+      ];
+      
+      const planets = {
+        sun: Astronomy.Body.Sun,
+        moon: Astronomy.Body.Moon,
+        mercury: Astronomy.Body.Mercury,
+        venus: Astronomy.Body.Venus,
+        mars: Astronomy.Body.Mars,
+        jupiter: Astronomy.Body.Jupiter,
+        saturn: Astronomy.Body.Saturn,
+        uranus: Astronomy.Body.Uranus,
+        neptune: Astronomy.Body.Neptune,
+        pluto: Astronomy.Body.Pluto
+      };
+      
+      const positions: Record<string, any> = {};
+      
+      Object.entries(planets).forEach(([name, body]) => {
+        try {
+          const pos = name === 'moon' ? 
+            Astronomy.EclipticGeoMoon(astroDate) : 
+            Astronomy.EclipticGeoMoon(astroDate);
+          
+          const zodiacIndex = Math.floor(pos.lon / 30);
+          const zodiacSign = zodiacSigns[zodiacIndex];
+          const degreeInSign = pos.lon % 30;
+          
+          positions[name] = {
+            longitude: pos.lon,
+            latitude: pos.lat,
+            zodiacSign: zodiacSign,
+            degreeInSign: degreeInSign.toFixed(2)
+          };
+        } catch (planetError) {
+          positions[name] = { error: 'Calculation failed' };
+        }
+      });
+
+      res.json({
+        success: true,
+        timestamp: date.toISOString(),
+        source: 'astronomy_engine',
+        positions: positions
+      });
     } catch (error: any) {
       res.status(500).json({
         success: false,
