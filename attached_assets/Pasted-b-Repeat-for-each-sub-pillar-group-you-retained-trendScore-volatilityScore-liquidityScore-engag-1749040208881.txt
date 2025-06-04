@@ -1,0 +1,212 @@
+b. Repeat for each sub‐pillar group you retained (trendScore, volatilityScore, liquidityScore, engagementScore, sentimentScore, influenceScore, newsScore, marketSupplyScore, onChainUsageScore, devActivityScore, macroFlowsScore, lunarScore, aspectsScore, ingressScore, fixedStarScore).
+c. Then export composite functions:
+
+export function computeTechnicalScore(norm) {
+  const m = computeMomentumScore(norm);
+  const t = computeTrendScore(norm);
+  const v = computeVolatilityScore(norm);
+  const l = computeLiquidityScore(norm);
+  // Example intra‐technical weights (from Phase 3 analysis):
+  return 0.3 * m + 0.25 * t + 0.25 * v + 0.2 * l;
+}
+// Similarly, computeSocialScore(), computeFundamentalScore(), computeAstrologyScore()
+
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+𝗣𝗵𝗮𝘀𝗲 4 – Meta-Model Training (Dynamic Weighting)
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+
+    If you prefer fixed pillar weights, you can skip this Phase and hard-code 40/25/20/15. Otherwise:
+
+    Create /scripts/trainModel.js:
+    a. Import TensorFlow.js (@tensorflow/tfjs-node) and your scorer functions.
+    b. Query Supabase to fetch all historical_metrics and historical price for SOL (so you can compute nextHourPct).
+    c. For each hourly record:
+
+        Build an array [ techScore, socialScore, fundamentalScore, astrologyScore ] by feeding the normalized sub-features into your scorers.
+
+        Compute nextHourPct from raw price data.
+        d. Assemble two Arrays:
+        – features = [[techScore, socialScore, fundScore, astroScore], …]
+        – labels = [[nextHourPct], …]
+        e. Define a simple regression model:
+
+    const model = tf.sequential();
+    model.add(tf.layers.dense({ units: 1, inputShape: [4] }));
+    model.compile({ optimizer: tf.train.adam(0.01), loss: 'meanSquaredError' });
+
+    f. Train with model.fit(featureTensor, labelTensor, { epochs: 100, batchSize: 32, validationSplit: 0.2, callbacks: earlyStopping }).
+    g. Save the model to /models/solPredictModel via await model.save('file://models/solPredictModel').
+    h. After training, log final train/validation loss so you can track performance.
+
+    If instead you want classification (Bullish/Neutral/Bearish), change the last layer to units: 3 + 'softmax' activation, and use 'categoricalCrossentropy' loss. Encode labels as one-hot (e.g. nextHourPct > +2 → [1,0,0], between −2 and +2 → [0,1,0], < −2 → [0,0,1]).
+
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+𝗣𝗵𝗮𝘀𝗲 5 – Live Prediction & Scheduler
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+
+    Create /services/fetchAndNormalize.js that:
+    a. Imports all live fetchers from /api/taapi.js, /api/lunarcrush.js, /api/cryptorank.js, /api/onchain.js, /api/astrology.js.
+    b. In a function fetchRawMetrics(), call each fetcher in parallel (Promise.all) to get rawValues.
+    c. In fetchAndNormalize(), await fetchRawMetrics(), then call normalizeMetrics() from Phase 2 to transform raw → normalized.
+    d. Return the normalized object.
+
+    Update /services/prediction.js:
+    a. Immediately after the file loads, asynchronously model = await tf.loadLayersModel('file://models/solPredictModel/model.json').
+    b. Export an async runPredictionLive() that:
+
+        Calls const norm = await fetchAndNormalize().
+
+        Computes:
+        techScore = computeTechnicalScore(norm)
+        socialScore = computeSocialScore(norm)
+        fundScore = computeFundamentalScore(norm)
+        astroScore = computeAstrologyScore(norm)
+
+        If using regression:
+        – const input = tf.tensor2d([[techScore, socialScore, fundScore, astroScore]]);
+        – const predTensor = model.predict(input);
+        – const predictedPct = predTensor.dataSync()[0];
+        – Determine category by threshold rules (e.g. > +2 → Bullish, < −2 → Bearish, else Neutral).
+
+        If using classification:
+        – const logits = model.predict(input); logits.array() → choose index 0/1/2 → map to category.
+
+        Insert a row into Supabase table live_predictions with columns:
+        (timestamp, tech_score, social_score, fund_score, astro_score, predicted_pct (or classification), category).
+
+        Return an object { techScore, socialScore, fundScore, astroScore, predictedPct, category }.
+
+    Create /services/scheduler.js:
+    a. Import cron (install node-cron).
+    b. Schedule:
+
+    cron.schedule('0 * * * *', async () => {
+      try {
+        const result = await runPredictionLive();
+        console.log('Hourly prediction:', result);
+      } catch (err) {
+        console.error('Prediction error:', err);
+      }
+    });
+
+    c. If you want high reliability, use a health‐check endpoint in Express and enable Replit’s Always-On.
+
+    Test runPredictionLive() manually in a quick Node REPL or a one-off script to confirm it writes to live_predictions.
+
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+𝗣𝗵𝗮𝘀𝗲 6 – Dashboard UI & Visualization
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+
+    In /components/PredictionWidget.jsx, build a React component that on mount:
+    a. Calls Supabase to fetch the single latest row from live_predictions.
+    b. Uses Recharts to render a horizontal bar chart of the four sub-pillar scores:
+    • Data format:
+    [{ name: 'Technical', value: techScore }, { name: 'Social', value: socialScore }, …]
+    c. Displays predictedPct prominently at the top (green if > 0, red if < 0), with the category label underneath.
+    d. Use Tailwind classes to ensure a clean, responsive layout.
+
+    In /pages/index.jsx (or App.jsx for plain React):
+    a. Import and place <PredictionWidget /> where you want the widget to appear.
+    b. Beneath or above it, add any “supercards” for real-time TAAPI/LunarCrush/CryptoRank metrics, if you wish. Keep those minimal for now—your primary goal is to surface the live prediction.
+
+    Style:
+    a. Use a simple color palette (e.g. navy/dark background, white text, neon-green/red highlights).
+    b. Avoid complex “weirdcore” glitched backgrounds until the core works. Right now prioritize clarity:
+    – A white or light gray card with subtle shadow, with black text and a green/red accent for predictedPct.
+    c. Ensure on mobile it stacks in a single column, on desktop it can be two-column (flex-col md:flex-row).
+
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+𝗣𝗵𝗮𝘀𝗲 7 – Alerts & Monitoring
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+
+    Create /api/alerts.js:
+
+import fetch from 'node-fetch';
+
+const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK_URL;
+
+export async function sendDiscordAlert(message) {
+  if (!DISCORD_WEBHOOK) return;
+  await fetch(DISCORD_WEBHOOK, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content: message })
+  });
+}
+
+Modify /services/scheduler.js to trigger alerts:
+
+    import { runPredictionLive } from './prediction.js';
+    import { sendDiscordAlert } from '../api/alerts.js';
+
+    let lastCategory = null;
+
+    cron.schedule('0 * * * *', async () => {
+      try {
+        const { category, predictedPct } = await runPredictionLive();
+        // Alert when category flips
+        if (lastCategory && category !== lastCategory) {
+          await sendDiscordAlert(
+            `Prediction category changed: ${lastCategory} → ${category} (pct ${predictedPct.toFixed(2)}%)`
+          );
+        }
+        // Alert on large predicted moves
+        if (Math.abs(predictedPct) > 5) {
+          await sendDiscordAlert(
+            `🚨 Large move predicted: ${predictedPct.toFixed(2)}% (${category})`
+          );
+        }
+        lastCategory = category;
+      } catch (err) {
+        console.error('Hourly prediction error:', err);
+        await sendDiscordAlert(`Error in hourly prediction: ${err.message}`);
+      }
+    });
+
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+𝗣𝗵𝗮𝘀𝗲 8 – Retraining & Maintenance
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+
+    Create /scripts/retrainModel.js that:
+    a. Imports initializeNormalization() from /services/normalize.js and calls it to recompute normBounds from the latest historical_metrics.
+    b. Imports the training logic from /scripts/trainModel.js (or simply re-runs that script).
+    c. Logs old validation error vs. new validation error into a Supabase table model_performance(timestamp, oldError, newError).
+    d. Saves newly trained model weights under /models/solPredictModel.
+
+    Schedule weekly retraining in /services/scheduler.js:
+
+    // Every Monday 00:00 UTC
+    cron.schedule('0 0 * * 1', async () => {
+      console.log('Starting weekly retraining...');
+      await import('../scripts/retrainModel.js');
+      console.log('Retraining complete.');
+    });
+
+    Add monitoring:
+    – If new validation error > old validation error × 1.1 (10% degradation), send a Discord alert:
+    “Model performance degraded by > 10%—please inspect data or feature stability.”
+
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+𝗙𝗶𝗻𝗮𝗹 𝗧𝗼𝗱𝗼𝗿𝗶𝗮𝗹𝗦:
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+
+    Confirm environment variables are set in Replit (TAAPI_API_KEY, LUNARCRUSH_API_KEY, CRYPTORANK_API_KEY, OPENAI_API_KEY, DISCORD_WEBHOOK_URL, SUPABASE_URL, SUPABASE_KEY).
+
+    Enable Replit’s Always-On so /services/scheduler.js keeps running.
+
+    Test end-to-end:
+    – Manually call runPredictionLive() to verify live_predictions table is populated.
+    – Reload the dashboard UI; confirm <PredictionWidget /> shows the new row.
+    – Simulate a category flip or large move to test Discord alerts.
+
+    Deploy (Replit uses Vercel or built-in hosting for full-stack). Confirm health check endpoints (GET /health) return 200.
+
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+𝗡𝗼𝘁𝗲𝘀:
+––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+• If you prefer fixed pillar weights (40/25/20/15), skip Phase 4 and, in /services/prediction.js, compute compositeScore = 0.4*techScore + 0.25*socialScore + 0.2*fundScore + 0.15*astroScore, then categorize by thresholds.
+• Keep the UI minimal at first—focus on correct data flow. Once the core works, you can “prettify” with a retro palette, pixel fonts, or glitch effects.
+• At any point, if an API endpoint changes or a rate limit is hit, add caching (e.g., store raw API responses for 15–30 minutes in Replit’s low-latency memory or Supabase) and adjust request pacing.
+• Always include comments in each file explaining why it exists and how it’s used in the pipeline.
+
+Begin at Phase 1. After you finish writing /services/pillars.js, confirm “Phase 1 complete.” Then move immediately to Phase 2, and so on until all eight Phases are done. When you finish, the repository should have all files and tables as described.
