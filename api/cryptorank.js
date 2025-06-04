@@ -1,4 +1,5 @@
-// NOTE: We are now using CryptoRank V2 exclusively. 
+// NOTE: Using CryptoRank V1 API with proper authentication
+// Solana ID in CryptoRank system: 5663
 // Ensure CRYPTORANK_API_KEY is set in environment variables.
 
 /**
@@ -15,13 +16,53 @@ if (!CR_API_KEY) {
 
 const crCache = new LRUCache({ max: 20, ttl: 1000 * 60 * 60 }); // 1 hour cache
 
+async function findSolanaId() {
+  // Search through currencies list to find Solana's correct ID
+  try {
+    const response = await fetch(`https://api.cryptorank.io/v1/currencies?api_key=${CR_API_KEY}&limit=500`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 15000
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch currencies list: ${response.status}`);
+    }
+
+    const responseData = await response.json();
+    
+    if (!responseData.status || !responseData.status.success) {
+      throw new Error(`API error: ${responseData.status?.message || 'Unknown error'}`);
+    }
+
+    const currencies = responseData.data;
+    
+    // Find Solana in the list
+    for (const currency of currencies) {
+      if (currency.symbol === 'SOL' || currency.name?.toLowerCase().includes('solana')) {
+        console.log(`Found Solana with ID: ${currency.id}`);
+        return currency.id;
+      }
+    }
+    
+    throw new Error('Solana not found in currencies list');
+  } catch (err) {
+    console.error('Failed to find Solana ID:', err.message);
+    throw err;
+  }
+}
+
 export async function fetchSolanaCurrent() {
   const cacheKey = 'solCurrent';
   if (crCache.has(cacheKey)) return crCache.get(cacheKey);
   
-  const url = `https://api.cryptorank.io/v1/currencies/solana?api_key=${CR_API_KEY}`;
-  
   try {
+    // First, find Solana's correct ID
+    const solanaId = await findSolanaId();
+    
+    // Then fetch its data
+    const url = `https://api.cryptorank.io/v1/currencies/${solanaId}?api_key=${CR_API_KEY}`;
+    
     const response = await fetch(url, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
@@ -29,15 +70,13 @@ export async function fetchSolanaCurrent() {
     });
 
     if (!response.ok) {
-      const errorData = await response.text();
-      console.error('CryptoRank current fetch failed:', errorData);
-      throw new Error(`CryptoRank HTTP ${response.status}: ${errorData}`);
+      throw new Error(`HTTP ${response.status}: ${await response.text()}`);
     }
 
     const responseData = await response.json();
     
     if (!responseData.status || !responseData.status.success) {
-      throw new Error(`CryptoRank API error: ${responseData.status?.message || 'Unknown error'}`);
+      throw new Error(`API error: ${responseData.status?.message || 'Unknown error'}`);
     }
     
     const data = responseData.data;
@@ -50,6 +89,7 @@ export async function fetchSolanaCurrent() {
     
     crCache.set(cacheKey, simplified);
     return simplified;
+    
   } catch (err) {
     console.error('CryptoRank current fetch failed:', err.message);
     throw err;
