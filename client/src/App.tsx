@@ -11,7 +11,8 @@ import NotFound from "@/pages/not-found";
 import TaapiDemo from "../../components/TaapiDemo";
 import CryptoRankDemo from "../../components/CryptoRankDemo";
 import OnChainDemo from "../../components/OnChainDemo";
-import { Activity, BarChart3, Database, TrendingUp } from "lucide-react";
+import AstrologyDemo from "../../components/AstrologyDemo";
+import { Activity, BarChart3, Database, TrendingUp, Sparkles } from "lucide-react";
 
 function Dashboard() {
   return (
@@ -23,7 +24,7 @@ function Dashboard() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         <Link href="/taapi">
           <Card className="cursor-pointer hover:shadow-lg transition-shadow">
             <CardHeader>
@@ -75,6 +76,23 @@ function Dashboard() {
           </Card>
         </Link>
 
+        <Link href="/astrology">
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5" />
+                Astrology
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-3">
+                Authentic astronomical calculations and planetary positions
+              </p>
+              <Badge variant="default">Live</Badge>
+            </CardContent>
+          </Card>
+        </Link>
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -107,6 +125,10 @@ function Dashboard() {
             </div>
             <div className="flex items-center justify-between">
               <span>Solana On-Chain Metrics</span>
+              <Badge variant="default">Live</Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Astrological Data Service</span>
               <Badge variant="default">Live</Badge>
             </div>
             <div className="flex items-center justify-between">
@@ -151,6 +173,11 @@ function Navigation() {
                 On-Chain
               </Button>
             </Link>
+            <Link href="/astrology">
+              <Button variant={location === '/astrology' ? 'default' : 'ghost'} size="sm">
+                Astrology
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
@@ -167,6 +194,7 @@ function Router() {
         <Route path="/taapi" component={TaapiDemo} />
         <Route path="/cryptorank" component={CryptoRankDemo} />
         <Route path="/onchain" component={OnChainDemo} />
+        <Route path="/astrology" component={AstrologyDemo} />
         <Route component={NotFound} />
       </Switch>
     </>
