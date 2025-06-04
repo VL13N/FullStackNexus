@@ -4,10 +4,10 @@
  * Tests LunarCrush news fetching + OpenAI sentiment analysis + Supabase storage
  */
 
-import { fetchSolanaNews } from '../api/lunarcrush.js';
+import { fetchSolanaNews } from '../scripts/testLunarNews.js';
 import { analyzeNewsSentiment, generateDailyAnalysis, getSentimentTrends } from '../services/openaiIntegration.js';
 import { fetchSolanaCurrent } from '../api/cryptorank.js';
-import { getRSI, getMACD } from '../api/taapi.js';
+import { fetchTAIndicator } from '../api/taapi.js';
 
 async function testPhase7Integration() {
   console.log('=== Phase 7 Complete Integration Test ===\n');
@@ -53,14 +53,14 @@ async function testPhase7Integration() {
     
     const [solanaPrice, rsiData, macdData] = await Promise.allSettled([
       fetchSolanaCurrent(),
-      getRSI(),
-      getMACD()
+      fetchTAIndicator('rsi'),
+      fetchTAIndicator('macd')
     ]);
 
     const marketData = {
       technicalData: {
-        rsi: rsiData.status === 'fulfilled' ? rsiData.value?.data?.rsi : null,
-        macdHistogram: macdData.status === 'fulfilled' ? macdData.value?.data?.histogram : null
+        rsi: rsiData.status === 'fulfilled' ? rsiData.value : null,
+        macdHistogram: macdData.status === 'fulfilled' ? macdData.value : null
       },
       fundamentalData: {
         currentPrice: solanaPrice.status === 'fulfilled' ? solanaPrice.value?.data?.currentPrice?.usd : null,

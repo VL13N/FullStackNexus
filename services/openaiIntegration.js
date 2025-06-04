@@ -71,7 +71,15 @@ Respond in JSON format:
       max_tokens: 1500
     });
 
-    const analysis = JSON.parse(response.choices[0].message.content);
+    let responseContent = response.choices[0].message.content;
+    
+    // Extract JSON from response if wrapped in markdown or other text
+    const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      responseContent = jsonMatch[0];
+    }
+    
+    const analysis = JSON.parse(responseContent);
     
     // Store sentiment data in database
     for (let i = 0; i < articles.length; i++) {
