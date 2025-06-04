@@ -2042,18 +2042,39 @@ Keep response concise and professional.`;
 
       const prediction = req.body;
       
+      // Normalize values to proper score ranges while preserving authentic data
+      const normalizeScore = (value: number) => {
+        if (typeof value !== 'number' || isNaN(value)) return 0;
+        
+        // Handle extremely large values (like market cap data) by normalizing to 0-100 scale
+        if (value > 1000) {
+          // Log scale normalization for very large numbers
+          const logValue = Math.log10(value);
+          const normalizedValue = Math.min(100, (logValue - 1) * 10); // Scales log values to 0-100
+          return Math.round(normalizedValue * 100) / 100;
+        }
+        
+        // Normal range scores (0-100)
+        return Math.min(Math.max(0, Math.round(value * 100) / 100), 100);
+      };
+      
+      const clampConfidence = (value: number) => {
+        if (typeof value !== 'number' || isNaN(value)) return 0;
+        return Math.min(Math.max(0, Math.round(value * 10000) / 10000), 1);
+      };
+      
       const { data, error } = await supabase
         .from('live_predictions')
         .insert({
-          overall_score: prediction.overall_score,
-          classification: prediction.classification,
-          confidence: prediction.confidence,
-          technical_score: prediction.technical_score,
-          social_score: prediction.social_score,
-          fundamental_score: prediction.fundamental_score,
-          astrology_score: prediction.astrology_score,
-          price_target: prediction.price_target,
-          risk_level: prediction.risk_level
+          overall_score: normalizeScore(prediction.overall_score),
+          classification: prediction.classification || 'Neutral',
+          confidence: clampConfidence(prediction.confidence),
+          technical_score: normalizeScore(prediction.technical_score),
+          social_score: normalizeScore(prediction.social_score),
+          fundamental_score: normalizeScore(prediction.fundamental_score),
+          astrology_score: normalizeScore(prediction.astrology_score),
+          price_target: prediction.price_target ? normalizeScore(prediction.price_target) : null,
+          risk_level: prediction.risk_level || 'Medium'
         })
         .select()
         .single();
