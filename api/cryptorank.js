@@ -33,7 +33,7 @@ export async function fetchSolanaCurrent() {
     return cached;
   }
 
-  const url = `https://api.cryptorank.io/v2/currencies?ids=5426`;
+  const url = `https://api.cryptorank.io/v2/currencies/5426`;
 
   try {
     console.log('CryptoRank V2 Request: Solana current data');

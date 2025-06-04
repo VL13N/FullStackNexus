@@ -120,15 +120,11 @@ export async function fetchBulkIndicators(interval = "1h") {
       symbol: "SOL/USDT", 
       interval 
     },
-    indicators: [
-      { name: "rsi", params: { period: 14 } },
-      { name: "macd", params: { fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 } },
-      { name: "ema", params: { period: 20 } }
-    ]
+    indicators: "rsi,macd,ema"
   };
 
   try {
-    console.log(`TAAPI Bulk Request (${interval}):`, requestBody.indicators.map(i => i.name).join(', '));
+    console.log(`TAAPI Bulk Request (${interval}):`, requestBody.indicators);
     
     const response = await fetch('https://api.taapi.io/bulk', {
       method: 'POST',
