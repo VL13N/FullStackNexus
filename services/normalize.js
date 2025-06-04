@@ -21,21 +21,10 @@ export async function initializeNormalization() {
 }
 
 export function normalizeMetrics(raw) {
+  // If no normBounds defined, return raw values or a constant.
   const out = {};
   for (const [metric, value] of Object.entries(raw)) {
-    if (value === null || value === undefined) {
-      out[metric] = 50;
-      continue;
-    }
-
-    const bounds = global.normBounds?.[metric];
-    if (!bounds || bounds.max === bounds.min) {
-      out[metric] = 50;
-    } else {
-      const { min, max } = bounds;
-      const score = ((value - min) / (max - min)) * 100;
-      out[metric] = Math.max(0, Math.min(100, Math.round(score * 100) / 100));
-    }
+    out[metric] = value; // no scaling
   }
   return out;
 }
