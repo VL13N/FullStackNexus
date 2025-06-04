@@ -1,330 +1,229 @@
-const express = require('express');
+// NOTE: If you still receive 401 errors, check TAAPI dashboard -> Usage -> IP Access to whitelist Replit container's IP.
 
 /**
  * TAAPI Pro Technical Analysis Integration
- * Fetches real-time technical indicators for cryptocurrency trading
+ * Fetches real-time technical indicators for cryptocurrency trading using bulk endpoints and caching
  */
-class TaapiService {
-  constructor() {
-    this.baseUrl = 'https://api.taapi.io';
-    this.apiKey = process.env.TAAPI_API_KEY;
-    
-    if (!this.apiKey) {
-      console.warn('TAAPI_API_KEY not found in environment variables');
-    }
-  }
 
-  /**
-   * Validates API key availability
-   */
-  validateApiKey() {
-    if (!this.apiKey) {
-      throw new Error('TAAPI API key not configured. Please set TAAPI_API_KEY environment variable.');
-    }
-  }
+import LRU from "lru-cache";
 
-  /**
-   * Makes authenticated request to TAAPI endpoint
-   */
-  async makeRequest(indicator, params = {}) {
-    this.validateApiKey();
-    
-    const queryParams = new URLSearchParams({
-      secret: this.apiKey,
-      ...params
-    });
+const taapiCache = new LRU({ max: 50, ttl: 1000 * 60 * 15 }); // 15 min cache
 
-    const url = `${this.baseUrl}/${indicator}?${queryParams}`;
-    
-    try {
-      const response = await fetch(url);
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      return data;
-    } catch (error) {
-      console.error(`TAAPI ${indicator} request failed:`, error.message);
-      throw error;
-    }
-  }
-
-  /**
-   * Fetches RSI (Relative Strength Index) for Solana
-   * @param {string} exchange - Trading exchange (default: binance)
-   * @param {string} symbol - Trading pair (default: SOL/USDT)
-   * @param {string} interval - Time interval (default: 1h)
-   * @param {number} period - RSI period (default: 14)
-   */
-  async getRSI(exchange = 'binance', symbol = 'SOL/USDT', interval = '1h', period = 14) {
-    return this.makeRequest('rsi', {
-      exchange,
-      symbol,
-      interval,
-      period: period.toString()
-    });
-  }
-
-  /**
-   * Fetches MACD (Moving Average Convergence Divergence) for Solana
-   * @param {string} exchange - Trading exchange (default: binance)
-   * @param {string} symbol - Trading pair (default: SOL/USDT)
-   * @param {string} interval - Time interval (default: 1h)
-   * @param {number} fastPeriod - Fast EMA period (default: 12)
-   * @param {number} slowPeriod - Slow EMA period (default: 26)
-   * @param {number} signalPeriod - Signal line period (default: 9)
-   */
-  async getMACD(exchange = 'binance', symbol = 'SOL/USDT', interval = '1h', 
-                fastPeriod = 12, slowPeriod = 26, signalPeriod = 9) {
-    return this.makeRequest('macd', {
-      exchange,
-      symbol,
-      interval,
-      fast_period: fastPeriod.toString(),
-      slow_period: slowPeriod.toString(),
-      signal_period: signalPeriod.toString()
-    });
-  }
-
-  /**
-   * Fetches EMA (Exponential Moving Average) for Solana
-   * @param {string} exchange - Trading exchange (default: binance)
-   * @param {string} symbol - Trading pair (default: SOL/USDT)
-   * @param {string} interval - Time interval (default: 1h)
-   * @param {number} period - EMA period (default: 20)
-   */
-  async getEMA(exchange = 'binance', symbol = 'SOL/USDT', interval = '1h', period = 20) {
-    return this.makeRequest('ema', {
-      exchange,
-      symbol,
-      interval,
-      period: period.toString()
-    });
-  }
-
-  /**
-   * Fetches SMA (Simple Moving Average) for Solana
-   * @param {string} exchange - Trading exchange (default: binance)
-   * @param {string} symbol - Trading pair (default: SOL/USDT)
-   * @param {string} interval - Time interval (default: 1h)
-   * @param {number} period - SMA period (default: 20)
-   */
-  async getSMA(exchange = 'binance', symbol = 'SOL/USDT', interval = '1h', period = 20) {
-    return this.makeRequest('sma', {
-      exchange,
-      symbol,
-      interval,
-      period: period.toString()
-    });
-  }
-
-  /**
-   * Fetches Bollinger Bands for Solana
-   * @param {string} exchange - Trading exchange (default: binance)
-   * @param {string} symbol - Trading pair (default: SOL/USDT)
-   * @param {string} interval - Time interval (default: 1h)
-   * @param {number} period - Period for calculation (default: 20)
-   * @param {number} stdDev - Standard deviation multiplier (default: 2)
-   */
-  async getBollingerBands(exchange = 'binance', symbol = 'SOL/USDT', interval = '1h', 
-                          period = 20, stdDev = 2) {
-    return this.makeRequest('bbands', {
-      exchange,
-      symbol,
-      interval,
-      period: period.toString(),
-      stddev: stdDev.toString()
-    });
-  }
-
-  /**
-   * Fetches Stochastic RSI for Solana
-   * @param {string} exchange - Trading exchange (default: binance)
-   * @param {string} symbol - Trading pair (default: SOL/USDT)
-   * @param {string} interval - Time interval (default: 1h)
-   * @param {number} rsiPeriod - RSI period (default: 14)
-   * @param {number} stochPeriod - Stochastic period (default: 14)
-   * @param {number} kPeriod - K period (default: 3)
-   * @param {number} dPeriod - D period (default: 3)
-   */
-  async getStochasticRSI(exchange = 'binance', symbol = 'SOL/USDT', interval = '1h',
-                         rsiPeriod = 14, stochPeriod = 14, kPeriod = 3, dPeriod = 3) {
-    return this.makeRequest('stochrsi', {
-      exchange,
-      symbol,
-      interval,
-      rsi_period: rsiPeriod.toString(),
-      stoch_period: stochPeriod.toString(),
-      k_period: kPeriod.toString(),
-      d_period: dPeriod.toString()
-    });
-  }
-
-  /**
-   * Fetches Williams %R indicator for Solana
-   * @param {string} exchange - Trading exchange (default: binance)
-   * @param {string} symbol - Trading pair (default: SOL/USDT)
-   * @param {string} interval - Time interval (default: 1h)
-   * @param {number} period - Period for calculation (default: 14)
-   */
-  async getWilliamsR(exchange = 'binance', symbol = 'SOL/USDT', interval = '1h', period = 14) {
-    return this.makeRequest('willr', {
-      exchange,
-      symbol,
-      interval,
-      period: period.toString()
-    });
-  }
-
-  /**
-   * Fetches multiple indicators in a single request for efficiency
-   * @param {string} exchange - Trading exchange (default: binance)
-   * @param {string} symbol - Trading pair (default: SOL/USDT)
-   * @param {string} interval - Time interval (default: 1h)
-   * @param {Array} indicators - Array of indicator names to fetch
-   */
-  async getBulkIndicators(exchange = 'binance', symbol = 'SOL/USDT', interval = '1h', 
-                          indicators = ['rsi', 'macd', 'ema', 'sma']) {
-    this.validateApiKey();
-    
-    const indicatorParams = indicators.join(',');
-    const queryParams = new URLSearchParams({
-      secret: this.apiKey,
-      exchange,
-      symbol,
-      interval,
-      indicators: indicatorParams
-    });
-
-    const url = `${this.baseUrl}/bulk?${queryParams}`;
-    
-    try {
-      const response = await fetch(url);
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      return data;
-    } catch (error) {
-      console.error('TAAPI bulk request failed:', error.message);
-      throw error;
-    }
-  }
-
-  /**
-   * Comprehensive Solana technical analysis
-   * Fetches all major indicators in optimized bulk requests
-   * @param {string} exchange - Trading exchange (default: binance)
-   * @param {string} interval - Time interval (default: 1h)
-   */
-  async getSolanaAnalysis(exchange = 'binance', interval = '1h') {
-    const symbol = 'SOL/USDT';
-    
-    try {
-      // Fetch primary indicators in bulk
-      const primaryIndicators = await this.getBulkIndicators(
-        exchange, symbol, interval,
-        ['rsi', 'macd', 'ema', 'sma', 'bbands']
-      );
-
-      // Fetch additional indicators
-      const [stochRsi, williamsR] = await Promise.allSettled([
-        this.getStochasticRSI(exchange, symbol, interval),
-        this.getWilliamsR(exchange, symbol, interval)
-      ]);
-
-      return {
-        symbol,
-        exchange,
-        interval,
-        timestamp: new Date().toISOString(),
-        primary: primaryIndicators,
-        additional: {
-          stochRsi: stochRsi.status === 'fulfilled' ? stochRsi.value : null,
-          williamsR: williamsR.status === 'fulfilled' ? williamsR.value : null
-        },
-        errors: [
-          ...(stochRsi.status === 'rejected' ? [{ indicator: 'stochRsi', error: stochRsi.reason.message }] : []),
-          ...(williamsR.status === 'rejected' ? [{ indicator: 'williamsR', error: williamsR.reason.message }] : [])
-        ]
-      };
-    } catch (error) {
-      throw new Error(`Solana analysis failed: ${error.message}`);
-    }
-  }
-
-  /**
-   * Gets current price and volume data for Solana
-   * @param {string} exchange - Trading exchange (default: binance)
-   * @param {string} symbol - Trading pair (default: SOL/USDT)
-   * @param {string} interval - Time interval (default: 1h)
-   */
-  async getPriceData(exchange = 'binance', symbol = 'SOL/USDT', interval = '1h') {
-    return this.makeRequest('price', {
-      exchange,
-      symbol,
-      interval
-    });
-  }
-
-  /**
-   * Advanced analysis with custom parameters
-   * @param {Object} config - Configuration object with analysis parameters
-   */
-  async getCustomAnalysis(config = {}) {
-    const {
-      exchange = 'binance',
-      symbol = 'SOL/USDT',
-      interval = '1h',
-      rsiPeriod = 14,
-      emaPeriod = 20,
-      smaPeriod = 50,
-      macdFast = 12,
-      macdSlow = 26,
-      macdSignal = 9
-    } = config;
-
-    try {
-      const [rsi, ema, sma, macd] = await Promise.allSettled([
-        this.getRSI(exchange, symbol, interval, rsiPeriod),
-        this.getEMA(exchange, symbol, interval, emaPeriod),
-        this.getSMA(exchange, symbol, interval, smaPeriod),
-        this.getMACD(exchange, symbol, interval, macdFast, macdSlow, macdSignal)
-      ]);
-
-      return {
-        symbol,
-        exchange,
-        interval,
-        timestamp: new Date().toISOString(),
-        config,
-        indicators: {
-          rsi: rsi.status === 'fulfilled' ? rsi.value : null,
-          ema: ema.status === 'fulfilled' ? ema.value : null,
-          sma: sma.status === 'fulfilled' ? sma.value : null,
-          macd: macd.status === 'fulfilled' ? macd.value : null
-        },
-        errors: [
-          ...(rsi.status === 'rejected' ? [{ indicator: 'rsi', error: rsi.reason.message }] : []),
-          ...(ema.status === 'rejected' ? [{ indicator: 'ema', error: ema.reason.message }] : []),
-          ...(sma.status === 'rejected' ? [{ indicator: 'sma', error: sma.reason.message }] : []),
-          ...(macd.status === 'rejected' ? [{ indicator: 'macd', error: macd.reason.message }] : [])
-        ]
-      };
-    } catch (error) {
-      throw new Error(`Custom analysis failed: ${error.message}`);
-    }
+/**
+ * Validates API key availability
+ */
+function validateApiKey() {
+  if (!process.env.TAAPI_API_KEY) {
+    throw new Error('TAAPI API key not found. Please set TAAPI_API_KEY environment variable in Secrets.');
   }
 }
 
-// Create singleton instance
-const taapiService = new TaapiService();
+/**
+ * Fetches a single technical indicator
+ * @param {string} indicatorName - Name of the indicator (rsi, macd, ema, etc.)
+ * @param {string} interval - Time interval (default: "1h")
+ * @returns {Promise<number>} The indicator value
+ */
+export async function fetchTAIndicator(indicatorName, interval = "1h") {
+  validateApiKey();
+  
+  const cacheKey = `${indicatorName}@${interval}`;
+  const cached = taapiCache.get(cacheKey);
+  if (cached !== undefined) {
+    console.log(`TAAPI Cache hit: ${cacheKey} = ${cached}`);
+    return cached;
+  }
 
-module.exports = {
-  TaapiService,
-  taapiService
-};
+  const params = new URLSearchParams({
+    secret: process.env.TAAPI_API_KEY,
+    exchange: "binance",
+    symbol: "SOL/USDT",
+    interval
+  });
+
+  const url = `https://api.taapi.io/${indicatorName}?${params}`;
+
+  try {
+    console.log(`TAAPI Request: ${indicatorName} (${interval})`);
+    
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      const errorData = await response.text();
+      
+      if (response.status === 401) {
+        console.error(`TAAPI Auth Error (${response.status}):`, errorData);
+        throw new Error(`TAAPI Authentication failed: ${errorData}. Check your Pro API key.`);
+      }
+      
+      if (response.status === 429) {
+        console.error(`TAAPI Rate Limit (${response.status}):`, errorData);
+        throw new Error(`TAAPI Rate limit exceeded: ${errorData}. Consider using bulk endpoint.`);
+      }
+      
+      throw new Error(`TAAPI HTTP ${response.status}: ${errorData}`);
+    }
+
+    const data = await response.json();
+    const value = data.value;
+    
+    if (typeof value === 'number') {
+      taapiCache.set(cacheKey, value);
+      console.log(`TAAPI Success: ${indicatorName} = ${value}`);
+      return value;
+    }
+    
+    throw new Error(`Invalid response format: expected number, got ${typeof value}`);
+    
+  } catch (error) {
+    console.error(`TAAPI ${indicatorName} request failed:`, error.message);
+    throw error;
+  }
+}
+
+/**
+ * Fetches multiple indicators in a single bulk request (more efficient)
+ * @param {string} interval - Time interval (default: "1h")
+ * @returns {Promise<{rsi: number, macdHistogram: number, ema200: number}>}
+ */
+export async function fetchBulkIndicators(interval = "1h") {
+  validateApiKey();
+  
+  const cacheKey = `bulk@${interval}`;
+  const cached = taapiCache.get(cacheKey);
+  if (cached !== undefined) {
+    console.log(`TAAPI Bulk cache hit: ${cacheKey}`);
+    return cached;
+  }
+
+  const requestBody = {
+    secret: process.env.TAAPI_API_KEY,
+    construct: { 
+      exchange: "binance", 
+      symbol: "SOL/USDT", 
+      interval 
+    },
+    indicators: [
+      { name: "rsi" },
+      { name: "macd" },
+      { name: "ema", params: { period: 200 } }
+    ]
+  };
+
+  try {
+    console.log(`TAAPI Bulk Request (${interval}):`, requestBody.indicators.map(i => i.name).join(', '));
+    
+    const response = await fetch('https://api.taapi.io/bulk', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.text();
+      
+      if (response.status === 401) {
+        console.error(`TAAPI Bulk Auth Error (${response.status}):`, errorData);
+        throw new Error(`TAAPI Bulk Authentication failed: ${errorData}. Check your Pro API key.`);
+      }
+      
+      if (response.status === 429) {
+        console.error(`TAAPI Bulk Rate Limit (${response.status}):`, errorData);
+        throw new Error(`TAAPI Bulk Rate limit exceeded: ${errorData}.`);
+      }
+      
+      throw new Error(`TAAPI Bulk HTTP ${response.status}: ${errorData}`);
+    }
+
+    const data = await response.json();
+    console.log('TAAPI Bulk Response:', data);
+    
+    // Extract values from bulk response
+    const result = {
+      rsi: data.data?.[0]?.result?.value || 0,
+      macdHistogram: data.data?.[1]?.result?.valueMACD || 0,
+      ema200: data.data?.[2]?.result?.value || 0
+    };
+    
+    // Validate we got numeric values
+    Object.entries(result).forEach(([key, value]) => {
+      if (typeof value !== 'number' || isNaN(value)) {
+        console.warn(`TAAPI Bulk: Invalid ${key} value:`, value);
+        result[key] = 0; // Fallback to 0 for invalid values
+      }
+    });
+    
+    taapiCache.set(cacheKey, result);
+    console.log(`TAAPI Bulk Success:`, result);
+    return result;
+    
+  } catch (error) {
+    console.error(`TAAPI Bulk request failed:`, error.message);
+    throw error;
+  }
+}
+
+// Legacy class for backward compatibility
+class TaapiService {
+  constructor() {
+    this.baseURL = 'https://api.taapi.io';
+    this.apiKey = process.env.TAAPI_API_KEY;
+  }
+
+  validateApiKey() {
+    validateApiKey();
+  }
+
+  async makeRequest(indicator, params = {}) {
+    return await fetchTAIndicator(indicator, params.interval || '1h');
+  }
+
+  async getRSI(exchange = 'binance', symbol = 'SOL/USDT', interval = '1h', period = 14) {
+    return await fetchTAIndicator('rsi', interval);
+  }
+
+  async getMACD(exchange = 'binance', symbol = 'SOL/USDT', interval = '1h') {
+    return await fetchTAIndicator('macd', interval);
+  }
+
+  async getEMA(exchange = 'binance', symbol = 'SOL/USDT', interval = '1h', period = 20) {
+    return await fetchTAIndicator('ema', interval);
+  }
+
+  async getSMA(exchange = 'binance', symbol = 'SOL/USDT', interval = '1h', period = 20) {
+    return await fetchTAIndicator('sma', interval);
+  }
+
+  async getBollingerBands(exchange = 'binance', symbol = 'SOL/USDT', interval = '1h') {
+    return await fetchTAIndicator('bbands', interval);
+  }
+
+  async getStochasticRSI(exchange = 'binance', symbol = 'SOL/USDT', interval = '1h') {
+    return await fetchTAIndicator('stochrsi', interval);
+  }
+
+  async getWilliamsR(exchange = 'binance', symbol = 'SOL/USDT', interval = '1h', period = 14) {
+    return await fetchTAIndicator('willr', interval);
+  }
+
+  async getBulkIndicators(exchange = 'binance', symbol = 'SOL/USDT', interval = '1h', indicators = []) {
+    return await fetchBulkIndicators(interval);
+  }
+
+  async getSolanaAnalysis(exchange = 'binance', interval = '1h') {
+    return await fetchBulkIndicators(interval);
+  }
+
+  async getPriceData(exchange = 'binance', symbol = 'SOL/USDT', interval = '1h') {
+    return await fetchTAIndicator('price', interval);
+  }
+
+  async getCustomAnalysis(config = {}) {
+    const interval = config.interval || '1h';
+    return await fetchBulkIndicators(interval);
+  }
+}
+
+export default TaapiService;

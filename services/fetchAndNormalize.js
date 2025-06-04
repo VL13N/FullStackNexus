@@ -13,22 +13,25 @@ export async function fetchRawMetrics() {
   const rawMetrics = {};
   const fetchPromises = [];
 
-  // Technical metrics from TAAPI Pro
+  // Technical metrics from TAAPI Pro using bulk endpoint
   if (process.env.TAAPI_API_KEY) {
-    const taapiPromises = [
-      fetchTaapiIndicator('rsi', { period: 14, interval: '1h' }).then(value => rawMetrics.rsi_1h = value),
-      fetchTaapiIndicator('rsi', { period: 14, interval: '4h' }).then(value => rawMetrics.rsi_4h = value),
-      fetchTaapiIndicator('ema', { period: 8, interval: '1h' }).then(value => rawMetrics.ema8 = value),
-      fetchTaapiIndicator('ema', { period: 21, interval: '1h' }).then(value => rawMetrics.ema21 = value),
-      fetchTaapiIndicator('sma', { period: 50, interval: '1h' }).then(value => rawMetrics.sma50 = value),
-      fetchTaapiIndicator('sma', { period: 200, interval: '4h' }).then(value => rawMetrics.sma200 = value),
-      fetchTaapiIndicator('macd', { interval: '1h' }).then(value => rawMetrics.macd_1h = value),
-      fetchTaapiIndicator('macd', { interval: '4h' }).then(value => rawMetrics.macd_4h = value),
-      fetchTaapiIndicator('bbands', { interval: '1h' }).then(value => rawMetrics.bollingerWidth_1h = value),
-      fetchTaapiIndicator('atr', { period: 14, interval: '1h' }).then(value => rawMetrics.atr_1h = value),
-      fetchTaapiIndicator('vwap', { interval: '1h' }).then(value => rawMetrics.vwap_price_spread = value)
-    ];
-    fetchPromises.push(...taapiPromises);
+    fetchPromises.push(
+      import('../api/taapi.js').then(module => module.fetchBulkIndicators('1h')).then(data => {
+        if (data) {
+          rawMetrics.rsi_1h = data.rsi;
+          rawMetrics.macd_1h = data.macdHistogram;
+          rawMetrics.ema200 = data.ema200;
+        }
+      })
+    );
+    
+    // Additional individual indicators if needed
+    fetchPromises.push(
+      import('../api/taapi.js').then(module => module.fetchTAIndicator('rsi', '4h')).then(value => rawMetrics.rsi_4h = value),
+      import('../api/taapi.js').then(module => module.fetchTAIndicator('ema', '1h')).then(value => rawMetrics.ema8 = value),
+      import('../api/taapi.js').then(module => module.fetchTAIndicator('sma', '1h')).then(value => rawMetrics.sma50 = value),
+      import('../api/taapi.js').then(module => module.fetchTAIndicator('atr', '1h')).then(value => rawMetrics.atr_1h = value)
+    );
   }
 
   // Social metrics from LunarCrush
