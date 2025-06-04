@@ -1,0 +1,56 @@
+Below is a high‐level checklist of everything we’ve walked through so far—mapped to your original Phase 1–8 plan—along with the “next stages” you’ll want to tackle to make sure the AI agent’s work is fully wired up into your UI.
+1. Recap of Completed Phases
+
+    Phase 1 – Project Scaffold & Environment
+
+        Done: React + Tailwind + Express backend scaffold is in place.
+
+        Environment variables for TAAPI, CryptoRank, LunarCrush, Supabase, and OpenAI are configured and loading correctly.
+
+    Phase 2 – API Integrations (TAAPI, CryptoRank, LunarCrush, On‐Chain, Astrology)
+
+        TAAPI – Pro integration with camelCase MACD/EMA parameters, caching, and rate limiting is complete.
+
+        CryptoRank – Real‐time endpoints (/currencies, /currencies/:id, /global, etc.) work; historical endpoints have been stubbed out to return a 403 (since your plan lacks hist_price).
+
+        LunarCrush – v1 “topic/solana/news/v1” and v4 social/time‐series calls are working.
+
+        On‐Chain/DeFi – Express routes for Solana TPS, validator stats, staking yields, etc. are in place and returning correctly.
+
+        Astrology – v1/v2 endpoints (moon-phase, planetary positions, aspects) are all functioning.
+
+    Phase 3 – Data Pipeline & Normalization
+
+        Normalization service now gracefully skips historical‐metric queries (because your CryptoRank plan doesn’t include it) and simply “passes through” raw values or uses defaults.
+
+        Caching layers are in place (e.g. LRU caches in cryptoRankExtended.js, TAAPI caching, etc.).
+
+    Phase 4 – Scorers & Sub‐Scores
+
+        Functions computeTechnicalScore(), computeSocialScore(), computeFundamentalScore(), and computeAstrologyScore() have been implemented and tested against sample normalized data.
+
+    Phase 5 – Live Prediction Engine
+
+        services/prediction.js (or runPredictionLive()) computes pillar sub‐scores, aggregates them with weights, classifies into “Strong Bullish” → “Strong Bearish,” and writes to Supabase live_predictions.
+
+        Cron/job scheduling is configured so the prediction runs once per hour.
+
+    Phase 6 – Frontend Scaffold & Basic UI
+
+        The React + Tailwind frontend skeleton is up. Basic components (cards for TAAPI, CryptoRank, LunarCrush, Astrology) can render stubs of data.
+
+    Phase 7 – OpenAI Integration (News Scoring, Daily Update, Weight Suggestion)
+
+        services/openaiIntegration.js is fetching news via LunarCrush v1, calling GPT-4 to score headlines, writing to Supabase news_scores.
+
+        generateDailyUpdate() successfully synthesizes a market update and writes to daily_updates.
+
+        suggestWeights() pulls recent live_predictions + news_scores to generate updated pillar weights and writes to dynamic_weights.
+
+        Cron job scheduling for the daily “news + update + weight suggestion” at 08:00 UTC is in place.
+
+    Phase 8 – Retraining & Maintenance
+
+        /scripts/trainModel.js and /scripts/retrainModel.js exist; retraining logic recomputes normalization, retrains a TF.js model, logs new vs old error in model_performance, and sends a Discord alert if performance degrades.
+
+        Cron job for weekly retraining is scheduled.

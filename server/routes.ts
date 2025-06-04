@@ -1905,6 +1905,172 @@ Keep response concise and professional.`;
     }
   });
 
+  // Dashboard API endpoints for live predictions
+  app.get("/api/predictions/latest", async (req, res) => {
+    try {
+      if (!supabase) {
+        return res.status(503).json({
+          success: false,
+          error: "Database not configured",
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const { data, error } = await supabase
+        .from('live_predictions')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
+      res.json({
+        success: true,
+        data: data || null,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get("/api/news/recent", async (req, res) => {
+    try {
+      if (!supabase) {
+        return res.status(503).json({
+          success: false,
+          error: "Database not configured",
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const limit = parseInt(req.query.limit as string) || 10;
+      
+      const { data, error } = await supabase
+        .from('news_scores')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        throw error;
+      }
+
+      res.json({
+        success: true,
+        data: data || [],
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get("/api/updates/today", async (req, res) => {
+    try {
+      if (!supabase) {
+        return res.status(503).json({
+          success: false,
+          error: "Database not configured",
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+      
+      const { data, error } = await supabase
+        .from('daily_updates')
+        .select('*')
+        .eq('date', today)
+        .order('timestamp', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
+      res.json({
+        success: true,
+        data: data || null,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get("/api/predictions/history", async (req, res) => {
+    try {
+      if (!supabase) {
+        return res.status(503).json({
+          success: false,
+          error: "Database not configured",
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const limit = parseInt(req.query.limit as string) || 24;
+      
+      const { data, error } = await supabase
+        .from('live_predictions')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        throw error;
+      }
+
+      res.json({
+        success: true,
+        data: data || [],
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Endpoint to trigger manual prediction generation
+  app.post("/api/predictions/generate", async (req, res) => {
+    try {
+      const { runPredictionLive } = await import('../services/prediction.js');
+      await runPredictionLive();
+      
+      res.json({
+        success: true,
+        message: "Prediction generated successfully",
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

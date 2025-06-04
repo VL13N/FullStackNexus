@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import ProjectInitializer from "@/pages/project-initializer";
 import NotFound from "@/pages/not-found";
 import PredictionsPage from "@/pages/predictions";
+import Dashboard from "@/pages/dashboard";
 import TaapiDemo from "../../components/TaapiDemo";
 import CryptoRankDemo from "../../components/CryptoRankDemo";
 import OnChainDemo from "../../components/OnChainDemo";
@@ -17,30 +18,30 @@ import LunarCrushDemo from "../../components/LunarCrushDemo";
 import PredictionWidget from "../../components/PredictionWidget";
 import { Activity, BarChart3, Database, TrendingUp, Sparkles, Brain } from "lucide-react";
 
-function Dashboard() {
+function LandingPage() {
   return (
     <div className="container mx-auto p-6">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Crypto Analytics Platform</h1>
+        <h1 className="text-4xl font-bold mb-2">Solana AI Trading Platform</h1>
         <p className="text-muted-foreground text-lg">
-          Comprehensive cryptocurrency analysis integrating multiple data sources for trading insights.
+          Comprehensive cryptocurrency analysis integrating technical, social, fundamental & astrological data for real-time trading insights.
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
-        <Link href="/predictions">
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+        <Link href="/dashboard">
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow border-2 border-blue-300">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Brain className="h-5 w-5" />
-                Live Predictions
+                Live Dashboard
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-3">
-                Real-time trading predictions with ML analysis
+                Real-time AI predictions with comprehensive analysis
               </p>
-              <Badge variant="default">Live</Badge>
+              <Badge variant="default">Primary Interface</Badge>
             </CardContent>
           </Card>
         </Link>
@@ -179,9 +180,9 @@ function Navigation() {
           </Link>
           
           <div className="flex items-center space-x-2">
-            <Link href="/predictions">
-              <Button variant={location === '/predictions' ? 'default' : 'ghost'} size="sm">
-                Predictions
+            <Link href="/dashboard">
+              <Button variant={location === '/dashboard' ? 'default' : 'ghost'} size="sm">
+                Dashboard
               </Button>
             </Link>
             <Link href="/taapi">
@@ -221,7 +222,8 @@ function Router() {
     <>
       <Navigation />
       <Switch>
-        <Route path="/" component={Dashboard} />
+        <Route path="/" component={LandingPage} />
+        <Route path="/dashboard" component={Dashboard} />
         <Route path="/predictions" component={PredictionsPage} />
         <Route path="/taapi" component={TaapiDemo} />
         <Route path="/cryptorank" component={CryptoRankDemo} />
