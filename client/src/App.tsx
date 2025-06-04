@@ -8,12 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import ProjectInitializer from "@/pages/project-initializer";
 import NotFound from "@/pages/not-found";
+import PredictionsPage from "@/pages/predictions";
 import TaapiDemo from "../../components/TaapiDemo";
 import CryptoRankDemo from "../../components/CryptoRankDemo";
 import OnChainDemo from "../../components/OnChainDemo";
 import AstrologyDemo from "../../components/AstrologyDemo";
 import LunarCrushDemo from "../../components/LunarCrushDemo";
-import { Activity, BarChart3, Database, TrendingUp, Sparkles } from "lucide-react";
+import PredictionWidget from "../../components/PredictionWidget";
+import { Activity, BarChart3, Database, TrendingUp, Sparkles, Brain } from "lucide-react";
 
 function Dashboard() {
   return (
@@ -25,7 +27,23 @@ function Dashboard() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
+        <Link href="/predictions">
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Brain className="h-5 w-5" />
+                Live Predictions
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-3">
+                Real-time trading predictions with ML analysis
+              </p>
+              <Badge variant="default">Live</Badge>
+            </CardContent>
+          </Card>
+        </Link>
         <Link href="/taapi">
           <Card className="cursor-pointer hover:shadow-lg transition-shadow">
             <CardHeader>
@@ -161,6 +179,11 @@ function Navigation() {
           </Link>
           
           <div className="flex items-center space-x-2">
+            <Link href="/predictions">
+              <Button variant={location === '/predictions' ? 'default' : 'ghost'} size="sm">
+                Predictions
+              </Button>
+            </Link>
             <Link href="/taapi">
               <Button variant={location === '/taapi' ? 'default' : 'ghost'} size="sm">
                 TAAPI Pro
