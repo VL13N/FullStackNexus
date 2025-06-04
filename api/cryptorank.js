@@ -6,9 +6,9 @@
  * Fetches market cap, 24h volume, and historical prices using authenticated endpoints
  */
 
-import LRU from "lru-cache";
+import { LRUCache } from "lru-cache";
 
-const crCache = new LRU({ max: 20, ttl: 1000 * 60 * 60 }); // 1 hour cache
+const crCache = new LRUCache({ max: 20, ttl: 1000 * 60 * 60 }); // 1 hour cache
 
 /**
  * Validates API key availability
