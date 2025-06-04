@@ -443,31 +443,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Solana On-Chain Metrics API integration - Direct implementation
   app.get("/api/onchain/metrics", async (req, res) => {
     try {
-      // Fetch from Solana Tracker API (no auth required for basic endpoints)
-      const networkResponse = await fetch('https://api.solanatracker.io/v1/network');
-      const validatorsResponse = await fetch('https://api.solanatracker.io/v1/validators');
-      
-      const [networkData, validatorsData] = await Promise.all([
-        networkResponse.json(),
-        validatorsResponse.json()
-      ]);
+      // Get epoch info from Solana RPC
+      const epochPayload = {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getEpochInfo"
+      };
+
+      const epochResponse = await fetch('https://api.mainnet-beta.solana.com', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(epochPayload)
+      });
+
+      const epochData = await epochResponse.json();
+      const epochInfo = epochData.result || {};
+
+      // Get current slot
+      const slotPayload = {
+        jsonrpc: "2.0",
+        id: 2,
+        method: "getSlot"
+      };
+
+      const slotResponse = await fetch('https://api.mainnet-beta.solana.com', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(slotPayload)
+      });
+
+      const slotData = await slotResponse.json();
+      const currentSlot = slotData.result || null;
+
+      // Get block height
+      const blockHeightPayload = {
+        jsonrpc: "2.0",
+        id: 3,
+        method: "getBlockHeight"
+      };
+
+      const blockHeightResponse = await fetch('https://api.mainnet-beta.solana.com', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(blockHeightPayload)
+      });
+
+      const blockHeightData = await blockHeightResponse.json();
+      const blockHeight = blockHeightData.result || null;
 
       const metrics = {
         timestamp: new Date().toISOString(),
-        source: 'solana_tracker',
+        source: 'solana_rpc',
         network: {
-          tps: networkData.tps || null,
-          blockHeight: networkData.block_height || null,
-          totalTransactions: networkData.total_transactions || null,
-          averageBlockTime: networkData.average_block_time || null
+          currentSlot: currentSlot,
+          blockHeight: blockHeight,
+          epoch: epochInfo.epoch || null,
+          slotIndex: epochInfo.slotIndex || null,
+          slotsInEpoch: epochInfo.slotsInEpoch || null,
+          absoluteSlot: epochInfo.absoluteSlot || null,
+          transactionCount: epochInfo.transactionCount || null,
+          epochProgress: epochInfo.slotIndex && epochInfo.slotsInEpoch ? 
+            ((epochInfo.slotIndex / epochInfo.slotsInEpoch) * 100).toFixed(2) : null
         },
-        validators: {
-          activeValidators: validatorsData.active_validators || null,
-          totalValidators: validatorsData.total_validators || null,
-          averageApy: validatorsData.average_apy || null,
-          totalStake: validatorsData.total_stake || null,
-          averageCommission: validatorsData.average_commission || null
-        }
+        note: "Real-time Solana blockchain data. For TPS and validator metrics, enhanced APIs available with authentication."
       };
 
       res.json({
