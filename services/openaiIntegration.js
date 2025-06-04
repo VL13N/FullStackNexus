@@ -30,21 +30,17 @@ export async function analyzeNewsSentiment(articles) {
     ).join('\n\n---\n\n');
 
     const prompt = `
-Analyze the sentiment of these Solana-related news articles. For each article, provide:
+You must respond ONLY with valid JSON. No additional text, explanations, or markdown formatting.
 
-1. Overall sentiment: positive, negative, or neutral
-2. Sentiment score: -1.0 (very negative) to 1.0 (very positive)
-3. Confidence level: 0.0 to 1.0
-4. Key sentiment drivers (3-5 words)
+Analyze the sentiment of these Solana-related news articles:
 
-Articles:
 ${articlesText}
 
-Respond in JSON format:
+Return this exact JSON structure:
 {
   "articles": [
     {
-      "sentiment": "positive|negative|neutral",
+      "sentiment": "positive",
       "score": 0.5,
       "confidence": 0.8,
       "drivers": ["adoption", "price", "ecosystem"]
@@ -52,7 +48,7 @@ Respond in JSON format:
   ],
   "overall_sentiment": "positive",
   "overall_score": 0.3,
-  "market_impact": "bullish|bearish|neutral"
+  "market_impact": "bullish"
 }`;
 
     const response = await openai.chat.completions.create({
@@ -189,7 +185,15 @@ Provide analysis in JSON format:
       max_tokens: 1000
     });
 
-    const analysis = JSON.parse(response.choices[0].message.content);
+    let responseContent = response.choices[0].message.content;
+    
+    // Extract JSON from response if wrapped in markdown or other text
+    const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      responseContent = jsonMatch[0];
+    }
+    
+    const analysis = JSON.parse(responseContent);
     
     // Store daily analysis in database
     const today = new Date().toISOString().split('T')[0];
