@@ -33,7 +33,7 @@ export async function fetchSolanaCurrent() {
     return cached;
   }
 
-  const url = `https://api.cryptorank.io/v2/currencies/5426`;
+  const url = `https://api.cryptorank.io/v2/currencies/28`;
 
   try {
     console.log('CryptoRank V2 Request: Solana current data');
@@ -59,16 +59,15 @@ export async function fetchSolanaCurrent() {
     const responseData = await response.json();
     const data = responseData.data;
     
-    if (!data || !Array.isArray(data) || data.length === 0) {
-      throw new Error('Invalid response format: missing data array');
+    if (!data) {
+      throw new Error('Invalid response format: missing data object');
     }
 
-    const solanaData = data[0]; // First item should be Solana (ID 5426)
-    
+    // CryptoRank V2 returns single currency data directly in data object
     const result = {
-      priceUsd: solanaData.price || 0,
-      marketCapUsd: solanaData.marketCap || 0,
-      volume24hUsd: solanaData.volume24h || 0
+      priceUsd: data.values?.USD?.price || 0,
+      marketCapUsd: data.values?.USD?.marketCap || 0,
+      volume24hUsd: data.values?.USD?.volume24h || 0
     };
     
     // Validate we got numeric values
