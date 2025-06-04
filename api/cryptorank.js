@@ -1,140 +1,83 @@
-// NOTE: This integration uses CryptoRank V2 API with proper authentication and caching
-// Ensure your CRYPTORANK_API_KEY is valid and has sufficient quota for V2 endpoints
+// NOTE: We are now using CryptoRank V2 exclusively. 
+// Ensure CRYPTORANK_API_KEY is set in environment variables.
 
 /**
- * CryptoRank V2 API Integration for Solana Fundamental Data
- * Fetches market cap, 24h volume, and historical prices using authenticated endpoints
+ * CryptoRank API Integration for Solana Fundamental Data
+ * Fetches current prices, market cap, and trading volume data using V2 API exclusively
  */
 
-import { LRUCache } from "lru-cache";
+import { LRUCache } from 'lru-cache';
+
+const CR_API_KEY = process.env.CRYPTORANK_API_KEY;
+if (!CR_API_KEY) {
+  throw new Error("CRYPTORANK_API_KEY is undefined—check Replit Secrets and restart.");
+}
 
 const crCache = new LRUCache({ max: 20, ttl: 1000 * 60 * 60 }); // 1 hour cache
 
-/**
- * Validates API key availability
- */
-function validateApiKey() {
-  if (!process.env.CRYPTORANK_API_KEY) {
-    throw new Error('CryptoRank API key not found. Please set CRYPTORANK_API_KEY environment variable.');
-  }
-}
-
-/**
- * Fetches current Solana market data
- * @returns {Promise<{priceUsd: number, marketCapUsd: number, volume24hUsd: number}>}
- */
 export async function fetchSolanaCurrent() {
-  validateApiKey();
+  const cacheKey = 'solCurrent';
+  if (crCache.has(cacheKey)) return crCache.get(cacheKey);
   
-  const cacheKey = "solCurrent";
-  const cached = crCache.get(cacheKey);
-  if (cached !== undefined) {
-    console.log(`CryptoRank Cache hit: ${cacheKey}`);
-    return cached;
-  }
-
-  const url = `https://api.cryptorank.io/v2/currencies/28`;
-
+  const url = `https://api.cryptorank.io/v2/coins/solana`;
+  
   try {
-    console.log('CryptoRank V2 Request: Solana current data');
-    
-    const response = await fetch(url, {
-      headers: {
-        'X-API-KEY': process.env.CRYPTORANK_API_KEY,
-        'Content-Type': 'application/json'
-      }
+    const response = await fetch(url + `?api_key=${CR_API_KEY}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 10000
     });
-    
+
     if (!response.ok) {
       const errorData = await response.text();
-      
-      if (response.status === 401) {
-        console.error(`CryptoRank Auth Error (${response.status}):`, errorData);
-        throw new Error(`CryptoRank Authentication failed: ${errorData}. Check your V2 API key.`);
-      }
-      
+      console.error('CryptoRank current fetch failed:', errorData);
       throw new Error(`CryptoRank HTTP ${response.status}: ${errorData}`);
     }
 
     const responseData = await response.json();
     const data = responseData.data;
     
-    if (!data) {
-      throw new Error('Invalid response format: missing data object');
-    }
-
-    // CryptoRank V2 returns single currency data directly in data object
-    const result = {
-      priceUsd: data.values?.USD?.price || 0,
-      marketCapUsd: data.values?.USD?.marketCap || 0,
-      volume24hUsd: data.values?.USD?.volume24h || 0
+    const simplified = {
+      priceUsd: data.priceUsd,
+      marketCapUsd: data.marketCapUsd,
+      volume24hUsd: data.volume24hUsd
     };
     
-    // Validate we got numeric values
-    Object.entries(result).forEach(([key, value]) => {
-      if (typeof value !== 'number' || isNaN(value)) {
-        console.warn(`CryptoRank: Invalid ${key} value:`, value);
-        result[key] = 0; // Fallback to 0 for invalid values
-      }
-    });
-    
-    crCache.set(cacheKey, result);
-    console.log('CryptoRank Success:', result);
-    return result;
-    
-  } catch (error) {
-    console.error('CryptoRank Current request failed:', error.message);
-    throw error;
+    crCache.set(cacheKey, simplified);
+    return simplified;
+  } catch (err) {
+    console.error('CryptoRank current fetch failed:', err.message);
+    throw err;
   }
 }
 
-/**
- * Fetches historical price data for Solana
- * @param {string} interval - Time interval (1h, 1d, 1w, etc.)
- * @returns {Promise<Array<{date: number, open: number, high: number, low: number, close: number, volume: number}>>}
- */
-export async function fetchSolanaHistorical(interval = "1h") {
-  validateApiKey();
-  
+export async function fetchSolanaHistorical(interval = '1h') {
   const cacheKey = `solHist@${interval}`;
-  const cached = crCache.get(cacheKey);
-  if (cached !== undefined) {
-    console.log(`CryptoRank Cache hit: ${cacheKey}`);
-    return cached;
-  }
-
-  const url = `https://api.cryptorank.io/v2/hist_price/solana?interval=${interval}&api_key=${process.env.CRYPTORANK_API_KEY}`;
-
+  if (crCache.has(cacheKey)) return crCache.get(cacheKey);
+  
+  const url = `https://api.cryptorank.io/v2/hist_price/solana`;
+  
   try {
-    console.log(`CryptoRank V2 Request: Solana historical data (${interval})`);
-    
-    const response = await fetch(url);
-    
+    const response = await fetch(url + `?interval=${interval}&api_key=${CR_API_KEY}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 15000
+    });
+
     if (!response.ok) {
       const errorData = await response.text();
-      
-      if (response.status === 401) {
-        console.error(`CryptoRank Historical Auth Error (${response.status}):`, errorData);
-        throw new Error(`CryptoRank Authentication failed: ${errorData}. Check your V2 API key.`);
-      }
-      
-      throw new Error(`CryptoRank Historical HTTP ${response.status}: ${errorData}`);
+      console.error('CryptoRank historical fetch failed:', errorData);
+      throw new Error(`CryptoRank HTTP ${response.status}: ${errorData}`);
     }
 
     const responseData = await response.json();
-    const data = responseData.data;
+    const hist = responseData.data;
     
-    if (!Array.isArray(data)) {
-      throw new Error('Invalid response format: expected array of historical data');
-    }
-    
-    crCache.set(cacheKey, data);
-    console.log(`CryptoRank Historical Success: ${data.length} records`);
-    return data;
-    
-  } catch (error) {
-    console.error('CryptoRank Historical request failed:', error.message);
-    throw error;
+    crCache.set(cacheKey, hist);
+    return hist;
+  } catch (err) {
+    console.error('CryptoRank historical fetch failed:', err.message);
+    throw err;
   }
 }
 
@@ -146,7 +89,9 @@ class CryptoRankService {
   }
 
   validateApiKey() {
-    validateApiKey();
+    if (!this.apiKey) {
+      throw new Error('CRYPTORANK_API_KEY is undefined—check Replit Secrets and restart.');
+    }
   }
 
   async makeRequest(endpoint, params = {}) {
