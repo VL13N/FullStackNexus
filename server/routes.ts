@@ -24,6 +24,189 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Solana TAAPI Pro integration - Direct implementation
+  app.get("/api/solana/rsi", async (req, res) => {
+    try {
+      const { exchange = 'binance', interval = '1h', period = 14 } = req.query;
+      
+      if (!process.env.TAAPI_API_KEY) {
+        return res.status(503).json({
+          success: false,
+          error: "TAAPI API key not configured",
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const params = new URLSearchParams({
+        secret: process.env.TAAPI_API_KEY,
+        exchange: exchange as string,
+        symbol: 'SOL/USDT',
+        interval: interval as string,
+        period: period.toString()
+      });
+
+      const response = await fetch(`https://api.taapi.io/rsi?${params}`);
+      const data = await response.json();
+
+      res.json({
+        success: true,
+        indicator: 'RSI',
+        symbol: 'SOL/USDT',
+        exchange,
+        interval,
+        period: parseInt(period as string),
+        data,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get("/api/solana/macd", async (req, res) => {
+    try {
+      const { 
+        exchange = 'binance', 
+        interval = '1h', 
+        fastPeriod = 12, 
+        slowPeriod = 26, 
+        signalPeriod = 9 
+      } = req.query;
+      
+      if (!process.env.TAAPI_API_KEY) {
+        return res.status(503).json({
+          success: false,
+          error: "TAAPI API key not configured",
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const params = new URLSearchParams({
+        secret: process.env.TAAPI_API_KEY,
+        exchange: exchange as string,
+        symbol: 'SOL/USDT',
+        interval: interval as string,
+        fast_period: fastPeriod.toString(),
+        slow_period: slowPeriod.toString(),
+        signal_period: signalPeriod.toString()
+      });
+
+      const response = await fetch(`https://api.taapi.io/macd?${params}`);
+      const data = await response.json();
+
+      res.json({
+        success: true,
+        indicator: 'MACD',
+        symbol: 'SOL/USDT',
+        exchange,
+        interval,
+        parameters: {
+          fastPeriod: parseInt(fastPeriod as string),
+          slowPeriod: parseInt(slowPeriod as string),
+          signalPeriod: parseInt(signalPeriod as string)
+        },
+        data,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get("/api/solana/ema", async (req, res) => {
+    try {
+      const { exchange = 'binance', interval = '1h', period = 20 } = req.query;
+      
+      if (!process.env.TAAPI_API_KEY) {
+        return res.status(503).json({
+          success: false,
+          error: "TAAPI API key not configured",
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const params = new URLSearchParams({
+        secret: process.env.TAAPI_API_KEY,
+        exchange: exchange as string,
+        symbol: 'SOL/USDT',
+        interval: interval as string,
+        period: period.toString()
+      });
+
+      const response = await fetch(`https://api.taapi.io/ema?${params}`);
+      const data = await response.json();
+
+      res.json({
+        success: true,
+        indicator: 'EMA',
+        symbol: 'SOL/USDT',
+        exchange,
+        interval,
+        period: parseInt(period as string),
+        data,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get("/api/solana/analysis", async (req, res) => {
+    try {
+      const { exchange = 'binance', interval = '1h' } = req.query;
+      
+      if (!process.env.TAAPI_API_KEY) {
+        return res.status(503).json({
+          success: false,
+          error: "TAAPI API key not configured",
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Fetch multiple indicators for comprehensive analysis
+      const indicators = ['rsi', 'macd', 'ema', 'sma'];
+      const params = new URLSearchParams({
+        secret: process.env.TAAPI_API_KEY,
+        exchange: exchange as string,
+        symbol: 'SOL/USDT',
+        interval: interval as string,
+        indicators: indicators.join(',')
+      });
+
+      const response = await fetch(`https://api.taapi.io/bulk?${params}`);
+      const data = await response.json();
+
+      res.json({
+        success: true,
+        type: 'comprehensive_analysis',
+        symbol: 'SOL/USDT',
+        exchange,
+        interval,
+        indicators,
+        data,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // Trading API endpoints
   app.get("/api/trading/test", (req, res) => {
     res.json({
@@ -34,7 +217,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "/api/trading/indicators/:symbol",
         "/api/trading/social/:symbol", 
         "/api/trading/market/:symbol",
-        "/api/trading/ai-analysis"
+        "/api/trading/ai-analysis",
+        "/api/solana/rsi",
+        "/api/solana/macd",
+        "/api/solana/ema",
+        "/api/solana/analysis"
       ]
     });
   });
