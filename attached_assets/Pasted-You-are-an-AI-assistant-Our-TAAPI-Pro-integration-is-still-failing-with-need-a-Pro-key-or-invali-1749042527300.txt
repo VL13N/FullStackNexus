@@ -1,0 +1,59 @@
+You are an AI assistant. Our TAAPI Pro integration is still failing with “need a Pro key” or “invalid parameter” errors. Please update our codebase so that it correctly uses my paid TAAPI Pro key and respects TAAPI’s parameter naming. Do the following:
+
+1. Update `api/taapi.js`:
+   - At the top, insert:
+     ```js
+     console.log("TAAPI key in use:", process.env.TAAPI_API_KEY);
+     if (!process.env.TAAPI_API_KEY) {
+       throw new Error("TAAPI_API_KEY is undefined—check Replit Secrets and restart.");
+     }
+     ```
+   - In the `fetchTAIndicator(indicatorName, interval)` function, ensure you pass indicator‐specific parameters exactly as TAAPI requires:
+     • For RSI, append `&period=14` (not omitted).  
+     • For EMA, append `&period=20` (or your desired period).  
+     • For MACD, append `&fastPeriod=12&slowPeriod=26&signalPeriod=9` (camelCase, not snake_case).  
+   - Change any existing MACD URL construction from:
+     ```
+     &fast_period=12&slow_period=26&signal_period=9
+     ```
+     to:
+     ```
+     &fastPeriod=12&slowPeriod=26&signalPeriod=9
+     ```
+   - Add a simple in‐memory 15-minute cache using `lru-cache`:
+     ```js
+     import LRU from "lru-cache";
+     const taapiCache = new LRU({ max: 50, ttl: 1000 * 60 * 15 });
+     ```
+     Wrap each `fetchTAIndicator` so it checks `taapiCache.get(\`\${indicatorName}@\${interval}\`)` first, and after fetching inserts into the cache.
+
+2. Update any “bulk” calls in `api/taapi.js`:
+   - Ensure each indicator entry has explicit params matching TAAPI’s camelCase:
+     ```js
+     indicators: [
+       { name: "rsi", params: { period: 14 } },
+       { name: "macd", params: { fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 } },
+       { name: "ema", params: { period: 20 } }
+     ]
+     ```
+   - If you already have a `fetchBulkIndicators()` function, modify it accordingly.
+
+3. In `server/routes.ts`, fix any hardcoded MACD or other indicator URLs:
+   - Change `fast_period`, `slow_period`, `signal_period` to `fastPeriod`, `slowPeriod`, `signalPeriod`.  
+   - Ensure RSI and EMA include `period` explicitly (e.g., `&period=14` for RSI, `&period=20` for EMA).
+
+4. At the top of `server/routes.ts`, add a log to confirm the env var:
+   ```ts
+   console.log("TAAPI key in use:", process.env.TAAPI_API_KEY);
+   if (!process.env.TAAPI_API_KEY) {
+     throw new Error("TAAPI_API_KEY is undefined—check Replit Secrets and restart.");
+   }
+
+    Add a comment reminder in both files:
+
+    // NOTE: TAAPI’s MACD parameters must be camelCase (fastPeriod, slowPeriod, signalPeriod).
+    // If you still see authentication errors, check TAAPI dashboard → Usage for quota and IP Access.
+
+    After generating these changes, remind the user to restart the Replit container so the updated TAAPI_API_KEY is loaded.
+
+Provide the complete updated contents of api/taapi.js and the affected sections of server/routes.ts showing the corrected queries and caching logic. Once complete, reply “TAAPI integration fixed.”

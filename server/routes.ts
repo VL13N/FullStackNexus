@@ -2,6 +2,14 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 
+// NOTE: TAAPI's MACD parameters must be camelCase (fastPeriod, slowPeriod, signalPeriod).
+// If you still see authentication errors, check TAAPI dashboard → Usage for quota and IP Access.
+
+console.log("TAAPI key in use:", process.env.TAAPI_API_KEY);
+if (!process.env.TAAPI_API_KEY) {
+  throw new Error("TAAPI_API_KEY is undefined—check Replit Secrets and restart.");
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint with API key validation
   app.get("/api/health", (req, res) => {

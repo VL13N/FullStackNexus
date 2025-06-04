@@ -1,4 +1,10 @@
-// NOTE: If you still receive 401 errors, check TAAPI dashboard -> Usage -> IP Access to whitelist Replit container's IP.
+// NOTE: TAAPI's MACD parameters must be camelCase (fastPeriod, slowPeriod, signalPeriod).
+// If you still see authentication errors, check TAAPI dashboard → Usage for quota and IP Access.
+
+console.log("TAAPI key in use:", process.env.TAAPI_API_KEY);
+if (!process.env.TAAPI_API_KEY) {
+  throw new Error("TAAPI_API_KEY is undefined—check Replit Secrets and restart.");
+}
 
 /**
  * TAAPI Pro Technical Analysis Integration
@@ -41,10 +47,21 @@ export async function fetchTAIndicator(indicatorName, interval = "1h") {
     interval
   });
 
+  // Add indicator-specific parameters with correct TAAPI naming
+  if (indicatorName === 'rsi') {
+    params.append('period', '14');
+  } else if (indicatorName === 'ema') {
+    params.append('period', '20');
+  } else if (indicatorName === 'macd') {
+    params.append('fastPeriod', '12');
+    params.append('slowPeriod', '26');
+    params.append('signalPeriod', '9');
+  }
+
   const url = `https://api.taapi.io/${indicatorName}?${params}`;
 
   try {
-    console.log(`TAAPI Request: ${indicatorName} (${interval})`);
+    console.log(`TAAPI Request: ${indicatorName} (${interval}) with params:`, params.toString());
     
     const response = await fetch(url);
     
@@ -104,9 +121,9 @@ export async function fetchBulkIndicators(interval = "1h") {
       interval 
     },
     indicators: [
-      { name: "rsi" },
-      { name: "macd" },
-      { name: "ema", params: { period: 200 } }
+      { name: "rsi", params: { period: 14 } },
+      { name: "macd", params: { fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 } },
+      { name: "ema", params: { period: 20 } }
     ]
   };
 
