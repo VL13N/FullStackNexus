@@ -44,8 +44,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         interval: interval as string
       });
 
-      const response = await fetch(`https://api.lunarcrush.com/v2?${params}`);
+      const url = `https://api.lunarcrush.com/v2?${params}`;
+      console.log('LunarCrush API Request URL:', url.replace(process.env.LUNARCRUSH_API_KEY, '[API_KEY]'));
+
+      const response = await fetch(url);
+      console.log('LunarCrush API Response Status:', response.status, response.statusText);
+
       const data = await response.json();
+      console.log('LunarCrush API Response Data:', JSON.stringify(data, null, 2));
+
+      if (!response.ok) {
+        throw new Error(`API Error ${response.status}: ${data.error || response.statusText}`);
+      }
+
+      if (data.error) {
+        throw new Error(`LunarCrush API Error: ${data.error}`);
+      }
 
       if (data.data && data.data.length > 0) {
         const solanaData = data.data[0];
@@ -80,6 +94,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw new Error('No data found for the specified symbol');
       }
     } catch (error: any) {
+      console.error('LunarCrush API Error:', error);
       res.status(500).json({
         success: false,
         error: error.message,

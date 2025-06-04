@@ -12,6 +12,7 @@ import TaapiDemo from "../../components/TaapiDemo";
 import CryptoRankDemo from "../../components/CryptoRankDemo";
 import OnChainDemo from "../../components/OnChainDemo";
 import AstrologyDemo from "../../components/AstrologyDemo";
+import LunarCrushDemo from "../../components/LunarCrushDemo";
 import { Activity, BarChart3, Database, TrendingUp, Sparkles } from "lucide-react";
 
 function Dashboard() {
