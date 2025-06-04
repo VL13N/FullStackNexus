@@ -19,10 +19,10 @@ export async function fetchSolanaCurrent() {
   const cacheKey = 'solCurrent';
   if (crCache.has(cacheKey)) return crCache.get(cacheKey);
   
-  const url = `https://api.cryptorank.io/v2/coins/solana`;
+  const url = `https://api.cryptorank.io/v1/currencies/solana?api_key=${CR_API_KEY}`;
   
   try {
-    const response = await fetch(url + `?api_key=${CR_API_KEY}`, {
+    const response = await fetch(url, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
       timeout: 10000
@@ -35,12 +35,17 @@ export async function fetchSolanaCurrent() {
     }
 
     const responseData = await response.json();
+    
+    if (!responseData.status || !responseData.status.success) {
+      throw new Error(`CryptoRank API error: ${responseData.status?.message || 'Unknown error'}`);
+    }
+    
     const data = responseData.data;
     
     const simplified = {
-      priceUsd: data.priceUsd,
-      marketCapUsd: data.marketCapUsd,
-      volume24hUsd: data.volume24hUsd
+      priceUsd: data.values?.USD?.price || 0,
+      marketCapUsd: data.values?.USD?.marketCap || 0,
+      volume24hUsd: data.values?.USD?.volume24h || 0
     };
     
     crCache.set(cacheKey, simplified);
