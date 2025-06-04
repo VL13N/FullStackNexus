@@ -5,6 +5,7 @@
 
 import cron from 'node-cron';
 import { runPredictionLive } from './prediction.js';
+import { fetchAndScoreNews, generateDailyUpdate, suggestWeights } from './openaiIntegration.js';
 
 class SchedulerService {
   constructor() {
@@ -30,8 +31,13 @@ class SchedulerService {
       await this.runHealthCheck();
     });
 
+    // Schedule daily OpenAI integration at 08:00 UTC
+    cron.schedule('0 8 * * *', async () => {
+      await this.runDailyOpenAIIntegration();
+    });
+
     this.isRunning = true;
-    console.log('Prediction scheduler started - running hourly at :00 minutes');
+    console.log('Prediction scheduler started - running hourly at :00 minutes, daily OpenAI at 08:00 UTC');
   }
 
   stop() {
@@ -141,6 +147,58 @@ class SchedulerService {
     // Consider implementing restart logic here if needed
     if (error.message.includes('ECONNREFUSED') || error.message.includes('timeout')) {
       console.log('Network-related health check failure - will retry next cycle');
+    }
+  }
+
+  async runDailyOpenAIIntegration() {
+    try {
+      console.log('=== Daily OpenAI Integration Started ===');
+      const startTime = Date.now();
+      
+      // Fetch and score news
+      console.log('Fetching and scoring LunarCrush news...');
+      const scoredNews = await fetchAndScoreNews();
+      console.log('News scored.');
+      
+      // Generate daily market update
+      console.log('Generating daily market update...');
+      const updateText = await generateDailyUpdate();
+      console.log(`Daily update: ${updateText.slice(0, 50)}...`);
+      
+      // Suggest dynamic weights
+      console.log('Suggesting dynamic pillar weights...');
+      const weights = await suggestWeights();
+      console.log(`New weights: ${JSON.stringify(weights)}`);
+      
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      
+      console.log(`Daily OpenAI integration completed in ${duration}ms`);
+      console.log('=== Daily OpenAI Integration Completed ===');
+      
+    } catch (error) {
+      console.error('Daily OpenAI integration failed:', error);
+      await this.handleOpenAIIntegrationError(error);
+    }
+  }
+
+  async handleOpenAIIntegrationError(error) {
+    const errorMessage = `Error in daily OpenAI integration: ${error.message}`;
+    console.error('🤖', errorMessage);
+    
+    // Log error details for debugging
+    console.error('OpenAI Integration error details:', {
+      message: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Consider sending Discord alert via /api/alerts.js if available
+    try {
+      // This would be implemented if alerts system exists
+      // await sendDiscordAlert(`OpenAI Integration Failed: ${error.message}`);
+    } catch (alertError) {
+      console.error('Failed to send alert:', alertError);
     }
   }
 
