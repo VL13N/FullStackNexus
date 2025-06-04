@@ -1,3 +1,4 @@
+// NOTE: Using Discover plan—news endpoint must be /v1/topic/solana/news/v1, not /v2.
 // /scripts/testLunarNews.js
 
 async function testNews() {

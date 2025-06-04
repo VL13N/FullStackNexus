@@ -1,3 +1,4 @@
+// NOTE: Using Discover plan—news endpoint must be /v1/topic/solana/news/v1, not /v2.
 // NOTE: Ensure OPENAI_API_KEY and LUNARCRUSH_API_KEY are set in environment variables.
 //       If you receive "Invalid API key," verify the key in LunarCrush and OpenAI dashboards.
 

@@ -4,7 +4,7 @@
  */
 class LunarCrushService {
   constructor() {
-    this.baseUrl = 'https://api.lunarcrush.com/v2';
+    this.baseUrl = 'https://api.lunarcrush.com/v4';
     this.apiKey = process.env.LUNARCRUSH_API_KEY;
     
     if (!this.apiKey) {
