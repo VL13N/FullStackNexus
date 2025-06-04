@@ -2029,6 +2029,54 @@ Keep response concise and professional.`;
     }
   });
 
+  // Store new prediction in database
+  app.post("/api/predictions/store", async (req, res) => {
+    try {
+      if (!supabase) {
+        return res.status(503).json({
+          success: false,
+          error: "Database not configured - Supabase credentials required",
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const prediction = req.body;
+      
+      const { data, error } = await supabase
+        .from('live_predictions')
+        .insert({
+          overall_score: prediction.overall_score,
+          classification: prediction.classification,
+          confidence: prediction.confidence,
+          technical_score: prediction.technical_score,
+          social_score: prediction.social_score,
+          fundamental_score: prediction.fundamental_score,
+          astrology_score: prediction.astrology_score,
+          price_target: prediction.price_target,
+          risk_level: prediction.risk_level
+        })
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      res.json({
+        success: true,
+        data: data,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      console.error("Error storing prediction:", error.message || error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   app.get("/api/predictions/history", async (req, res) => {
     try {
       if (!supabase) {
