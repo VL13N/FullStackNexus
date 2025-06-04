@@ -5,11 +5,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import ProjectInitializer from "@/pages/project-initializer";
 import NotFound from "@/pages/not-found";
+import TaapiTestInterface from "../../components/TaapiTestInterface";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={ProjectInitializer} />
+      <Route path="/taapi" component={TaapiTestInterface} />
       <Route component={NotFound} />
     </Switch>
   );
