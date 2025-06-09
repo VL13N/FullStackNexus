@@ -14,9 +14,40 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 console.log('✅ Supabase config loaded');
 
-// Persistence test - verify database access
+// Schema migration and persistence test
 (async () => {
   try {
+    // Test if pillar score columns exist by attempting to select them
+    const { data: columnTest, error: columnError } = await supabase
+      .from("live_predictions")
+      .select('technical_score, social_score, fundamental_score, astrology_score')
+      .limit(1);
+    
+    if (columnError && columnError.code === 'PGRST204') {
+      console.log('🔄 Adding missing pillar score columns...');
+      
+      // Use raw SQL to add columns
+      const { error: sqlError } = await supabase.rpc('exec_sql', {
+        sql: `
+          ALTER TABLE public.live_predictions
+            ADD COLUMN IF NOT EXISTS technical_score NUMERIC,
+            ADD COLUMN IF NOT EXISTS social_score NUMERIC,
+            ADD COLUMN IF NOT EXISTS fundamental_score NUMERIC,
+            ADD COLUMN IF NOT EXISTS astrology_score NUMERIC,
+            ADD COLUMN IF NOT EXISTS predicted_pct NUMERIC,
+            ADD COLUMN IF NOT EXISTS category TEXT,
+            ADD COLUMN IF NOT EXISTS confidence NUMERIC;
+        `
+      });
+      
+      if (sqlError) {
+        console.warn('Schema migration failed, columns may already exist:', sqlError.message);
+      } else {
+        console.log('✅ Schema migration completed');
+      }
+    }
+    
+    // Verify database access
     const { data, error } = await supabase
       .from("live_predictions")
       .select('id')

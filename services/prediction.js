@@ -264,10 +264,10 @@ class PredictionService {
         .from('live_predictions')
         .insert({
           timestamp: predictionData.timestamp,
-          tech_score: predictionData.techScore,
+          technical_score: predictionData.techScore,
           social_score: predictionData.socialScore,
-          fund_score: predictionData.fundScore,
-          astro_score: predictionData.astroScore,
+          fundamental_score: predictionData.fundScore,
+          astrology_score: predictionData.astroScore,
           predicted_pct: predictionData.predictedPct,
           category: predictionData.category,
           confidence: predictionData.confidence
