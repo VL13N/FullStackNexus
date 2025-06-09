@@ -805,7 +805,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .sort((a: number, b: number) => b - a);
 
       if (validatorApys.length > 0) {
-        (stakingInfo as any).yieldDistribution = {
+        (stakingInfo).yieldDistribution = {
           highest: validatorApys[0],
           median: validatorApys[Math.floor(validatorApys.length / 2)],
           lowest: validatorApys[validatorApys.length - 1],
@@ -1440,12 +1440,12 @@ Keep response concise and professional.`;
       try {
         // Moon position (special case)
         const moonPos = Astronomy.EclipticGeoMoon(astroDate);
-        const moonZodiacIndex = Math.floor((moonPos as any).lon / 30);
+        const moonZodiacIndex = Math.floor((moonPos).lon / 30);
         positions.moon = {
-          longitude: (moonPos as any).lon,
-          latitude: (moonPos as any).lat,
+          longitude: (moonPos).lon,
+          latitude: (moonPos).lat,
           zodiacSign: zodiacSigns[moonZodiacIndex],
-          degreeInSign: ((moonPos as any).lon % 30).toFixed(2)
+          degreeInSign: ((moonPos).lon % 30).toFixed(2)
         };
       } catch (error) {
         positions.moon = { error: 'Calculation failed' };
@@ -1469,13 +1469,13 @@ Keep response concise and professional.`;
           const vector = Astronomy.GeoVector(body, astroDate, false);
           const pos = Astronomy.Ecliptic(vector);
           
-          const zodiacIndex = Math.floor((pos as any).elon / 30);
+          const zodiacIndex = Math.floor((pos).elon / 30);
           const zodiacSign = zodiacSigns[zodiacIndex];
-          const degreeInSign = (pos as any).elon % 30;
+          const degreeInSign = (pos).elon % 30;
           
           positions[name] = {
-            longitude: (pos as any).elon,
-            latitude: (pos as any).elat,
+            longitude: (pos).elon,
+            latitude: (pos).elat,
             zodiacSign: zodiacSign,
             degreeInSign: degreeInSign.toFixed(2)
           };
@@ -1807,7 +1807,7 @@ Keep response concise and professional.`;
         
         // Lunar phase calculation
         const moonIllumination = Astronomy.Illumination(Astronomy.Body.Moon, astroDate);
-        rawMetrics.lunarPhasePercentile = (moonIllumination as any).phase_fraction * 100;
+        rawMetrics.lunarPhasePercentile = (moonIllumination).phase_fraction * 100;
         
         // Lunar distance calculation
         const moonPos = Astronomy.GeoVector(Astronomy.Body.Moon, astroDate, false);
@@ -1820,20 +1820,20 @@ Keep response concise and professional.`;
         const jupiterPos = Astronomy.Ecliptic(Astronomy.GeoVector(Astronomy.Body.Jupiter, astroDate, false));
         
         // Calculate aspect angles
-        let marsSunAngle = Math.abs((sunPos as any).elon - (marsPos as any).elon);
+        let marsSunAngle = Math.abs((sunPos).elon - (marsPos).elon);
         if (marsSunAngle > 180) marsSunAngle = 360 - marsSunAngle;
         rawMetrics.marsSunAspect = marsSunAngle;
         
-        let saturnJupiterAngle = Math.abs((saturnPos as any).elon - (jupiterPos as any).elon);
+        let saturnJupiterAngle = Math.abs((saturnPos).elon - (jupiterPos).elon);
         if (saturnJupiterAngle > 180) saturnJupiterAngle = 360 - saturnJupiterAngle;
         rawMetrics.saturnJupiterAspect = saturnJupiterAngle;
         
         // Solar ingress indicators
-        rawMetrics.solarIngressAries = Math.abs((sunPos as any).elon) < 1 ? 1 : 0;
-        rawMetrics.solarIngressLibra = Math.abs((sunPos as any).elon - 180) < 1 ? 1 : 0;
+        rawMetrics.solarIngressAries = Math.abs((sunPos).elon) < 1 ? 1 : 0;
+        rawMetrics.solarIngressLibra = Math.abs((sunPos).elon - 180) < 1 ? 1 : 0;
         
         // Default values for other astrological metrics
-        rawMetrics.northNodeSolanaLongitude = (sunPos as any).elon; // Simplified
+        rawMetrics.northNodeSolanaLongitude = (sunPos).elon; // Simplified
         rawMetrics.nodeIngressData = 0;
         rawMetrics.siriusRisingIndicator = 0;
         rawMetrics.aldebaranConjunctionIndicator = 0;
@@ -2221,15 +2221,16 @@ Keep response concise and professional.`;
   // Endpoint to trigger manual prediction generation
   app.post("/api/predictions/generate", async (req, res) => {
     try {
-      const { runPredictionLive } = await import('../services/prediction.js');
-      await runPredictionLive();
+      const { generateFreshPrediction } = await import('../scripts/generatePrediction.js');
+      const prediction = await generateFreshPrediction();
       
       res.json({
         success: true,
         message: "Prediction generated successfully",
+        data: prediction,
         timestamp: new Date().toISOString()
       });
-    } catch (error: any) {
+    } catch (error) {
       res.status(500).json({
         success: false,
         error: error.message,

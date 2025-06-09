@@ -21,8 +21,8 @@ class SchedulerService {
 
     console.log('Starting prediction scheduler...');
     
-    // Schedule hourly predictions at the top of each hour
-    cron.schedule('0 * * * *', async () => {
+    // Schedule predictions every 15 minutes for more frequent updates
+    cron.schedule('*/15 * * * *', async () => {
       await this.runHourlyPrediction();
     });
 
