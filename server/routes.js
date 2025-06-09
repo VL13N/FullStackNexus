@@ -125,6 +125,119 @@ export async function registerRoutes(app) {
     }
   });
 
+  // Feature pipeline endpoints
+  app.post('/api/features/generate', async (req, res) => {
+    try {
+      const { FeaturePipeline } = await import('../services/featurePipeline.js');
+      const pipeline = new FeaturePipeline();
+      
+      const symbol = req.body.symbol || 'SOL';
+      const startTime = Date.now();
+      
+      console.log(`🔄 Generating feature vector for ${symbol}...`);
+      const features = await pipeline.generateFeatureVector(symbol);
+      
+      const processingTime = Date.now() - startTime;
+      console.log(`✅ Feature vector generated in ${processingTime}ms`);
+      
+      res.json({
+        success: true,
+        data: features,
+        processing_time_ms: processingTime,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Feature generation failed:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get('/api/features/latest', async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit) || 10;
+      const symbol = req.query.symbol || 'SOL';
+      
+      const { data, error } = await supabase
+        .from('ml_features')
+        .select('*')
+        .eq('symbol', symbol)
+        .order('timestamp', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        throw error;
+      }
+
+      res.json({
+        success: true,
+        data: data || [],
+        count: data?.length || 0,
+        symbol: symbol,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get('/api/features/dataset/:symbol', async (req, res) => {
+    try {
+      const symbol = req.params.symbol || 'SOL';
+      const days = parseInt(req.query.days) || 30;
+      const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+      
+      const { data, error } = await supabase
+        .from('ml_features')
+        .select('*')
+        .eq('symbol', symbol)
+        .gte('timestamp', startDate)
+        .order('timestamp', { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+
+      // Calculate dataset statistics
+      const stats = {
+        total_samples: data.length,
+        date_range: {
+          start: data[0]?.timestamp,
+          end: data[data.length - 1]?.timestamp
+        },
+        avg_data_quality: data.reduce((sum, d) => sum + (d.data_quality_score || 0), 0) / data.length,
+        avg_completeness: data.reduce((sum, d) => sum + (d.feature_completeness || 0), 0) / data.length,
+        feature_availability: {
+          technical: data.filter(d => d.technical_score !== null).length,
+          social: data.filter(d => d.social_score !== null).length,
+          fundamental: data.filter(d => d.fundamental_score !== null).length,
+          astrology: data.filter(d => d.astrology_score !== null).length
+        }
+      };
+
+      res.json({
+        success: true,
+        dataset: data,
+        statistics: stats,
+        symbol: symbol,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // Manual schema migration endpoint
   app.post('/api/admin/schema-migrate', async (req, res) => {
     try {
