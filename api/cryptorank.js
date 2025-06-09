@@ -91,8 +91,8 @@ export async function fetchSolanaCurrent() {
   if (crCache.has(cacheKey)) return crCache.get(cacheKey);
   
   try {
-    // Use v2 endpoint with currency slug
-    const responseData = await makeV2Request('currencies/solana');
+    // Use v2 endpoint with Solana's numeric ID (5663)
+    const responseData = await makeV2Request('currencies/5663');
     
     if (responseData.data) {
       const coinData = responseData.data;
