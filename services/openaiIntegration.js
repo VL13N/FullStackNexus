@@ -11,10 +11,16 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
-);
+let supabase = null;
+
+if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
+  supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_ANON_KEY
+  );
+} else {
+  console.warn('Supabase credentials not found - OpenAI integration will have limited functionality');
+}
 
 /**
  * Analyze news sentiment using OpenAI GPT-4
@@ -78,13 +84,14 @@ Return this exact JSON structure:
     const analysis = JSON.parse(responseContent);
     
     // Store sentiment data in database
-    for (let i = 0; i < articles.length; i++) {
-      const article = articles[i];
-      const sentiment = analysis.articles[i];
-      
-      await supabase
-        .from('news_sentiment')
-        .insert({
+    if (supabase) {
+      for (let i = 0; i < articles.length; i++) {
+        const article = articles[i];
+        const sentiment = analysis.articles[i];
+        
+        await supabase
+          .from('news_sentiment')
+          .insert({
           article_title: article.title,
           article_content: article.content || article.summary,
           sentiment_score: sentiment.score,
@@ -196,18 +203,20 @@ Provide analysis in JSON format:
     const analysis = JSON.parse(responseContent);
     
     // Store daily analysis in database
-    const today = new Date().toISOString().split('T')[0];
-    await supabase
-      .from('daily_market_analysis')
-      .upsert({
-        analysis_date: today,
-        overall_sentiment: analysis.overall_sentiment,
-        key_insights: analysis.key_insights,
-        price_prediction: analysis.price_prediction,
-        confidence_level: analysis.confidence_level,
-        market_drivers: analysis.market_drivers,
-        risk_factors: analysis.risk_factors
-      });
+    if (supabase) {
+      const today = new Date().toISOString().split('T')[0];
+      await supabase
+        .from('daily_market_analysis')
+        .upsert({
+          analysis_date: today,
+          overall_sentiment: analysis.overall_sentiment,
+          key_insights: analysis.key_insights,
+          price_prediction: analysis.price_prediction,
+          confidence_level: analysis.confidence_level,
+          market_drivers: analysis.market_drivers,
+          risk_factors: analysis.risk_factors
+        });
+    }
 
     return {
       success: true,
@@ -230,6 +239,14 @@ Provide analysis in JSON format:
  */
 export async function getSentimentTrends(days = 7) {
   try {
+    if (!supabase) {
+      return {
+        success: false,
+        error: "Database not available",
+        timestamp: new Date().toISOString()
+      };
+    }
+
     const { data, error } = await supabase
       .from('news_sentiment')
       .select('sentiment_score, sentiment_label, analyzed_at')

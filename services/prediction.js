@@ -114,8 +114,18 @@ class PredictionService {
       let confidence;
 
       if (this.isModelLoaded && this.model) {
-        // Use trained model for prediction
-        const input = tf.tensor2d([[techScore, socialScore, fundScore, astroScore]]);
+        // Use trained model for prediction - extract required features from normalized data
+        const features = [
+          normalized.rsi_1h || normalized.rsi || 50,
+          normalized.macdHistogram || normalized.macd || 0,
+          normalized.ema_20 || normalized.ema || normalized.ema8 || 150,
+          normalized.market_cap_usd || normalized.marketCap || 50000000000,
+          normalized.volume_24h_usd || normalized.volume24h || 1000000000,
+          normalized.social_score || normalized.socialVolume || socialScore,
+          normalized.astro_score || astroScore
+        ];
+        
+        const input = tf.tensor2d([features]);
         const predTensor = this.model.predict(input);
         predictedPct = predTensor.dataSync()[0];
         
