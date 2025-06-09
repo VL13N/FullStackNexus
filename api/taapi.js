@@ -82,7 +82,16 @@ export async function fetchTAIndicator(indicatorName, interval = "1h") {
     }
 
     const data = await response.json();
-    const value = data.value;
+    let value;
+
+    // Handle different indicator response formats
+    if (indicatorName === 'macd') {
+      // MACD has multiple possible response formats
+      value = data.valueMACD || data.histogram?.value || data.histogram || data.value;
+    } else {
+      // Standard indicators (RSI, EMA, SMA, etc.)
+      value = data.value;
+    }
     
     if (typeof value === 'number') {
       taapiCache.set(cacheKey, value);
@@ -153,12 +162,29 @@ export async function fetchBulkIndicators(interval = "1h") {
     const data = await response.json();
     console.log('TAAPI Bulk Response:', data);
     
-    // Extract values from bulk response
+    // Extract values from bulk response with defensive parsing
     const result = {
       rsi: data.data?.[0]?.result?.value || 0,
-      macdHistogram: data.data?.[1]?.result?.valueMACD || 0,
+      macdHistogram: 0,
       ema200: data.data?.[2]?.result?.value || 0
     };
+
+    // Defensive MACD parsing
+    try {
+      const macdData = data.data?.[1]?.result;
+      if (macdData) {
+        // Try multiple possible MACD response formats
+        result.macdHistogram = 
+          macdData.valueMACD || 
+          macdData.histogram?.value || 
+          macdData.histogram || 
+          macdData.value || 
+          0;
+      }
+    } catch (macdError) {
+      console.warn('MACD histogram format unexpected:', data.data?.[1]);
+      result.macdHistogram = 0;
+    }
     
     // Validate we got numeric values
     Object.entries(result).forEach(([key, value]) => {
