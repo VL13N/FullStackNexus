@@ -1,5 +1,5 @@
-import type { Express } from "express";
-import { createServer, type Server } from "http";
+// Removed TypeScript import - using standard JavaScript
+import { createServer } from "http";
 import { storage } from "./storage";
 import { createClient } from "@supabase/supabase-js";
 
