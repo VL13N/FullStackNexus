@@ -468,6 +468,320 @@ export async function registerRoutes(app) {
     }
   });
 
+  // Advanced Astrological Indicators endpoints
+  app.get('/api/astrology/advanced/lunar', async (req, res) => {
+    try {
+      const { AdvancedAstrologyService } = await import('../services/advancedAstrology.js');
+      const { AstrologicalStorage } = await import('../services/astrologicalStorage.js');
+      
+      const astroService = new AdvancedAstrologyService();
+      const storage = new AstrologicalStorage();
+      
+      const date = req.query.date ? new Date(req.query.date) : new Date();
+      const symbol = req.query.symbol || 'SOL';
+      
+      const lunarData = astroService.calculateLunarPhases(date);
+      
+      // Store in Supabase for backtesting
+      await storage.storeLunarEvent({
+        ...lunarData,
+        timestamp: date.toISOString(),
+        symbol: symbol
+      });
+      
+      res.json({
+        success: true,
+        data: lunarData,
+        timestamp: date.toISOString(),
+        symbol: symbol
+      });
+    } catch (error) {
+      console.error('Advanced lunar calculation failed:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get('/api/astrology/advanced/aspects', async (req, res) => {
+    try {
+      const { AdvancedAstrologyService } = await import('../services/advancedAstrology.js');
+      const { AstrologicalStorage } = await import('../services/astrologicalStorage.js');
+      
+      const astroService = new AdvancedAstrologyService();
+      const storage = new AstrologicalStorage();
+      
+      const date = req.query.date ? new Date(req.query.date) : new Date();
+      const symbol = req.query.symbol || 'SOL';
+      
+      const aspectsData = astroService.calculatePlanetaryAspects(date);
+      const declinationsData = astroService.calculatePlanetaryDeclinations(date);
+      
+      // Store planetary aspects
+      await storage.storePlanetaryAspects(aspectsData, date.toISOString(), symbol);
+      
+      res.json({
+        success: true,
+        data: {
+          aspects: aspectsData,
+          declinations: declinationsData
+        },
+        timestamp: date.toISOString(),
+        symbol: symbol
+      });
+    } catch (error) {
+      console.error('Advanced aspects calculation failed:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get('/api/astrology/advanced/events', async (req, res) => {
+    try {
+      const { AdvancedAstrologyService } = await import('../services/advancedAstrology.js');
+      const { AstrologicalStorage } = await import('../services/astrologicalStorage.js');
+      
+      const astroService = new AdvancedAstrologyService();
+      const storage = new AstrologicalStorage();
+      
+      const startDate = req.query.startDate ? new Date(req.query.startDate) : new Date();
+      const daysAhead = parseInt(req.query.daysAhead) || 30;
+      const symbol = req.query.symbol || 'SOL';
+      
+      const eventsData = astroService.identifyAstrologicalEvents(startDate, daysAhead);
+      
+      // Store astrological events
+      await storage.storeAstrologicalEvents(eventsData, startDate.toISOString(), symbol);
+      
+      res.json({
+        success: true,
+        data: eventsData,
+        start_date: startDate.toISOString(),
+        days_ahead: daysAhead,
+        symbol: symbol
+      });
+    } catch (error) {
+      console.error('Astrological events calculation failed:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.post('/api/astrology/advanced/indicators', async (req, res) => {
+    try {
+      const { AdvancedAstrologyService } = await import('../services/advancedAstrology.js');
+      const { AstrologicalStorage } = await import('../services/astrologicalStorage.js');
+      
+      const astroService = new AdvancedAstrologyService();
+      const storage = new AstrologicalStorage();
+      
+      const date = req.body.date ? new Date(req.body.date) : new Date();
+      const symbol = req.body.symbol || 'SOL';
+      
+      // Calculate all astrological components
+      const lunarData = astroService.calculateLunarPhases(date);
+      const aspectsData = astroService.calculatePlanetaryAspects(date);
+      const eventsData = astroService.identifyAstrologicalEvents(date, 7);
+      
+      // Create composite indicators for ML
+      const indicators = {
+        lunar_influence_score: lunarData.current_phase.intensity * 100,
+        aspect_harmony_score: Math.max(0, aspectsData.harmony_index * 10),
+        aspect_stress_score: Math.max(0, aspectsData.financial_stress * 10),
+        eclipse_influence_score: lunarData.eclipse_data.eclipse_intensity * 100,
+        major_event_proximity: eventsData.events.length > 0 ? eventsData.events[0].days_from_now : 30,
+        high_impact_event_count: eventsData.high_impact_events.length,
+        astrological_volatility_index: this.calculateVolatilityIndex(lunarData, aspectsData, eventsData),
+        market_timing_score: this.calculateTimingScore(lunarData, aspectsData),
+        features: this.normalizeAstrologicalFeatures(lunarData, aspectsData, eventsData),
+        calculation_quality: 0.95 // High quality for authentic astronomical calculations
+      };
+      
+      // Store composite indicators
+      await storage.storeAstrologicalIndicators(indicators, date.toISOString(), symbol);
+      
+      res.json({
+        success: true,
+        indicators: indicators,
+        timestamp: date.toISOString(),
+        symbol: symbol
+      });
+    } catch (error) {
+      console.error('Astrological indicators calculation failed:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Backtesting endpoints
+  app.get('/api/astrology/backtest/lunar', async (req, res) => {
+    try {
+      const { AstrologicalStorage } = await import('../services/astrologicalStorage.js');
+      const storage = new AstrologicalStorage();
+      
+      const symbol = req.query.symbol || 'SOL';
+      const startDate = req.query.startDate;
+      const endDate = req.query.endDate;
+      
+      const lunarEvents = await storage.getLunarEvents(symbol, startDate, endDate);
+      const majorPhases = await storage.getMajorLunarPhases(symbol, startDate, endDate);
+      const eclipses = await storage.getEclipseEvents(symbol, startDate, endDate);
+      
+      res.json({
+        success: true,
+        data: {
+          all_lunar_events: lunarEvents,
+          major_phases: majorPhases,
+          eclipse_events: eclipses,
+          summary: {
+            total_events: lunarEvents.length,
+            major_phases_count: majorPhases.length,
+            eclipse_count: eclipses.length,
+            timespan: startDate && endDate ? 
+              Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + ' days' : 
+              'Not specified'
+          }
+        },
+        symbol: symbol
+      });
+    } catch (error) {
+      console.error('Lunar backtesting data retrieval failed:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get('/api/astrology/backtest/aspects', async (req, res) => {
+    try {
+      const { AstrologicalStorage } = await import('../services/astrologicalStorage.js');
+      const storage = new AstrologicalStorage();
+      
+      const symbol = req.query.symbol || 'SOL';
+      const startDate = req.query.startDate;
+      const endDate = req.query.endDate;
+      const aspectTypes = req.query.aspectTypes ? req.query.aspectTypes.split(',') : null;
+      
+      const aspects = await storage.getPlanetaryAspects(symbol, startDate, endDate, aspectTypes);
+      
+      res.json({
+        success: true,
+        data: aspects,
+        summary: {
+          total_aspects: aspects.length,
+          aspect_types: [...new Set(aspects.map(a => a.aspect_type))],
+          applying_count: aspects.filter(a => a.applying).length,
+          high_significance: aspects.filter(a => a.financial_significance >= 7).length
+        },
+        symbol: symbol
+      });
+    } catch (error) {
+      console.error('Aspects backtesting data retrieval failed:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get('/api/astrology/backtest/patterns', async (req, res) => {
+    try {
+      const { AstrologicalStorage } = await import('../services/astrologicalStorage.js');
+      const storage = new AstrologicalStorage();
+      
+      const symbol = req.query.symbol || 'SOL';
+      const startDate = req.query.startDate;
+      const endDate = req.query.endDate;
+      
+      const patterns = await storage.analyzeAstrologicalPatterns(symbol, startDate, endDate);
+      
+      res.json({
+        success: true,
+        patterns: patterns,
+        symbol: symbol,
+        analysis_period: {
+          start: startDate,
+          end: endDate
+        }
+      });
+    } catch (error) {
+      console.error('Pattern analysis failed:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Utility functions for astrological calculations
+  function calculateVolatilityIndex(lunarData, aspectsData, eventsData) {
+    let volatility = 0;
+    
+    // Eclipse influence
+    volatility += lunarData.eclipse_data.eclipse_intensity * 30;
+    
+    // Stress aspects
+    volatility += aspectsData.financial_stress * 20;
+    
+    // High impact events
+    volatility += eventsData.high_impact_events.length * 10;
+    
+    // Lunar intensity
+    volatility += lunarData.current_phase.intensity * 15;
+    
+    return Math.min(100, volatility);
+  }
+  
+  function calculateTimingScore(lunarData, aspectsData) {
+    let timing = 50; // Base neutral timing
+    
+    // Harmonious aspects improve timing
+    timing += aspectsData.harmony_index * 8;
+    
+    // Full and New moons are significant timing points
+    const phaseSignificance = Math.abs(Math.sin(lunarData.current_phase.angle * Math.PI / 180));
+    timing += phaseSignificance * 20;
+    
+    // Eclipse seasons require caution
+    if (lunarData.eclipse_data.eclipse_season) {
+      timing -= 15;
+    }
+    
+    return Math.max(0, Math.min(100, timing));
+  }
+  
+  function normalizeAstrologicalFeatures(lunarData, aspectsData, eventsData) {
+    return {
+      lunar_phase_angle: lunarData.current_phase.angle / 360,
+      lunar_illumination: lunarData.current_phase.illumination,
+      lunar_intensity: lunarData.current_phase.intensity,
+      eclipse_intensity: lunarData.eclipse_data.eclipse_intensity,
+      eclipse_season: lunarData.eclipse_data.eclipse_season ? 1 : 0,
+      aspect_count: Math.min(1, aspectsData.aspect_count / 10),
+      major_aspects: Math.min(1, aspectsData.major_aspects.length / 5),
+      applying_aspects: Math.min(1, aspectsData.applying_aspects.length / 5),
+      harmony_index: (aspectsData.harmony_index + 10) / 20, // Normalize -10 to +10 range
+      stress_index: Math.min(1, aspectsData.financial_stress / 10),
+      high_impact_events: Math.min(1, eventsData.high_impact_events.length / 3),
+      event_proximity: Math.max(0, 1 - (eventsData.events[0]?.days_from_now || 30) / 30)
+    };
+  }
+
   // Utility functions for ML statistics
   function calculateDistribution(scores) {
     if (!scores.length) return { min: 0, max: 0, mean: 0, std: 0 };
