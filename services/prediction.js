@@ -268,9 +268,10 @@ class PredictionService {
           social_score: predictionData.socialScore,
           fundamental_score: predictionData.fundScore,
           astrology_score: predictionData.astroScore,
-          predicted_pct: predictionData.predictedPct,
-          category: predictionData.category,
-          confidence: predictionData.confidence
+          overall_score: (predictionData.techScore + predictionData.socialScore + predictionData.fundScore + predictionData.astroScore) / 4,
+          classification: predictionData.category,
+          confidence: predictionData.confidence,
+          risk_level: predictionData.confidence > 0.7 ? 'Low' : predictionData.confidence > 0.4 ? 'Medium' : 'High'
         });
 
       if (error) {
