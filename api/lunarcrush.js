@@ -28,7 +28,8 @@ class LunarCrushService {
   async makeRequest(endpoint, maxRetries = 3) {
     this.validateApiKey();
     
-    const url = `${this.baseUrl}/${endpoint}?key=${this.apiKey}`;
+    // v1 API uses query parameters format: ?data=assets&symbol=SOL&key=xxx
+    const url = `${this.baseUrl}?${endpoint}&key=${this.apiKey}`;
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -106,7 +107,7 @@ class LunarCrushService {
    */
   async getSolanaMetrics(symbol = 'SOL') {
     try {
-      const data = await this.makeRequest(`coins/${symbol}`);
+      const data = await this.makeRequest(`data=assets&symbol=${symbol}`);
       
       // LunarCrush v1 API response structure
       const coinData = data.data || data;
@@ -294,8 +295,11 @@ class LunarCrushService {
    */
   async getSolanaTimeSeries(interval = '1d', start = null, end = null) {
     try {
-      // Build time-series endpoint URL
-      let endpoint = 'coins/SOL/time-series';
+      // Build time-series endpoint URL using v1 API format
+      let endpoint = `data=assets&symbol=SOL`;
+      if (interval) endpoint += `&interval=${interval}`;
+      if (start) endpoint += `&start=${start}`;
+      if (end) endpoint += `&end=${end}`;
       
       const data = await this.makeRequest(endpoint);
       
