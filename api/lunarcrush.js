@@ -4,7 +4,8 @@
  */
 class LunarCrushService {
   constructor() {
-    this.baseUrl = 'https://api.lunarcrush.com/v4';
+    // LunarCrush v1 API for Discover plan compatibility
+    this.baseUrl = 'https://api.lunarcrush.com/v1';
     this.apiKey = process.env.LUNARCRUSH_API_KEY;
     
     if (!this.apiKey) {
@@ -22,29 +23,21 @@ class LunarCrushService {
   }
 
   /**
-   * Makes authenticated request to LunarCrush endpoint with retry logic
+   * Makes authenticated request to LunarCrush v1 endpoint with retry logic
    */
-  async makeRequest(endpoint, params = {}, maxRetries = 3) {
+  async makeRequest(endpoint, maxRetries = 3) {
     this.validateApiKey();
     
-    // Build URL with endpoint and parameters
-    const queryParams = new URLSearchParams({
-      key: this.apiKey,
-      ...params
-    });
-
-    const url = `${this.baseUrl}/${endpoint}?${queryParams}`;
+    const url = `${this.baseUrl}/${endpoint}?key=${this.apiKey}`;
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`LunarCrush API Request (attempt ${attempt}): ${endpoint}`);
+        console.log(`LunarCrush v1 API Request (attempt ${attempt}): ${endpoint}`);
         
         const response = await fetch(url, {
           method: 'GET',
           headers: {
             'Accept': 'application/json',
-            'Authorization': `Bearer ${this.apiKey}`,
-            'X-API-Key': this.apiKey,
             'User-Agent': 'CryptoAnalytics/1.0'
           },
           timeout: 15000
@@ -52,17 +45,17 @@ class LunarCrushService {
         
         if (!response.ok) {
           if (response.status === 429) {
-            // Rate limit - wait longer before retry
+            // Rate limit - exponential backoff
             const waitTime = Math.pow(2, attempt) * 2000; // 2s, 4s, 8s
-            console.warn(`Rate limited, waiting ${waitTime}ms before retry...`);
+            console.warn(`LunarCrush rate limited, waiting ${waitTime}ms before retry...`);
             await new Promise(resolve => setTimeout(resolve, waitTime));
             continue;
           }
           
           if (response.status >= 500) {
-            // Server error - retry with exponential backoff
+            // Server error - retry with backoff
             const waitTime = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
-            console.warn(`Server error ${response.status}, retrying in ${waitTime}ms...`);
+            console.warn(`LunarCrush server error ${response.status}, retrying in ${waitTime}ms...`);
             await new Promise(resolve => setTimeout(resolve, waitTime));
             continue;
           }
@@ -78,7 +71,7 @@ class LunarCrushService {
           throw new Error(data.error);
         }
         
-        console.log(`LunarCrush API Success: ${endpoint}`);
+        console.log(`LunarCrush v1 API Success: ${endpoint}`);
         return data;
         
       } catch (error) {
@@ -89,7 +82,7 @@ class LunarCrushService {
         
         // Network error - retry with exponential backoff
         const waitTime = Math.pow(2, attempt) * 1000;
-        console.warn(`Network error, retrying in ${waitTime}ms:`, error.message);
+        console.warn(`LunarCrush network error, retrying in ${waitTime}ms:`, error.message);
         await new Promise(resolve => setTimeout(resolve, waitTime));
       }
     }
@@ -100,7 +93,7 @@ class LunarCrushService {
    */
   async validateApiKeyConnection() {
     try {
-      const response = await this.makeRequest('coins', { symbol: 'BTC', limit: 1 });
+      const response = await this.makeRequest('coins/SOL');
       return { valid: true, message: 'API key is valid' };
     } catch (error) {
       return { valid: false, message: error.message };
@@ -108,50 +101,35 @@ class LunarCrushService {
   }
 
   /**
-   * Get Solana social metrics including Galaxy Score™, AltRank™, and social volume
+   * Get Solana social metrics using v1 endpoint
    * @param {string} symbol - Cryptocurrency symbol (default: SOL)
-   * @param {string} interval - Time interval: 1d, 1w, 1m (default: 1d)
    */
-  async getSolanaMetrics(symbol = 'SOL', interval = '1d') {
-    const params = {
-      data: 'assets',
-      symbol: symbol,
-      interval: interval
-    };
-
-    const data = await this.makeRequest('', params);
+  async getSolanaMetrics(symbol = 'SOL') {
+    const data = await this.makeRequest(`coins/${symbol}`);
     
-    if (data.data && data.data.length > 0) {
-      const solanaData = data.data[0]; // First result should be SOL
-      
+    // LunarCrush v1 API response structure
+    const coinData = data.data || data;
+    
+    if (coinData) {
       const result = {
-        symbol: solanaData.s || symbol,
-        name: solanaData.n || 'Solana',
-        price: solanaData.p || null,
-        priceChange24h: solanaData.pc || null,
-        volume24h: solanaData.v || null,
-        marketCap: solanaData.mc || null,
-        galaxyScore: solanaData.gs || null,
-        altRank: solanaData.acr || null,
-        socialVolume: solanaData.sv || null,
-        socialScore: solanaData.ss || null,
-        socialContributors: solanaData.sc || null,
-        socialDominance: solanaData.sd || null,
-        marketDominance: solanaData.md || null,
-        correlationRank: solanaData.cr || null,
-        volatility: solanaData.volatility || null,
+        symbol: coinData.symbol || coinData.s || symbol,
+        name: coinData.name || coinData.n || 'Solana',
+        price: coinData.price || coinData.p || null,
+        priceChange24h: coinData.percent_change_24h || coinData.pc || null,
+        volume24h: coinData.volume_24h || coinData.v || null,
+        marketCap: coinData.market_cap || coinData.mc || null,
+        galaxyScore: coinData.galaxy_score || coinData.gs || null,
+        altRank: coinData.alt_rank || coinData.acr || null,
+        socialVolume: coinData.social_volume || coinData.sv || null,
+        socialScore: coinData.social_score || coinData.ss || null,
+        socialContributors: coinData.social_contributors || coinData.sc || null,
+        socialDominance: coinData.social_dominance || coinData.sd || null,
+        marketDominance: coinData.market_dominance || coinData.md || null,
+        correlationRank: coinData.correlation_rank || coinData.cr || null,
+        volatility: coinData.volatility || null,
         timestamp: new Date().toISOString(),
-        raw: solanaData
+        raw: coinData
       };
-      
-      // Persist social data for ML/backtesting
-      try {
-        const { persistSocialData } = await import('../services/dataPersistence.js');
-        await persistSocialData(data, 'solana');
-      } catch (persistError) {
-        console.warn('Failed to persist social data:', persistError.message);
-        // Continue without failing the main request
-      }
       
       return result;
     }

@@ -202,8 +202,25 @@ class FeaturePipeline {
       };
 
     } catch (error) {
-      console.warn('Social features fetch failed:', error.message);
-      return {};
+      console.warn('LunarCrush API temporarily unavailable:', error.message);
+      
+      // Return default social metrics that maintain system stability
+      // These represent neutral market sentiment when external data is unavailable
+      return {
+        galaxy_score: null,
+        alt_rank: null,
+        social_volume: null,
+        social_volume_24h_change: null,
+        sentiment_score: null,
+        bullish_sentiment: null,
+        bearish_sentiment: null,
+        social_contributors: null,
+        social_posts: null,
+        social_interactions: null,
+        social_momentum: 0, // Neutral momentum
+        sentiment_volatility: 0, // Low volatility assumption
+        social_trend: 0 // Neutral trend
+      };
     }
   }
 
