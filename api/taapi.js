@@ -108,103 +108,45 @@ export async function fetchTAIndicator(indicatorName, interval = "1h") {
 }
 
 /**
- * Fetches multiple indicators in a single bulk request (more efficient)
+ * Fetches multiple indicators using individual requests (reliable approach)
  * @param {string} interval - Time interval (default: "1h")
  * @returns {Promise<{rsi: number, macdHistogram: number, ema200: number}>}
  */
 export async function fetchBulkIndicators(interval = "1h") {
   validateApiKey();
   
-  const cacheKey = `bulk@${interval}`;
+  const cacheKey = `indicators@${interval}`;
   const cached = taapiCache.get(cacheKey);
   if (cached !== undefined) {
-    console.log(`TAAPI Bulk cache hit: ${cacheKey}`);
+    console.log(`TAAPI Individual cache hit: ${cacheKey}`);
     return cached;
   }
 
-  const requestBody = {
-    secret: process.env.TAAPI_API_KEY,
-    construct: {
-      exchange: "binance",
-      symbol: "SOL/USDT",
-      interval: interval
-    },
-    indicators: "rsi,macd,ema"
-  };
-
   try {
-    console.log(`TAAPI Bulk Request (${interval}):`, requestBody.indicators);
+    console.log(`TAAPI Individual Requests (${interval}): rsi, macd, ema`);
     
-    const response = await fetch('https://api.taapi.io/bulk', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(requestBody)
-    });
+    // Use individual requests for maximum reliability
+    const [rsiResult, macdResult, emaResult] = await Promise.allSettled([
+      fetchTAIndicator('rsi', interval),
+      fetchTAIndicator('macd', interval),
+      fetchTAIndicator('ema', interval)
+    ]);
     
-    if (!response.ok) {
-      const errorData = await response.text();
-      
-      if (response.status === 401) {
-        console.error(`TAAPI Bulk Auth Error (${response.status}):`, errorData);
-        throw new Error(`TAAPI Bulk Authentication failed: ${errorData}. Check your Pro API key.`);
-      }
-      
-      if (response.status === 429) {
-        console.error(`TAAPI Bulk Rate Limit (${response.status}):`, errorData);
-        throw new Error(`TAAPI Bulk Rate limit exceeded: ${errorData}.`);
-      }
-      
-      throw new Error(`TAAPI Bulk HTTP ${response.status}: ${errorData}`);
-    }
-
-    const data = await response.json();
-    console.log('TAAPI Bulk Response:', data);
-    
-    // Extract values from bulk response with defensive parsing
     const result = {
-      rsi: data.data?.[0]?.result?.value || 0,
-      macdHistogram: 0,
-      ema200: data.data?.[2]?.result?.value || 0
+      rsi: rsiResult.status === 'fulfilled' ? rsiResult.value : 0,
+      macdHistogram: macdResult.status === 'fulfilled' ? (macdResult.value?.histogram || macdResult.value || 0) : 0,
+      ema200: emaResult.status === 'fulfilled' ? emaResult.value : 0
     };
-
-    // Defensive MACD parsing
-    try {
-      const macdData = data.data?.[1]?.result;
-      if (macdData) {
-        // Try multiple possible MACD response formats
-        result.macdHistogram = 
-          macdData.valueMACD || 
-          macdData.histogram?.value || 
-          macdData.histogram || 
-          macdData.value || 
-          0;
-      }
-    } catch (macdError) {
-      console.warn('MACD histogram format unexpected:', data.data?.[1]);
-      result.macdHistogram = 0;
-    }
     
-    // Validate we got numeric values
-    Object.entries(result).forEach(([key, value]) => {
-      if (typeof value !== 'number' || isNaN(value)) {
-        console.warn(`TAAPI Bulk: Invalid ${key} value:`, value);
-        result[key] = 0; // Fallback to 0 for invalid values
-      }
+    console.log('TAAPI Individual Results:', {
+      rsi: result.rsi || 'failed',
+      macd: result.macdHistogram || 'failed', 
+      ema: result.ema200 || 'failed'
     });
     
-    // Persist technical data for ML/backtesting
-    try {
-      const { persistTechnicalData } = await import('../services/dataPersistence.js');
-      await persistTechnicalData(data, 'SOL/USDT', interval);
-    } catch (persistError) {
-      console.warn('Failed to persist technical data:', persistError.message);
-      // Continue without failing the main request
-    }
+    // Cache the result for 60 seconds
+    taapiCache.set(cacheKey, result, 60);
     
-    taapiCache.set(cacheKey, result);
-    console.log(`TAAPI Bulk Success:`, result);
     return result;
     
   } catch (error) {
