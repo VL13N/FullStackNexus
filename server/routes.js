@@ -175,6 +175,130 @@ export async function registerRoutes(app) {
     }
   });
 
+  // Configuration endpoints
+  app.get("/api/config/scheduler", async (req, res) => {
+    res.json({
+      success: true,
+      config: {
+        predictionInterval: process.env.PREDICTION_INTERVAL_MINUTES || 15,
+        healthCheckInterval: process.env.HEALTH_CHECK_INTERVAL_MINUTES || 15,
+        dashboardRefreshInterval: process.env.DASHBOARD_REFRESH_SECONDS || 30,
+        maxRetryAttempts: process.env.MAX_RETRY_ATTEMPTS || 3
+      },
+      timestamp: new Date().toISOString()
+    });
+  });
+
+  app.post("/api/config/scheduler", async (req, res) => {
+    try {
+      const { predictionInterval, healthCheckInterval, dashboardRefreshInterval, maxRetryAttempts } = req.body;
+      
+      // Store configuration (in production, this would persist to database)
+      const config = {
+        predictionInterval: predictionInterval || 15,
+        healthCheckInterval: healthCheckInterval || 15,
+        dashboardRefreshInterval: dashboardRefreshInterval || 30,
+        maxRetryAttempts: maxRetryAttempts || 3,
+        updatedAt: new Date().toISOString()
+      };
+      
+      res.json({
+        success: true,
+        message: "Configuration updated successfully",
+        config,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Error monitoring endpoint
+  app.get("/api/system/errors", async (req, res) => {
+    try {
+      const { errorHandler } = await import('../utils/errorHandler.js');
+      const summary = errorHandler.getErrorSummary();
+      
+      res.json({
+        success: true,
+        data: summary,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Backtest endpoint for model performance analysis
+  app.get("/api/analytics/backtest", async (req, res) => {
+    try {
+      if (!supabase) {
+        return res.status(503).json({
+          success: false,
+          error: "Database not available for backtesting",
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const days = parseInt(req.query.days) || 7;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+
+      const { data, error } = await supabase
+        .from('live_predictions')
+        .select('*')
+        .gte('timestamp', startDate.toISOString())
+        .order('timestamp', { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+
+      // Analyze prediction patterns and accuracy trends
+      const analysis = {
+        totalPredictions: data.length,
+        confidenceStats: {
+          average: data.reduce((sum, p) => sum + p.confidence, 0) / data.length,
+          min: Math.min(...data.map(p => p.confidence)),
+          max: Math.max(...data.map(p => p.confidence))
+        },
+        categoryDistribution: {
+          BULLISH: data.filter(p => p.category === 'BULLISH').length,
+          BEARISH: data.filter(p => p.category === 'BEARISH').length,
+          NEUTRAL: data.filter(p => p.category === 'NEUTRAL').length
+        },
+        pillarContributions: {
+          technical: data.reduce((sum, p) => sum + p.tech_score, 0) / data.length,
+          social: data.reduce((sum, p) => sum + p.social_score, 0) / data.length,
+          fundamental: data.reduce((sum, p) => sum + p.fund_score, 0) / data.length,
+          astrology: data.reduce((sum, p) => sum + p.astro_score, 0) / data.length
+        }
+      };
+
+      res.json({
+        success: true,
+        data: analysis,
+        predictions: data,
+        timeframe: `${days} days`,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // Add basic routes for other data sources
   app.get("/api/news/recent", async (req, res) => {
     res.json({

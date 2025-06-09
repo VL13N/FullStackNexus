@@ -54,35 +54,37 @@ class SchedulerService {
   }
 
   async runHourlyPrediction() {
-    try {
-      console.log('=== Hourly Prediction Started ===');
-      const startTime = Date.now();
-      
-      const result = await runPredictionLive();
-      
-      const endTime = Date.now();
-      const duration = endTime - startTime;
-      
-      console.log(`Prediction completed in ${duration}ms`);
-      console.log(`Result: ${result.prediction.percentageChange}% (${result.prediction.category})`);
-      console.log(`Confidence: ${result.prediction.confidence}%`);
+    const startTime = Date.now();
+    console.log('=== Automated Prediction Started ===');
+    
+    const result = await errorHandler.executeWithRetry(
+      () => runPredictionLive(),
+      'Scheduled Prediction Generation'
+    );
+    
+    const duration = Date.now() - startTime;
+    
+    if (result.success) {
+      const prediction = result.data;
+      console.log(`Prediction completed in ${duration}ms (attempt ${result.attempt})`);
+      console.log(`Result: ${prediction.prediction.percentageChange}% (${prediction.prediction.category})`);
+      console.log(`Confidence: ${prediction.prediction.confidence}%`);
       
       // Check for category changes
-      if (this.lastCategory && result.prediction.category !== this.lastCategory) {
-        await this.handleCategoryChange(this.lastCategory, result.prediction.category, result);
+      if (this.lastCategory && prediction.prediction.category !== this.lastCategory) {
+        await this.handleCategoryChange(this.lastCategory, prediction.prediction.category, prediction);
       }
       
       // Check for large predicted moves
-      if (Math.abs(result.prediction.percentageChange) > 5) {
-        await this.handleLargeMove(result);
+      if (Math.abs(prediction.prediction.percentageChange) > 5) {
+        await this.handleLargeMove(prediction);
       }
       
-      this.lastCategory = result.prediction.category;
-      console.log('=== Hourly Prediction Completed ===');
-      
-    } catch (error) {
-      console.error('Hourly prediction failed:', error);
-      await this.handlePredictionError(error);
+      this.lastCategory = prediction.prediction.category;
+      console.log('=== Automated Prediction Completed ===');
+    } else {
+      console.error(`Prediction failed after ${result.attempts} attempts:`, result.error);
+      await this.handlePredictionError(new Error(result.error));
     }
   }
 

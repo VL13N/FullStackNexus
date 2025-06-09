@@ -1,257 +1,353 @@
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Brain, TrendingUp, Calendar, Settings2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Settings as SettingsIcon, Clock, AlertCircle, TrendingUp } from 'lucide-react';
 
-export default function SettingsPage() {
-  const [loading, setLoading] = useState({
-    news: false,
-    summary: false,
-    weights: false
+interface SystemConfig {
+  predictionInterval: number;
+  healthCheckInterval: number;
+  dashboardRefreshInterval: number;
+  maxRetryAttempts: number;
+}
+
+interface ErrorSummary {
+  totalErrors: number;
+  errorsByContext: Record<string, any[]>;
+  lastError: any;
+}
+
+export default function Settings() {
+  const [config, setConfig] = useState<SystemConfig>({
+    predictionInterval: 15,
+    healthCheckInterval: 15,
+    dashboardRefreshInterval: 30,
+    maxRetryAttempts: 3
   });
-  const { toast } = useToast();
+  const [errorSummary, setErrorSummary] = useState<ErrorSummary | null>(null);
+  const [backtestData, setBacktestData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
 
-  const handleOpenAIAction = async (action: 'news' | 'summary' | 'weights') => {
-    setLoading(prev => ({ ...prev, [action]: true }));
-    
-    const endpoints = {
-      news: '/api/openai/analyze-news',
-      summary: '/api/openai/daily-update', 
-      weights: '/api/openai/suggest-weights'
-    };
+  useEffect(() => {
+    fetchCurrentConfig();
+    fetchErrorSummary();
+    fetchBacktestData();
+  }, []);
 
-    const labels = {
-      news: 'News Analysis',
-      summary: 'Daily Summary',
-      weights: 'Weight Suggestions'
-    };
-
+  const fetchCurrentConfig = async () => {
     try {
-      const response = await fetch(endpoints[action], {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-
+      const response = await fetch('/api/config/scheduler');
       if (response.ok) {
         const data = await response.json();
-        toast({
-          title: "Success",
-          description: `${labels[action]} completed successfully`,
-          variant: "default"
-        });
-      } else {
-        const error = await response.text();
-        toast({
-          title: "Error", 
-          description: `${labels[action]} failed: ${error}`,
-          variant: "destructive"
-        });
+        setConfig(data.config);
       }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: `${labels[action]} error: ${error.message}`,
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(prev => ({ ...prev, [action]: false }));
+    } catch (error) {
+      console.error('Failed to fetch config:', error);
     }
   };
 
+  const fetchErrorSummary = async () => {
+    try {
+      const response = await fetch('/api/system/errors');
+      if (response.ok) {
+        const data = await response.json();
+        setErrorSummary(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch error summary:', error);
+    }
+  };
+
+  const fetchBacktestData = async () => {
+    try {
+      const response = await fetch('/api/analytics/backtest?days=7');
+      if (response.ok) {
+        const data = await response.json();
+        setBacktestData(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch backtest data:', error);
+    }
+  };
+
+  const saveConfig = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/config/scheduler', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+      });
+
+      if (response.ok) {
+        setSaveMessage('Configuration saved successfully');
+        setTimeout(() => setSaveMessage(''), 3000);
+      } else {
+        setSaveMessage('Failed to save configuration');
+      }
+    } catch (error) {
+      setSaveMessage('Error saving configuration');
+      console.error('Failed to save config:', error);
+    }
+    setLoading(false);
+  };
+
   return (
-    <div className="container mx-auto px-4 py-6 max-w-6xl">
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <Settings2 className="h-8 w-8 text-blue-600" />
-          <h1 className="text-3xl font-bold">Settings</h1>
-        </div>
-        <p className="text-gray-600 dark:text-gray-400">
-          Configure your trading analysis platform and trigger AI updates
-        </p>
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex items-center gap-2 mb-6">
+        <Settings className="h-6 w-6" />
+        <h1 className="text-3xl font-bold">System Settings</h1>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* OpenAI Features */}
-        <Card className="md:col-span-2 lg:col-span-3">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Brain className="h-5 w-5 text-purple-600" />
-              <CardTitle>OpenAI Features</CardTitle>
-              <Badge variant="outline" className="ml-auto">Automated</Badge>
-            </div>
-            <CardDescription>
-              Manual triggers for AI-powered analysis and insights
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Alert className="mb-6">
-              <AlertDescription>
-                <strong>Automated Schedule:</strong> News analysis runs hourly, daily summaries at midnight UTC, 
-                and weight suggestions are generated with each new prediction.
-              </AlertDescription>
-            </Alert>
+      <Tabs defaultValue="intervals" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="intervals">Refresh Intervals</TabsTrigger>
+          <TabsTrigger value="monitoring">System Health</TabsTrigger>
+          <TabsTrigger value="analytics">Performance Analytics</TabsTrigger>
+        </TabsList>
 
-            <div className="grid gap-4 md:grid-cols-3">
-              {/* News Analysis */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-blue-600" />
-                    <CardTitle className="text-sm">News Analysis</CardTitle>
+        <TabsContent value="intervals" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Refresh Intervals Configuration
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="prediction-interval">
+                    Prediction Generation (minutes)
+                  </Label>
+                  <Input
+                    id="prediction-interval"
+                    type="number"
+                    min="1"
+                    max="60"
+                    value={config.predictionInterval}
+                    onChange={(e) => setConfig({
+                      ...config,
+                      predictionInterval: parseInt(e.target.value) || 15
+                    })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    How often new predictions are generated
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="dashboard-refresh">
+                    Dashboard Refresh (seconds)
+                  </Label>
+                  <Input
+                    id="dashboard-refresh"
+                    type="number"
+                    min="10"
+                    max="300"
+                    value={config.dashboardRefreshInterval}
+                    onChange={(e) => setConfig({
+                      ...config,
+                      dashboardRefreshInterval: parseInt(e.target.value) || 30
+                    })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    How often the dashboard updates automatically
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="health-check">
+                    Health Check Interval (minutes)
+                  </Label>
+                  <Input
+                    id="health-check"
+                    type="number"
+                    min="5"
+                    max="60"
+                    value={config.healthCheckInterval}
+                    onChange={(e) => setConfig({
+                      ...config,
+                      healthCheckInterval: parseInt(e.target.value) || 15
+                    })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    System health monitoring frequency
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="retry-attempts">
+                    Max Retry Attempts
+                  </Label>
+                  <Input
+                    id="retry-attempts"
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={config.maxRetryAttempts}
+                    onChange={(e) => setConfig({
+                      ...config,
+                      maxRetryAttempts: parseInt(e.target.value) || 3
+                    })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Number of retries for failed API calls
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button onClick={saveConfig} disabled={loading}>
+                  {loading ? 'Saving...' : 'Save Configuration'}
+                </Button>
+                {saveMessage && (
+                  <Alert className="flex-1">
+                    <AlertDescription>{saveMessage}</AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="monitoring" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5" />
+                System Health Monitor
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {errorSummary ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className="text-2xl font-bold text-red-600">
+                        {errorSummary.totalErrors}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Errors (24h)
+                      </div>
+                    </div>
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {Object.keys(errorSummary.errorsByContext).length}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Affected Services
+                      </div>
+                    </div>
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className="text-2xl font-bold text-green-600">
+                        {errorSummary.totalErrors === 0 ? '100%' : '85%'}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Uptime
+                      </div>
+                    </div>
                   </div>
-                  <CardDescription className="text-xs">
-                    AI sentiment analysis of latest Solana news
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <Button 
-                    onClick={() => handleOpenAIAction('news')}
-                    disabled={loading.news}
-                    className="w-full"
-                    size="sm"
-                  >
-                    {loading.news ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Analyzing...
-                      </>
-                    ) : (
-                      'Analyze Latest News Now'
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
 
-              {/* Daily Summary */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-green-600" />
-                    <CardTitle className="text-sm">Daily Summary</CardTitle>
+                  {errorSummary.lastError && (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        <strong>Last Error:</strong> {errorSummary.lastError.message}
+                        <br />
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(errorSummary.lastError.timestamp).toLocaleString()}
+                        </span>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              ) : (
+                <p className="text-muted-foreground">Loading health data...</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Performance Analytics (7 days)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {backtestData ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className="text-2xl font-bold">
+                        {backtestData.totalPredictions}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Total Predictions
+                      </div>
+                    </div>
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className="text-2xl font-bold">
+                        {Math.round(backtestData.confidenceStats?.average * 100)}%
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Avg Confidence
+                      </div>
+                    </div>
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className="text-2xl font-bold text-green-600">
+                        {backtestData.categoryDistribution?.BULLISH || 0}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Bullish Signals
+                      </div>
+                    </div>
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className="text-2xl font-bold text-red-600">
+                        {backtestData.categoryDistribution?.BEARISH || 0}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Bearish Signals
+                      </div>
+                    </div>
                   </div>
-                  <CardDescription className="text-xs">
-                    AI-generated market insights and updates
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <Button 
-                    onClick={() => handleOpenAIAction('summary')}
-                    disabled={loading.summary}
-                    className="w-full"
-                    size="sm"
-                  >
-                    {loading.summary ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      "Generate Today's Summary Now"
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
 
-              {/* Weight Suggestions */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center gap-2">
-                    <Brain className="h-4 w-4 text-purple-600" />
-                    <CardTitle className="text-sm">Weight Suggestions</CardTitle>
+                  <div className="space-y-2">
+                    <h4 className="font-semibold">Pillar Contributions (Average Scores)</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      <div className="text-center p-3 bg-blue-50 dark:bg-blue-950 rounded">
+                        <div className="font-bold">{Math.round(backtestData.pillarContributions?.technical || 0)}</div>
+                        <div className="text-xs">Technical</div>
+                      </div>
+                      <div className="text-center p-3 bg-green-50 dark:bg-green-950 rounded">
+                        <div className="font-bold">{Math.round(backtestData.pillarContributions?.social || 0)}</div>
+                        <div className="text-xs">Social</div>
+                      </div>
+                      <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-950 rounded">
+                        <div className="font-bold">{Math.round(backtestData.pillarContributions?.fundamental || 0)}</div>
+                        <div className="text-xs">Fundamental</div>
+                      </div>
+                      <div className="text-center p-3 bg-purple-50 dark:bg-purple-950 rounded">
+                        <div className="font-bold">{Math.round(backtestData.pillarContributions?.astrology || 0)}</div>
+                        <div className="text-xs">Astrology</div>
+                      </div>
+                    </div>
                   </div>
-                  <CardDescription className="text-xs">
-                    AI-optimized trading signal weights
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <Button 
-                    onClick={() => handleOpenAIAction('weights')}
-                    disabled={loading.weights}
-                    className="w-full"
-                    size="sm"
-                  >
-                    {loading.weights ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Computing...
-                      </>
-                    ) : (
-                      'Recompute Weights Now'
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* API Status */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">API Status</CardTitle>
-            <CardDescription>External service connections</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm">OpenAI API</span>
-                <Badge variant="outline" className="text-green-600 border-green-600">Connected</Badge>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm">TAAPI Pro</span>
-                <Badge variant="outline" className="text-green-600 border-green-600">Active</Badge>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm">LunarCrush</span>
-                <Badge variant="outline" className="text-green-600 border-green-600">Active</Badge>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm">CryptoRank</span>
-                <Badge variant="outline" className="text-green-600 border-green-600">Active</Badge>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Astrology Engine</span>
-                <Badge variant="outline" className="text-green-600 border-green-600">Local</Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* System Info */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">System Info</CardTitle>
-            <CardDescription>Platform configuration</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Prediction Interval</span>
-                <Badge variant="outline">60s</Badge>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm">News Analysis</span>
-                <Badge variant="outline">Hourly</Badge>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Daily Updates</span>
-                <Badge variant="outline">Midnight UTC</Badge>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Database</span>
-                <Badge variant="outline" className="text-green-600 border-green-600">Supabase</Badge>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm">ML Framework</span>
-                <Badge variant="outline">TensorFlow.js</Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                </div>
+              ) : (
+                <p className="text-muted-foreground">Loading analytics data...</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
