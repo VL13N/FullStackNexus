@@ -12,6 +12,11 @@ class SchedulerService {
   constructor() {
     this.lastCategory = null;
     this.isRunning = false;
+    this.broadcastFunction = null;
+  }
+
+  setBroadcastFunction(broadcastFn) {
+    this.broadcastFunction = broadcastFn;
   }
 
   start() {
@@ -81,6 +86,12 @@ class SchedulerService {
       }
       
       this.lastCategory = prediction.prediction.category;
+      
+      // Broadcast prediction via SSE if function available
+      if (this.broadcastFunction) {
+        this.broadcastFunction(prediction.prediction);
+      }
+      
       console.log('=== Automated Prediction Completed ===');
     } else {
       console.error(`Prediction failed after ${result.attempts} attempts:`, result.error);

@@ -1,5 +1,6 @@
 import { createServer } from "http";
 import { createClient } from "@supabase/supabase-js";
+import mlPredictor from "./ml/predictor.js";
 
 // Initialize Supabase client
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -315,6 +316,254 @@ export async function registerRoutes(app) {
       timestamp: new Date().toISOString()
     });
   });
+
+  // ML Prediction Endpoints
+  app.post("/api/ml/predict", async (req, res) => {
+    try {
+      const features = req.body;
+      
+      if (!features || typeof features !== 'object') {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid feature data. Expected object with numeric features.",
+          required_features: [
+            'rsi_1h', 'macd_histogram', 'ema_20', 
+            'market_cap_usd', 'volume_24h_usd', 
+            'social_score', 'astro_score'
+          ]
+        });
+      }
+
+      const prediction = await mlPredictor.predict(features);
+      
+      res.json({
+        success: true,
+        ...prediction,
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error('ML prediction error:', error);
+      
+      if (error.message.includes('Model not available')) {
+        return res.status(503).json({
+          success: false,
+          error: "ML model not trained. Run: python3 server/ml/train_model.py",
+          details: error.message
+        });
+      }
+      
+      if (error.message.includes('Missing required features')) {
+        return res.status(400).json({
+          success: false,
+          error: error.message,
+          required_features: [
+            'rsi_1h', 'macd_histogram', 'ema_20', 
+            'market_cap_usd', 'volume_24h_usd', 
+            'social_score', 'astro_score'
+          ]
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        error: "Prediction failed",
+        details: error.message
+      });
+    }
+  });
+
+  app.get("/api/ml/model/info", async (req, res) => {
+    try {
+      const info = await mlPredictor.getModelInfo();
+      res.json({
+        success: true,
+        data: info,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: "Failed to get model info",
+        details: error.message
+      });
+    }
+  });
+
+  app.post("/api/ml/predict/batch", async (req, res) => {
+    try {
+      const { features_array } = req.body;
+      
+      if (!Array.isArray(features_array)) {
+        return res.status(400).json({
+          success: false,
+          error: "Expected 'features_array' as array of feature objects"
+        });
+      }
+
+      const predictions = await mlPredictor.batchPredict(features_array);
+      
+      res.json({
+        success: true,
+        predictions,
+        count: predictions.length,
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: "Batch prediction failed",
+        details: error.message
+      });
+    }
+  });
+
+  // Multi-asset prediction endpoints
+  app.get("/api/predictions/latest", async (req, res) => {
+    try {
+      const { symbol = 'SOL' } = req.query;
+      
+      if (!supabase) {
+        return res.status(503).json({
+          success: false,
+          error: "Database not available",
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const { data, error } = await supabase
+        .from('live_predictions')
+        .select('*')
+        .eq('symbol', symbol.toUpperCase())
+        .order('timestamp', { ascending: false })
+        .limit(1);
+
+      if (error) {
+        throw error;
+      }
+
+      res.json({
+        success: true,
+        data: data[0] || null,
+        symbol: symbol.toUpperCase(),
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: "Failed to fetch prediction",
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get("/api/predictions/all", async (req, res) => {
+    try {
+      if (!supabase) {
+        return res.status(503).json({
+          success: false,
+          error: "Database not available",
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Get watchlist from environment or default
+      const watchlist = (process.env.WATCHLIST || 'SOL,ETH,BTC').split(',');
+      
+      const predictions = [];
+      
+      for (const symbol of watchlist) {
+        try {
+          const { data, error } = await supabase
+            .from('live_predictions')
+            .select('*')
+            .eq('symbol', symbol.trim().toUpperCase())
+            .order('timestamp', { ascending: false })
+            .limit(1);
+
+          if (data && data[0]) {
+            predictions.push({
+              symbol: symbol.trim().toUpperCase(),
+              prediction: data[0].predicted_pct,
+              confidence: data[0].confidence,
+              composite_score: data[0].tech_score + data[0].social_score + data[0].fund_score + data[0].astro_score,
+              category: data[0].category,
+              timestamp: data[0].timestamp
+            });
+          }
+        } catch (error) {
+          console.error(`Error fetching prediction for ${symbol}:`, error);
+        }
+      }
+
+      res.json({
+        success: true,
+        data: predictions,
+        watchlist,
+        count: predictions.length,
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: "Failed to fetch all predictions",
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Server-Sent Events for real-time predictions
+  let clients = [];
+
+  app.get("/api/stream/predictions", (req, res) => {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Headers", "Cache-Control");
+
+    // Send initial connection message
+    res.write("data: {\"type\":\"connected\"}\n\n");
+
+    // Add client to the list
+    clients.push(res);
+
+    // Remove client when connection closes
+    req.on("close", () => {
+      clients = clients.filter(client => client !== res);
+    });
+
+    req.on("aborted", () => {
+      clients = clients.filter(client => client !== res);
+    });
+  });
+
+  // Function to broadcast predictions to all connected clients
+  const broadcastPrediction = (predictionData) => {
+    const payload = JSON.stringify({
+      type: "prediction_update",
+      data: predictionData,
+      timestamp: new Date().toISOString()
+    });
+
+    clients.forEach(client => {
+      try {
+        client.write(`data: ${payload}\n\n`);
+      } catch (error) {
+        console.error("Error broadcasting to client:", error);
+      }
+    });
+
+    // Clean up dead connections
+    clients = clients.filter(client => !client.destroyed);
+  };
+
+  // Export broadcast function for use in scheduler
+  app.broadcastPrediction = broadcastPrediction;
 
   const httpServer = createServer(app);
   return httpServer;

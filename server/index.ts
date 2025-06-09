@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes.js";
 import { setupVite, serveStatic, log } from "./vite";
+import { scheduler } from "../services/scheduler.js";
 
 // Verify OpenAI API key on startup
 if (!process.env.OPENAI_API_KEY) {
