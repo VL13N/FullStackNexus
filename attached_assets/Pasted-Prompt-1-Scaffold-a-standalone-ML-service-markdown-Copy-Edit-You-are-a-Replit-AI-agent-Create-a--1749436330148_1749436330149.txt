@@ -1,0 +1,232 @@
+Prompt 1: Scaffold a standalone ML service
+markdown
+Copy
+Edit
+You are a Replit AI agent.  
+Create a new folder `server/ml/` and inside it:
+
+1. A Python script `train_model.py` that:
+   - Connects to Supabase (use `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` from env).
+   - Pulls the last 365 days of hourly features from `historical_metrics`.
+   - Transforms them into an (N×M) feature matrix X and target y (next‐hour % return).
+   - Trains a small TensorFlow regression model (e.g. a 2-layer dense net).
+   - Saves the trained model to `server/ml/model/` using TensorFlow’s `model.save()`.
+
+2. A `requirements.txt` with:
+supabase-py
+tensorflow
+pandas
+numpy
+
+pgsql
+Copy
+Edit
+3. A new `npm` script in `package.json`:
+```json
+"scripts": {
+  "train-model": "python3 server/ml/train_model.py"
+}
+Commit these files and ensure npm run train-model runs without errors (it can download a small sample and exit early if you stub fetch to 100 rows).
+
+yaml
+Copy
+Edit
+
+---
+
+### ▶️ Prompt 2: Expose a REST prediction endpoint
+
+You are a Replit AI agent.
+In server/index.ts, mount a new route:
+
+POST /api/ml/predict
+
+Loads the saved TensorFlow model from server/ml/model/.
+
+Accepts a JSON body of the latest feature vector (same columns as you trained on).
+
+Runs model.predict() and returns { prediction: <float>, confidence: <float> }.
+
+Install @tensorflow/tfjs-node via npm and any required type definitions.
+Add minimal error handling (400 on malformed input, 500 on model load errors).
+Verify via:
+
+rust
+Copy
+Edit
+curl -X POST http://localhost:5000/api/ml/predict \
+  -H "Content-Type: application/json" \
+  -d '{"rsi_1h":55.6, "marketCapUsd":8.0e10, /*…*/ }'
+and you get back a JSON with prediction and confidence.
+
+yaml
+Copy
+Edit
+
+---
+
+### ▶️ Prompt 3: Turn on multi‐asset support
+
+You are a Replit AI agent.
+Extend your data layer so you can track any token, not just SOL:
+
+In Supabase tables (technical_data, etc.), add a coin_symbol column (if missing).
+
+In services (TAAPI, LunarCrush, CryptoRank, On-chain), accept a symbol or slug parameter instead of hard-coded “SOL.”
+
+Update your scheduler in server/index.ts to loop over an array of watchlist symbols, read from an env var WATCHLIST=SOL,ETH,BTC (split on commas).
+
+Modify /api/predictions/latest to accept an optional ?symbol= query param and return only that asset’s prediction, defaulting to SOL.
+
+Add a new endpoint GET /api/predictions/all that returns the latest prediction for every symbol in your watchlist.
+
+Verify by calling:
+
+bash
+Copy
+Edit
+curl http://localhost:5000/api/predictions/all
+and seeing an array of { symbol, prediction, confidence }.
+
+yaml
+Copy
+Edit
+
+---
+
+### ▶️ Prompt 4: Replace polling with Server-Sent Events
+
+You are a Replit AI agent.
+Implement real-time push of new predictions via SSE:
+
+In server/index.ts, add:
+
+ts
+Copy
+Edit
+import { Request, Response } from "express";
+let clients: Response[] = [];
+app.get("/api/stream/predictions", (req: Request, res: Response) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.write("\n");
+  clients.push(res);
+  req.on("close", () => {
+    clients = clients.filter(c => c !== res);
+  });
+});
+After each call to generateAndStorePrediction(), broadcast:
+
+ts
+Copy
+Edit
+const payload = JSON.stringify(latestPrediction);
+clients.forEach(c => c.write(`data: ${payload}\n\n`));
+In your React PredictionBanner, replace the 30 s polling with:
+
+js
+Copy
+Edit
+useEffect(() => {
+  const es = new EventSource("/api/stream/predictions");
+  es.onmessage = evt => setPrediction(JSON.parse(evt.data));
+  return () => es.close();
+}, []);
+Test by triggering a new prediction and observing the UI update instantly without refresh.
+
+yaml
+Copy
+Edit
+
+---
+
+### ▶️ Prompt 5: Add a multi‐asset heatmap component
+
+You are a Replit AI agent.
+Create a new React component Heatmap.tsx under client/components/:
+
+On mount, fetch /api/predictions/all (array of { symbol, composite_score }).
+
+Render a grid of cards, one per symbol, color-shaded by composite_score (e.g. green→red).
+
+Each card shows the symbol and score.
+
+Add it to your Dashboard page above or alongside your single‐asset banner.
+
+Verify it shows one square per coin in your watchlist, colored according to bullishness.
+
+yaml
+Copy
+Edit
+
+---
+
+### ▶️ Prompt 6: Build rule-based alerting
+
+You are a Replit AI agent.
+Implement a simple alert engine and UI:
+
+Server
+
+New table alerts (id, user_id, symbol, threshold, direction, created_at).
+
+New endpoint POST /api/alerts to create an alert (JSON: { symbol, threshold, direction: "above"|"below" }).
+
+In your 10 min scheduler, after each prediction loop, run for each alert:
+
+ts
+Copy
+Edit
+if ((direction==="above" && composite_score >= threshold) ||
+    (direction==="below" && composite_score <= threshold)) {
+  // push a webhook or email via your configured channel
+}
+Client
+
+On your Settings page, add a small form to “Create Alert” (choose symbol, above/below, threshold).
+
+POST to /api/alerts, show a success toast.
+
+Test by setting an alert at a threshold you know will trigger on next run.
+
+yaml
+Copy
+Edit
+
+---
+
+### ▶️ Prompt 7: Wire up CI/CD & tests
+
+You are a Replit AI agent.
+Set up a basic GitHub Actions workflow:
+
+In .github/workflows/ci.yml, add:
+
+yaml
+Copy
+Edit
+name: CI
+on: [push]
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: pnpm/action-setup@v2
+        with: node-version: 18
+      - run: pnpm install
+      - run: pnpm lint
+      - run: pnpm test
+Add a trivial unit test for one of your normalization functions in utils/normalize.test.ts using Jest.
+
+In Replit’s GitHub integration, ensure this workflow runs on every push.
+
+Once the CI passes, you’ll have automated linting/testing on every commit.
+
+pgsql
+Copy
+Edit
+
+---
+
+Each of these prompts is self-contained: run them in order, verify the step, then move on to the ne
