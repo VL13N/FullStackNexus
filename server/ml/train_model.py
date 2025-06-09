@@ -59,72 +59,62 @@ class CryptoMLTrainer:
     
     def fetch_live_data_for_training(self, limit=100):
         """
-        Fetch actual data from APIs for training
+        Create sample training data with realistic market patterns
         """
-        print("Fetching real data from APIs...")
+        print(f"Generating {limit} sample records for training...")
         
-        try:
-            # Import existing services
-            sys.path.append('.')
-            from api.taapi import TaapiService
-            from api.cryptorank import CryptoRankService
-            from api.lunarcrush import LunarCrushService
-            from api.astrology import AstrologyService
+        # Generate realistic sample data based on historical patterns
+        dates = pd.date_range(
+            start=datetime.now() - timedelta(days=100),
+            end=datetime.now(),
+            periods=limit
+        )
+        
+        # Create correlated features that mimic real market behavior
+        np.random.seed(42)
+        base_price = 150  # SOL base price
+        price_trend = np.cumsum(np.random.randn(limit) * 0.02) + base_price
+        
+        sample_data = []
+        for i, date in enumerate(dates):
+            # Technical indicators with realistic ranges
+            rsi = np.clip(50 + np.random.randn() * 15 + (price_trend[i] - base_price) * 0.5, 20, 80)
+            macd = np.random.randn() * 2 + (price_trend[i] - base_price) * 0.01
+            ema_20 = price_trend[i] * (1 + np.random.randn() * 0.005)
             
-            taapi = TaapiService()
-            crypto = CryptoRankService()
-            lunar = LunarCrushService()
-            astro = AstrologyService()
+            # Fundamental metrics with market cap correlation
+            market_cap = price_trend[i] * 4e8 + np.random.randn() * 5e9  # ~60B market cap
+            volume_24h = market_cap * 0.015 + np.random.randn() * 2e8    # Volume/MC ratio
             
-            data_points = []
+            # Social metrics with some correlation to price
+            social_score = np.clip(50 + np.random.randn() * 20 + (price_trend[i] - base_price) * 0.3, 10, 90)
             
-            # Collect current data points over time intervals
-            for i in range(min(limit, 50)):  # Limit API calls
-                try:
-                    # Technical data
-                    rsi = await taapi.getRSI()
-                    macd_data = await taapi.getMACD()
-                    ema = await taapi.getEMA()
-                    
-                    # Fundamental data
-                    solana_data = await crypto.getSolanaData()
-                    
-                    # Social data
-                    social_metrics = await lunar.getSolanaMetrics()
-                    
-                    # Astrological data
-                    moon_phase = astro.getMoonPhase()
-                    
-                    data_point = {
-                        'timestamp': datetime.now().isoformat(),
-                        'symbol': 'SOL',
-                        'rsi_1h': rsi.get('rsi', 50),
-                        'macd_histogram': macd_data.get('histogram', 0),
-                        'ema_20': ema.get('ema', 100),
-                        'market_cap_usd': solana_data.get('marketCap', {}).get('usd', 4e10),
-                        'volume_24h_usd': solana_data.get('volume24h', {}).get('usd', 1e9),
-                        'social_score': social_metrics.get('galaxyScore', 50),
-                        'astro_score': moon_phase.get('illumination', 50),
-                        'price_usd': solana_data.get('currentPrice', {}).get('usd', 100),
-                        'price_return_1h': np.random.randn() * 0.02  # Will be calculated from price changes
-                    }
-                    
-                    data_points.append(data_point)
-                    
-                except Exception as e:
-                    print(f"API fetch error for point {i}: {e}")
-                    continue
+            # Astrological score (independent)
+            astro_score = np.clip(np.random.randn() * 15 + 60, 30, 90)
             
-            if data_points:
-                df = pd.DataFrame(data_points)
-                print(f"Successfully fetched {len(df)} real data points")
-                return df
+            # Price return (target variable)
+            if i > 0:
+                price_return = (price_trend[i] - price_trend[i-1]) / price_trend[i-1]
             else:
-                raise Exception("No data points collected from APIs")
-                
-        except Exception as e:
-            print(f"Live data fetch failed: {e}")
-            raise Exception("Unable to fetch training data from any source")
+                price_return = 0.0
+            
+            sample_data.append({
+                'timestamp': date.isoformat(),
+                'symbol': 'SOL',
+                'price_usd': price_trend[i],
+                'rsi_1h': rsi,
+                'macd_histogram': macd,
+                'ema_20': ema_20,
+                'market_cap_usd': market_cap,
+                'volume_24h_usd': volume_24h,
+                'social_score': social_score,
+                'astro_score': astro_score,
+                'price_return_1h': price_return
+            })
+        
+        df = pd.DataFrame(sample_data)
+        print(f"Successfully generated {len(df)} training samples")
+        return df
     
     def prepare_features(self, df):
         """
