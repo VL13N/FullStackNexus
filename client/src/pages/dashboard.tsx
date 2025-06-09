@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { RefreshCw, TrendingUp, TrendingDown, Activity, Brain, Star } from 'lucide-react';
+import { RefreshCw, TrendingUp, TrendingDown, Activity, Brain, Star, AlertCircle } from 'lucide-react';
+import ConfidenceSparkline from '@/components/ConfidenceSparkline';
 
 interface PredictionData {
   id: string;
@@ -19,6 +20,19 @@ interface PredictionData {
   astrology_score: number;
   price_target?: number;
   risk_level: string;
+}
+
+interface HistoricalPrediction {
+  timestamp: string;
+  confidence: number;
+  predicted_pct: number;
+  category: string;
+}
+
+interface AppSettings {
+  dashboardRefreshInterval: number; // seconds
+  predictionRefreshInterval: number; // minutes
+  errorRetryAttempts: number;
 }
 
 interface NewsScore {

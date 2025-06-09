@@ -6,6 +6,7 @@
 import cron from 'node-cron';
 import { runPredictionLive } from './prediction.js';
 import { fetchAndScoreNews, generateDailyUpdate, suggestWeights } from './openaiIntegration.js';
+import { errorHandler } from '../utils/errorHandler.js';
 
 class SchedulerService {
   constructor() {
