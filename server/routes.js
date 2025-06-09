@@ -92,6 +92,58 @@ export async function registerRoutes(app) {
     }
   });
 
+  app.get("/api/predictions/live", async (req, res) => {
+    try {
+      const predictionService = await import('../services/prediction.js');
+      const result = await predictionService.runPredictionLive();
+      
+      res.json({
+        success: true,
+        prediction: result.prediction,
+        confidence: result.confidence,
+        category: result.category,
+        timestamp: result.timestamp,
+        pillarScores: {
+          technical: result.pillarScores?.technical || 50,
+          social: result.pillarScores?.social || 50,
+          fundamental: result.pillarScores?.fundamental || 50,
+          astrology: result.pillarScores?.astrology || 50
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: "Live prediction failed",
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.post("/api/predictions/trigger", async (req, res) => {
+    try {
+      const predictionService = await import('../services/prediction.js');
+      const result = await predictionService.runPredictionLive();
+      
+      res.json({
+        success: true,
+        message: "Prediction triggered successfully",
+        result: {
+          prediction: result.prediction,
+          confidence: result.confidence,
+          category: result.category,
+          timestamp: result.timestamp
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: "Failed to trigger prediction",
+        details: error.message
+      });
+    }
+  });
+
   // Endpoint to trigger manual prediction generation
   app.post("/api/predictions/generate", async (req, res) => {
     try {

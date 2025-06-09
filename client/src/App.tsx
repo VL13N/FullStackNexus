@@ -11,6 +11,7 @@ import NotFound from "@/pages/not-found";
 import PredictionsPage from "@/pages/predictions";
 import Dashboard from "@/pages/dashboard";
 import SettingsPage from "@/pages/settings";
+import LivePredictions from "@/pages/live-predictions";
 import TaapiDemo from "../../components/TaapiDemo";
 import CryptoRankDemo from "../../components/CryptoRankDemo";
 import OnChainDemo from "../../components/OnChainDemo";
@@ -211,6 +212,12 @@ function Navigation() {
                 LunarCrush
               </Button>
             </Link>
+            <Link href="/live-predictions">
+              <Button variant={location === '/live-predictions' ? 'default' : 'ghost'} size="sm">
+                <Brain className="h-4 w-4 mr-1" />
+                Live AI
+              </Button>
+            </Link>
             <Link href="/settings">
               <Button variant={location === '/settings' ? 'default' : 'ghost'} size="sm">
                 <Settings className="h-4 w-4 mr-1" />
@@ -237,6 +244,7 @@ function Router() {
         <Route path="/onchain" component={OnChainDemo} />
         <Route path="/astrology" component={AstrologyDemo} />
         <Route path="/lunarcrush" component={LunarCrushDemo} />
+        <Route path="/live-predictions" component={LivePredictions} />
         <Route path="/settings" component={SettingsPage} />
         <Route component={NotFound} />
       </Switch>
