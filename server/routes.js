@@ -125,6 +125,38 @@ export async function registerRoutes(app) {
     }
   });
 
+  // Manual schema migration endpoint
+  app.post('/api/admin/schema-migrate', async (req, res) => {
+    try {
+      console.log('🔄 Manual schema migration requested...');
+      
+      // Use Supabase client to execute raw SQL
+      const { data, error } = await supabase.rpc('exec_sql', {
+        sql: `
+          ALTER TABLE public.live_predictions
+            ADD COLUMN IF NOT EXISTS technical_score NUMERIC,
+            ADD COLUMN IF NOT EXISTS social_score NUMERIC,
+            ADD COLUMN IF NOT EXISTS fundamental_score NUMERIC,
+            ADD COLUMN IF NOT EXISTS astrology_score NUMERIC,
+            ADD COLUMN IF NOT EXISTS predicted_pct NUMERIC,
+            ADD COLUMN IF NOT EXISTS category TEXT,
+            ADD COLUMN IF NOT EXISTS confidence NUMERIC;
+        `
+      });
+
+      if (error) {
+        console.error('Schema migration failed:', error);
+        res.status(500).json({ success: false, error: error.message });
+      } else {
+        console.log('✅ Manual schema migration completed');
+        res.json({ success: true, message: 'Schema migration completed successfully' });
+      }
+    } catch (error) {
+      console.error('Schema migration error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   app.get("/api/predictions/live", async (req, res) => {
     try {
       const predictionService = await import('../services/prediction.js');
