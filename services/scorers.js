@@ -169,8 +169,21 @@ export function computeMarketSupplyScore(norm) {
   const circulatingWeight = 0.3;    // Supply availability
   const fdvWeight = 0.2;            // Fully diluted context
   
+  // Ensure market cap is properly normalized to 0-100 scale
+  const normalizeMarketCap = (value) => {
+    if (!value || typeof value !== 'number') return 50;
+    
+    // Market cap ranges for SOL: 10B = bearish (0), 50B = neutral (50), 100B+ = bullish (100)
+    const billion = 1000000000;
+    if (value >= 100 * billion) return 100;
+    if (value <= 10 * billion) return 0;
+    
+    // Linear scaling between 10B and 100B
+    return Math.min(100, Math.max(0, ((value - 10 * billion) / (90 * billion)) * 100));
+  };
+  
   return (
-    marketCapWeight * (norm.marketCapUsd || 50) +
+    marketCapWeight * normalizeMarketCap(norm.marketCapUsd || norm.market_cap_usd) +
     circulatingWeight * (norm.circulatingSupplyPct || 50) +
     fdvWeight * (norm.fullyDilutedValuation || 50)
   );
