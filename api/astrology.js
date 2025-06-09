@@ -4,8 +4,8 @@
  * Uses the high-precision Astronomy Engine library for accurate ephemeris data
  */
 
-const Astronomy = require('astronomy-engine');
-const moment = require('moment');
+import Astronomy from 'astronomy-engine';
+import moment from 'moment';
 
 class AstrologyService {
   constructor() {
@@ -439,4 +439,5 @@ class AstrologyService {
   }
 }
 
-module.exports = new AstrologyService();
+export { AstrologyService };
+export default new AstrologyService();

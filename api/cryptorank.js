@@ -180,4 +180,5 @@ class CryptoRankService {
   }
 }
 
-export default CryptoRankService;
+export { CryptoRankService };
+export default new CryptoRankService();
