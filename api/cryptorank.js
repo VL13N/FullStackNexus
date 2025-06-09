@@ -1,10 +1,10 @@
-// NOTE: Using CryptoRank V1 API with rate limiting for Basic plan compliance
-// Solana ID in CryptoRank system: 5663
-// Basic plan quotas: 100 calls/min, 5,000 credits/day. All calls must be cached or passed through rateLimit().
+// CryptoRank V2 API Integration for Basic Plan
+// Using v2 endpoints with query parameter authentication
+// Basic plan quotas: 100 calls/min, 5,000 credits/day
 
 /**
- * CryptoRank API Integration for Solana Fundamental Data
- * Fetches current prices, market cap, and trading volume data with rate limiting
+ * CryptoRank API V2 Integration for Solana Fundamental Data
+ * Fetches current prices, market cap, and trading volume data using v2 endpoints
  */
 
 import { rateLimit } from '../services/cryptoRankLimiter.js';
@@ -17,87 +17,106 @@ if (!CR_API_KEY) {
 
 const crCache = new LRUCache({ max: 20, ttl: 1000 * 60 * 60 }); // 1 hour cache
 
-async function findSolanaId() {
-  // Search through currencies list to find Solana's correct ID
-  try {
-    const response = await fetch(`https://api.cryptorank.io/v1/currencies?api_key=${CR_API_KEY}&limit=500`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-      timeout: 15000
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch currencies list: ${response.status}`);
-    }
-
-    const responseData = await response.json();
-    
-    if (!responseData.status || !responseData.status.success) {
-      throw new Error(`API error: ${responseData.status?.message || 'Unknown error'}`);
-    }
-
-    const currencies = responseData.data;
-    
-    // Find Solana in the list
-    for (const currency of currencies) {
-      if (currency.symbol === 'SOL' || currency.name?.toLowerCase().includes('solana')) {
-        console.log(`Found Solana with ID: ${currency.id}`);
-        return currency.id;
+/**
+ * Makes authenticated request to CryptoRank v2 endpoint with retry logic
+ */
+async function makeV2Request(endpoint, maxRetries = 3) {
+  const url = `https://api.cryptorank.io/v2/${endpoint}?api_key=${CR_API_KEY}`;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`CryptoRank v2 API Request (attempt ${attempt}): ${endpoint}`);
+      
+      await rateLimit(); // Respect rate limits
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'CryptoAnalytics/1.0'
+        },
+        timeout: 15000
+      });
+      
+      if (!response.ok) {
+        if (response.status === 429) {
+          // Rate limit - exponential backoff
+          const waitTime = Math.pow(2, attempt) * 2000; // 2s, 4s, 8s
+          console.warn(`CryptoRank rate limited, waiting ${waitTime}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        }
+        
+        if (response.status >= 500) {
+          // Server error - retry with backoff
+          const waitTime = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
+          console.warn(`CryptoRank server error ${response.status}, retrying in ${waitTime}ms...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        }
+        
+        // Client error - don't retry
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
+
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      console.log(`CryptoRank v2 API Success: ${endpoint}`);
+      return data;
+      
+    } catch (error) {
+      if (attempt === maxRetries) {
+        console.error(`CryptoRank API failed after ${maxRetries} attempts:`, error.message);
+        throw error;
+      }
+      
+      // Network error - retry with exponential backoff
+      const waitTime = Math.pow(2, attempt) * 1000;
+      console.warn(`CryptoRank network error, retrying in ${waitTime}ms:`, error.message);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
     }
-    
-    throw new Error('Solana not found in currencies list');
-  } catch (err) {
-    console.error('Failed to find Solana ID:', err.message);
-    throw err;
   }
 }
+
+// v2 API uses currency slugs directly, so we can use 'solana' instead of numeric IDs
 
 export async function fetchSolanaCurrent() {
   const cacheKey = 'solCurrent';
   if (crCache.has(cacheKey)) return crCache.get(cacheKey);
   
-  await rateLimit();
-  
   try {
-    // Use known Solana ID (5663) directly to avoid double API calls
-    const url = `https://api.cryptorank.io/v1/currencies/5663?api_key=${CR_API_KEY}`;
+    // Use v2 endpoint with currency slug
+    const responseData = await makeV2Request('currencies/solana');
     
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-      timeout: 10000
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-    }
-
-    const responseData = await response.json();
-    
-    if (!responseData.status || !responseData.status.success) {
-      throw new Error(`API error: ${responseData.status?.message || 'Unknown error'}`);
-    }
-    
-    const data = responseData.data;
-    
-    const simplified = {
-      priceUsd: data.values?.USD?.price || 0,
-      marketCapUsd: data.values?.USD?.marketCap || 0,
-      volume24hUsd: data.values?.USD?.volume24h || 0
-    };
-    
-    // Persist fundamental data for ML/backtesting
-    try {
-      const { persistFundamentalData } = await import('../services/dataPersistence.js');
-      await persistFundamentalData(responseData, 'solana');
-    } catch (persistError) {
-      console.warn('Failed to persist fundamental data:', persistError.message);
-      // Continue without failing the main request
+    if (responseData.data) {
+      const coinData = responseData.data;
+      const result = {
+        id: coinData.id,
+        symbol: coinData.symbol,
+        name: coinData.name,
+        price: coinData.values?.USD?.price || null,
+        market_cap: coinData.values?.USD?.marketCap || null,
+        volume_24h: coinData.values?.USD?.volume24h || null,
+        price_change_1h: coinData.values?.USD?.percentChange1h || null,
+        price_change_24h: coinData.values?.USD?.percentChange24h || null,
+        price_change_7d: coinData.values?.USD?.percentChange7d || null,
+        price_change_30d: coinData.values?.USD?.percentChange30d || null,
+        market_cap_rank: coinData.rank || null,
+        circulating_supply: coinData.circulatingSupply || null,
+        total_supply: coinData.totalSupply || null,
+        max_supply: coinData.maxSupply || null
+      };
+      
+      crCache.set(cacheKey, result);
+      return result;
     }
     
-    crCache.set(cacheKey, simplified);
-    return simplified;
+    throw new Error('No Solana data found in v2 response');
     
   } catch (err) {
     console.error('CryptoRank current fetch failed:', err.message);
