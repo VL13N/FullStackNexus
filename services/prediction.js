@@ -20,7 +20,7 @@ class PredictionService {
     this.model = null;
     this.supabase = null;
     this.isModelLoaded = false;
-    this.modelPath = './models/solPredictModel/model.json';
+    this.modelPath = './server/ml/model/crypto_model/model.json';
   }
 
   async initialize() {
