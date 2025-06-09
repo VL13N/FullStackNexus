@@ -245,20 +245,20 @@ async function fetchAstrologyMetrics() {
     const jupiterPos = Astronomy.Ecliptic(Astronomy.GeoVector(Astronomy.Body.Jupiter, astroDate, false));
     
     // Calculate aspect angles
-    let marsSunAngle = Math.abs((sunPos as any).elon - (marsPos as any).elon);
+    let marsSunAngle = Math.abs(sunPos.elon - marsPos.elon);
     if (marsSunAngle > 180) marsSunAngle = 360 - marsSunAngle;
     
-    let saturnJupiterAngle = Math.abs((saturnPos as any).elon - (jupiterPos as any).elon);
+    let saturnJupiterAngle = Math.abs(saturnPos.elon - jupiterPos.elon);
     if (saturnJupiterAngle > 180) saturnJupiterAngle = 360 - saturnJupiterAngle;
     
     return {
-      lunarPhasePercentile: (moonIllumination as any).phase_fraction * 100,
+      lunarPhasePercentile: moonIllumination.phase_fraction * 100,
       lunarPerigeeApogeeDist: moonPos.Length(),
       marsSunAspect: marsSunAngle,
       saturnJupiterAspect: saturnJupiterAngle,
-      northNodeSolanaLongitude: (sunPos as any).elon,
-      solarIngressAries: Math.abs((sunPos as any).elon) < 1 ? 1 : 0,
-      solarIngressLibra: Math.abs((sunPos as any).elon - 180) < 1 ? 1 : 0,
+      northNodeSolanaLongitude: sunPos.elon,
+      solarIngressAries: Math.abs(sunPos.elon) < 1 ? 1 : 0,
+      solarIngressLibra: Math.abs(sunPos.elon - 180) < 1 ? 1 : 0,
       nodeIngressData: 0,
       siriusRisingIndicator: 0,
       aldebaranConjunctionIndicator: 0

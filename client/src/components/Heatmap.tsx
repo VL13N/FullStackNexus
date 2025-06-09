@@ -158,7 +158,7 @@ export default function Heatmap({ className = "" }: HeatmapProps) {
             </div>
             <div className="flex items-center space-x-1">
               <div className="w-3 h-3 bg-red-500 rounded"></div>
-              <span>Strong Bearish (<140)</span>
+              <span>Strong Bearish (&lt;140)</span>
             </div>
           </div>
           <p>Composite scores combine Technical, Social, Fundamental, and Astrological analysis</p>

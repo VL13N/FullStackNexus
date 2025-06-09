@@ -6,7 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { RefreshCw, TrendingUp, TrendingDown, Activity, Brain, Star, AlertCircle } from 'lucide-react';
-import ConfidenceSparkline from '@/components/ConfidenceSparkline';
+import ConfidenceSparkline from '../components/ConfidenceSparkline';
+import Heatmap from '../components/Heatmap';
 
 interface PredictionData {
   id: string;
@@ -229,6 +230,9 @@ export default function Dashboard() {
           Refresh
         </Button>
       </div>
+
+      {/* Multi-Asset Heatmap */}
+      <Heatmap className="mb-6" />
 
       {/* Live Prediction Card */}
       {prediction && (

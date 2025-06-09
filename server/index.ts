@@ -127,6 +127,12 @@ async function scheduleOpenAITasks(port: number) {
   // this serves both the API and the client.
   const port = parseInt(process.env.PORT || "5000");
 
+  // Connect scheduler with broadcast function
+  if (app.broadcastPrediction) {
+    scheduler.setBroadcastFunction(app.broadcastPrediction);
+    scheduler.start();
+  }
+
   // Start OpenAI scheduling after routes are registered
   await scheduleOpenAITasks(port);
 
