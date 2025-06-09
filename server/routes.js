@@ -362,6 +362,112 @@ export async function registerRoutes(app) {
     }
   });
 
+  // ML Training endpoints
+  app.post('/api/ml/train', async (req, res) => {
+    try {
+      const { MLTrainer } = await import('../services/mlTrainer.js');
+      const trainer = new MLTrainer();
+      
+      const config = {
+        symbol: req.body.symbol || 'SOL',
+        epochs: req.body.epochs || 50,
+        batchSize: req.body.batchSize || 16,
+        validationSplit: req.body.validationSplit || 0.2,
+        startDate: req.body.startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+        endDate: req.body.endDate || new Date().toISOString()
+      };
+      
+      console.log(`Starting ML training for ${config.symbol}...`);
+      
+      // Create and train model
+      trainer.createModel();
+      const results = await trainer.trainModel(config);
+      
+      // Save model
+      await trainer.saveModel('file://./models/crypto-predictor');
+      
+      // Cleanup
+      trainer.dispose();
+      
+      res.json({
+        success: true,
+        training_results: results,
+        model_saved: './models/crypto-predictor',
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error('ML training failed:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.post('/api/ml/predict', async (req, res) => {
+    try {
+      const { MLTrainer } = await import('../services/mlTrainer.js');
+      const trainer = new MLTrainer();
+      
+      // Load trained model
+      await trainer.loadModel('file://./models/crypto-predictor/model.json');
+      
+      const featureSequence = req.body.features;
+      if (!featureSequence || !Array.isArray(featureSequence)) {
+        throw new Error('Feature sequence required');
+      }
+      
+      const prediction = await trainer.predict(featureSequence);
+      
+      trainer.dispose();
+      
+      res.json({
+        success: true,
+        prediction: prediction,
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error('ML prediction failed:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get('/api/ml/model/status', async (req, res) => {
+    try {
+      const fs = await import('fs');
+      const modelExists = fs.existsSync('./models/crypto-predictor/model.json');
+      const metadataExists = fs.existsSync('./models/training-metadata.json');
+      
+      let metadata = null;
+      if (metadataExists) {
+        const metadataContent = fs.readFileSync('./models/training-metadata.json', 'utf8');
+        metadata = JSON.parse(metadataContent);
+      }
+      
+      res.json({
+        success: true,
+        model_available: modelExists,
+        metadata_available: metadataExists,
+        metadata: metadata,
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // Utility functions for ML statistics
   function calculateDistribution(scores) {
     if (!scores.length) return { min: 0, max: 0, mean: 0, std: 0 };
