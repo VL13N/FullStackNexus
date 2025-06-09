@@ -25,19 +25,15 @@ class PredictionService {
 
   async initialize() {
     // Initialize Supabase connection
-    try {
-      const supabaseUrl = process.env.SUPABASE_URL;
-      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-      
-      if (supabaseUrl && supabaseKey) {
-        this.supabase = createClient(supabaseUrl, supabaseKey);
-        console.log('Prediction service: Supabase initialized');
-      } else {
-        console.warn('Prediction service: Supabase configuration not available');
-      }
-    } catch (error) {
-      console.warn('Prediction service: Supabase initialization failed:', error.message);
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Prediction service requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY');
     }
+    
+    this.supabase = createClient(supabaseUrl, supabaseKey);
+    console.log('Prediction service: Supabase enabled for persistence');
 
     // Load trained model
     await this.loadModel();

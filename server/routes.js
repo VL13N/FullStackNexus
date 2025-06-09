@@ -6,28 +6,31 @@ import { alertManager, alertTemplates } from "./alerts/alerting.js";
 // Initialize Supabase client
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-let supabase = null;
 
-if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
-  supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-  console.log("Supabase configuration available");
-  
-  // Quick persistence check
-  (async () => {
-    try {
-      const { error } = await supabase.from('live_predictions').select('id').limit(1);
-      if (!error) {
-        console.log('Persistence check: Database connection successful');
-      } else {
-        console.warn('Persistence check failed:', error.message);
-      }
-    } catch (err) {
-      console.warn('Persistence check error:', err.message);
-    }
-  })();
-} else {
-  console.warn("Supabase credentials not found - database endpoints will be unavailable");
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('Missing required Supabase environment variables: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY');
 }
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+console.log('✅ Supabase config loaded');
+
+// Persistence test - verify database access
+(async () => {
+  try {
+    const { data, error } = await supabase
+      .from("live_predictions")
+      .select('id')
+      .limit(1);
+    
+    if (!error) {
+      console.log('✅ Persistence check: Database read access verified');
+    } else {
+      console.warn('Persistence check failed:', error.message);
+    }
+  } catch (err) {
+    console.error('Persistence test error:', err.message);
+  }
+})();
 
 console.log("TAAPI key in use:", process.env.TAAPI_API_KEY);
 if (!process.env.TAAPI_API_KEY) {
@@ -38,18 +41,10 @@ export async function registerRoutes(app) {
   // Prediction endpoints
   app.get("/api/predictions/latest", async (req, res) => {
     try {
-      if (!supabase) {
-        return res.status(503).json({
-          success: false,
-          error: "Database not available",
-          timestamp: new Date().toISOString()
-        });
-      }
-
       const { data, error } = await supabase
         .from('live_predictions')
         .select('*')
-        .order('timestamp', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(1);
 
       if (error) {
@@ -72,20 +67,12 @@ export async function registerRoutes(app) {
 
   app.get("/api/predictions/history", async (req, res) => {
     try {
-      if (!supabase) {
-        return res.status(503).json({
-          success: false,
-          error: "Database not available",
-          timestamp: new Date().toISOString()
-        });
-      }
-
-      const limit = parseInt(req.query.limit) || 24;
+      const limit = parseInt(req.query.limit) || 100;
       
       const { data, error } = await supabase
         .from('live_predictions')
         .select('*')
-        .order('timestamp', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(limit);
 
       if (error) {
@@ -94,6 +81,7 @@ export async function registerRoutes(app) {
 
       res.json({
         success: true,
+        count: data?.length || 0,
         data: data || [],
         timestamp: new Date().toISOString()
       });

@@ -1,0 +1,48 @@
+You are the Replit AI agent for this project. Right now the dashboard’s history and persistence features are broken because the server reports “Supabase credentials not found” and disables data writes. Please do the following:
+
+1. **Load & verify secrets**  
+   - Make sure `SUPABASE_URL`, `SUPABASE_ANON_KEY` and **`SUPABASE_SERVICE_ROLE_KEY`** are present in `process.env`.  
+   - If any are missing, update the code (or remind me) to read those exact names, and restart the Repl.
+
+2. **Supabase client init**  
+   - In your Supabase client module (e.g. `server/supabaseClient.ts`), change to:
+     ```ts
+     const supabase = createClient(
+       process.env.SUPABASE_URL!,
+       process.env.SUPABASE_SERVICE_ROLE_KEY!
+     );
+     ```
+   - Log “✅ Supabase config loaded” when both vars exist, otherwise throw an error.
+
+3. **Re-enable persistence**  
+   - Remove the guard that disables writes when credentials are “not found”.  
+   - Add a one-off test after client init:
+     ```ts
+     const { data: test, error } = await supabase
+       .from("live_predictions")
+       .insert({ test_flag: true })
+       .select();
+     console.log("Persistence check:", test, error);
+     ```
+   - Once that passes, remove the test.
+
+4. **Implement/fix the `/api/predictions/history` route**  
+   - Ensure it reads from `live_predictions` (or your history table) via the newly working client.  
+   - If you want to limit to the last N entries, SELECT with `.order('created_at', { ascending: false }).limit(100)`.
+
+5. **Restart & health-check**  
+   - Restart the server.  
+   - Confirm logs say “✅ Supabase config loaded” and “Persistence check: [row inserted]”.  
+   - In a browser or via `curl`, hit:
+     ```
+     GET /api/predictions/history
+     ```
+     and verify you get a 200 OK with a JSON array of past predictions.
+
+6. **Report back**  
+   - Output a markdown summary showing:
+     - Which env vars were loaded  
+     - The result of the persistence check  
+     - The HTTP status and sample payload from `/api/predictions/history`  
+
+Run these steps now and let me know the results!  
