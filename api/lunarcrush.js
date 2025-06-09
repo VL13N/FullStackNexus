@@ -101,40 +101,65 @@ class LunarCrushService {
   }
 
   /**
-   * Get Solana social metrics using v1 endpoint
+   * Get Solana social metrics using v1 endpoint with graceful fallback
    * @param {string} symbol - Cryptocurrency symbol (default: SOL)
    */
   async getSolanaMetrics(symbol = 'SOL') {
-    const data = await this.makeRequest(`coins/${symbol}`);
-    
-    // LunarCrush v1 API response structure
-    const coinData = data.data || data;
-    
-    if (coinData) {
-      const result = {
-        symbol: coinData.symbol || coinData.s || symbol,
-        name: coinData.name || coinData.n || 'Solana',
-        price: coinData.price || coinData.p || null,
-        priceChange24h: coinData.percent_change_24h || coinData.pc || null,
-        volume24h: coinData.volume_24h || coinData.v || null,
-        marketCap: coinData.market_cap || coinData.mc || null,
-        galaxyScore: coinData.galaxy_score || coinData.gs || null,
-        altRank: coinData.alt_rank || coinData.acr || null,
-        socialVolume: coinData.social_volume || coinData.sv || null,
-        socialScore: coinData.social_score || coinData.ss || null,
-        socialContributors: coinData.social_contributors || coinData.sc || null,
-        socialDominance: coinData.social_dominance || coinData.sd || null,
-        marketDominance: coinData.market_dominance || coinData.md || null,
-        correlationRank: coinData.correlation_rank || coinData.cr || null,
-        volatility: coinData.volatility || null,
-        timestamp: new Date().toISOString(),
-        raw: coinData
-      };
+    try {
+      const data = await this.makeRequest(`coins/${symbol}`);
       
-      return result;
+      // LunarCrush v1 API response structure
+      const coinData = data.data || data;
+      
+      if (coinData) {
+        const result = {
+          symbol: coinData.symbol || coinData.s || symbol,
+          name: coinData.name || coinData.n || 'Solana',
+          price: coinData.price || coinData.p || null,
+          priceChange24h: coinData.percent_change_24h || coinData.pc || null,
+          volume24h: coinData.volume_24h || coinData.v || null,
+          marketCap: coinData.market_cap || coinData.mc || null,
+          galaxy_score: coinData.galaxy_score || coinData.gs || null,
+          alt_rank: coinData.alt_rank || coinData.acr || null,
+          social_volume: coinData.social_volume || coinData.sv || null,
+          social_score: coinData.social_score || coinData.ss || null,
+          social_contributors: coinData.social_contributors || coinData.sc || null,
+          social_dominance: coinData.social_dominance || coinData.sd || null,
+          market_dominance: coinData.market_dominance || coinData.md || null,
+          correlation_rank: coinData.correlation_rank || coinData.cr || null,
+          volatility: coinData.volatility || null,
+          timestamp: new Date().toISOString(),
+          raw: coinData
+        };
+        
+        return result;
+      }
+      
+      throw new Error('No data found for Solana');
+    } catch (error) {
+      console.warn('LunarCrush API unavailable, using fallback metrics:', error.message);
+      
+      // Return null values to indicate unavailable data rather than failing
+      return {
+        symbol: symbol,
+        name: 'Solana',
+        price: null,
+        priceChange24h: null,
+        volume24h: null,
+        marketCap: null,
+        galaxy_score: null,
+        alt_rank: null,
+        social_volume: null,
+        social_score: null,
+        social_contributors: null,
+        social_dominance: null,
+        market_dominance: null,
+        correlation_rank: null,
+        volatility: null,
+        timestamp: new Date().toISOString(),
+        error: 'API temporarily unavailable'
+      };
     }
-    
-    throw new Error('No data found for Solana');
   }
 
   /**
@@ -262,41 +287,48 @@ class LunarCrushService {
   }
 
   /**
-   * Get time series data for Solana social metrics
+   * Get time series data for Solana social metrics using v1 endpoint
    * @param {string} interval - Time interval: 1d, 1w, 1m
    * @param {number} start - Start timestamp
    * @param {number} end - End timestamp
    */
   async getSolanaTimeSeries(interval = '1d', start = null, end = null) {
-    const params = {
-      data: 'assets',
-      symbol: 'SOL',
-      interval: interval
-    };
-
-    if (start) params.start = start.toString();
-    if (end) params.end = end.toString();
-
-    const data = await this.makeRequest(params);
-    
-    if (data.data && data.data.length > 0) {
+    try {
+      // Build time-series endpoint URL
+      let endpoint = 'coins/SOL/time-series';
+      
+      const data = await this.makeRequest(endpoint);
+      
+      if (data.data && data.data.length > 0) {
+        return {
+          symbol: 'SOL',
+          interval: interval,
+          data: data.data.map(point => ({
+            time: point.time || point.t,
+            price: point.price || point.p,
+            volume: point.volume || point.v,
+            galaxy_score: point.galaxy_score || point.gs,
+            alt_rank: point.alt_rank || point.acr,
+            social_volume: point.social_volume || point.sv,
+            social_score: point.social_score || point.ss
+          })),
+          timestamp: new Date().toISOString()
+        };
+      }
+      
+      throw new Error('No time series data found for Solana');
+    } catch (error) {
+      console.warn('LunarCrush time-series API unavailable:', error.message);
+      
+      // Return empty data structure for graceful degradation
       return {
         symbol: 'SOL',
         interval: interval,
-        timeSeries: data.data.map(point => ({
-          time: point.time || point.t,
-          price: point.p,
-          volume: point.v,
-          galaxyScore: point.gs,
-          altRank: point.acr,
-          socialVolume: point.sv,
-          socialScore: point.ss
-        })),
-        timestamp: new Date().toISOString()
+        data: [],
+        timestamp: new Date().toISOString(),
+        error: 'Time-series data temporarily unavailable'
       };
     }
-    
-    throw new Error('No time series data found for Solana');
   }
 
   /**
