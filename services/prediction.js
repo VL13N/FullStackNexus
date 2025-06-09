@@ -13,6 +13,7 @@ import {
   computeFundamentalScore,
   computeAstrologyScore
 } from './scorers.js';
+import { alertManager } from '../server/alerts/alerting.js';
 
 class PredictionService {
   constructor() {
@@ -190,6 +191,26 @@ class PredictionService {
       };
 
       console.log(`Prediction: ${predictedPct.toFixed(2)}% (${category}), Confidence: ${(confidence * 100).toFixed(1)}%`);
+      
+      // Check alerts for this prediction
+      try {
+        const predictionForAlerts = {
+          symbol: 'SOL', // Default symbol, could be parameterized
+          prediction: predictedPct,
+          confidence: confidence,
+          technical_score: techScore,
+          social_score: socialScore,
+          fundamental_score: fundScore,
+          astrology_score: astroScore,
+          overall_score: (techScore + socialScore + fundScore + astroScore) / 4,
+          category: category,
+          timestamp: new Date().toISOString()
+        };
+        
+        await alertManager.checkAlerts(predictionForAlerts);
+      } catch (alertError) {
+        console.warn('Alert checking failed:', alertError.message);
+      }
       
       return result;
 

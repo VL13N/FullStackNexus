@@ -1,6 +1,7 @@
 import { createServer } from "http";
 import { createClient } from "@supabase/supabase-js";
 import mlPredictor from "./ml/predictor.js";
+import { alertManager, alertTemplates } from "./alerts/alerting.js";
 
 // Initialize Supabase client
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -564,6 +565,137 @@ export async function registerRoutes(app) {
 
   // Export broadcast function for use in scheduler
   app.broadcastPrediction = broadcastPrediction;
+
+  // Alert Management Endpoints
+  app.post("/api/alerts", (req, res) => {
+    try {
+      const { type, symbol, conditions, notification } = req.body;
+      
+      if (!type || !symbol || !conditions) {
+        return res.status(400).json({
+          success: false,
+          error: "Missing required fields: type, symbol, conditions"
+        });
+      }
+
+      const alertId = alertManager.createAlert({
+        type,
+        symbol: symbol.toUpperCase(),
+        conditions,
+        notification: notification || { browser: true, cooldownMinutes: 15 }
+      });
+
+      res.json({
+        success: true,
+        alertId,
+        message: "Alert created successfully"
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: "Failed to create alert",
+        details: error.message
+      });
+    }
+  });
+
+  app.get("/api/alerts", (req, res) => {
+    try {
+      const alerts = alertManager.getAlerts();
+      res.json({
+        success: true,
+        data: alerts,
+        count: alerts.length
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: "Failed to fetch alerts",
+        details: error.message
+      });
+    }
+  });
+
+  app.get("/api/alerts/history", (req, res) => {
+    try {
+      const { limit = 50 } = req.query;
+      const history = alertManager.getAlertHistory(parseInt(limit));
+      res.json({
+        success: true,
+        data: history,
+        count: history.length
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: "Failed to fetch alert history",
+        details: error.message
+      });
+    }
+  });
+
+  app.delete("/api/alerts/:alertId", (req, res) => {
+    try {
+      const { alertId } = req.params;
+      const deleted = alertManager.deleteAlert(alertId);
+      
+      if (deleted) {
+        res.json({
+          success: true,
+          message: "Alert deleted successfully"
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          error: "Alert not found"
+        });
+      }
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: "Failed to delete alert",
+        details: error.message
+      });
+    }
+  });
+
+  app.get("/api/alerts/templates", (req, res) => {
+    try {
+      res.json({
+        success: true,
+        templates: alertTemplates
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: "Failed to fetch alert templates",
+        details: error.message
+      });
+    }
+  });
+
+  // Set up alert broadcasting via SSE
+  const broadcastAlert = (alertData) => {
+    const payload = JSON.stringify({
+      type: "alert_triggered",
+      alert: alertData,
+      timestamp: new Date().toISOString()
+    });
+
+    clients.forEach(client => {
+      try {
+        client.write(`data: ${payload}\n\n`);
+      } catch (error) {
+        console.error("Error broadcasting alert to client:", error);
+      }
+    });
+
+    clients = clients.filter(client => !client.destroyed);
+  };
+
+  // Listen for alert events
+  alertManager.on('alertTriggered', broadcastAlert);
+  alertManager.on('browserAlert', broadcastAlert);
 
   const httpServer = createServer(app);
   return httpServer;
