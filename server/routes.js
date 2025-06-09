@@ -158,6 +158,73 @@ export async function registerRoutes(app) {
     }
   });
 
+  // OpenAI integration endpoints
+  app.post("/api/openai/analyze-news", async (req, res) => {
+    try {
+      const openaiService = await import('../services/openaiIntegration.js');
+      const { articles } = req.body;
+      
+      if (!articles || !Array.isArray(articles)) {
+        return res.status(400).json({
+          success: false,
+          error: "Articles array is required"
+        });
+      }
+      
+      const analysis = await openaiService.analyzeNewsSentiment(articles);
+      
+      res.json({
+        success: true,
+        analysis,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: "News analysis failed",
+        details: error.message
+      });
+    }
+  });
+
+  app.post("/api/openai/daily-update", async (req, res) => {
+    try {
+      const openaiService = await import('../services/openaiIntegration.js');
+      const update = await openaiService.generateDailyUpdate();
+      
+      res.json({
+        success: true,
+        update,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: "Daily update generation failed",
+        details: error.message
+      });
+    }
+  });
+
+  app.post("/api/openai/suggest-weights", async (req, res) => {
+    try {
+      const openaiService = await import('../services/openaiIntegration.js');
+      const weights = await openaiService.suggestWeights();
+      
+      res.json({
+        success: true,
+        weights,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: "Weight suggestion failed",
+        details: error.message
+      });
+    }
+  });
+
   // Endpoint to trigger manual prediction generation
   app.post("/api/predictions/generate", async (req, res) => {
     try {
