@@ -37,17 +37,134 @@ class SolanaOnChainService {
    */
   async makeSolanaTrackerRequest(endpoint) {
     try {
-      const response = await fetch(`${this.solanaTrackerBaseUrl}${endpoint}`);
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || data.message || `HTTP ${response.status}: ${response.statusText}`);
+      // Try alternative Solana data sources if Solana Tracker is unavailable
+      if (endpoint === '/network') {
+        return await this.getRPCNetworkMetrics();
+      }
+      if (endpoint === '/validators') {
+        return await this.getRPCValidatorMetrics();
+      }
+      if (endpoint === '/epoch') {
+        return await this.getRPCEpochMetrics();
       }
       
+      const response = await fetch(`${this.solanaTrackerBaseUrl}${endpoint}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'SolanaAnalyticsBot/1.0'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Solana Tracker error: ${response.status}`);
+      }
+      
+      const data = await response.json();
       return data;
     } catch (error) {
       console.error('Solana Tracker API request failed:', error.message);
       throw error;
+    }
+  }
+
+  async getRPCNetworkMetrics() {
+    try {
+      const rpcUrl = 'https://api.mainnet-beta.solana.com';
+      
+      const [slotResponse, epochResponse] = await Promise.all([
+        fetch(rpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'getSlot'
+          })
+        }),
+        fetch(rpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'getEpochInfo'
+          })
+        })
+      ]);
+
+      const [slotData, epochData] = await Promise.all([
+        slotResponse.json(),
+        epochResponse.json()
+      ]);
+
+      return {
+        tps: null, // TPS requires additional calculation
+        block_height: slotData.result || null,
+        total_transactions: null,
+        average_block_time: 0.4,
+        epoch: epochData.result?.epoch || null,
+        slot_index: epochData.result?.slotIndex || null
+      };
+    } catch (error) {
+      throw new Error('Failed to fetch network metrics from Solana RPC');
+    }
+  }
+
+  async getRPCValidatorMetrics() {
+    try {
+      const rpcUrl = 'https://api.mainnet-beta.solana.com';
+      
+      const response = await fetch(rpcUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'getVoteAccounts'
+        })
+      });
+
+      const data = await response.json();
+      const voteAccounts = data.result;
+
+      return {
+        active_validators: voteAccounts?.current?.length || null,
+        total_validators: (voteAccounts?.current?.length || 0) + (voteAccounts?.delinquent?.length || 0),
+        average_apy: null // APY requires additional calculation
+      };
+    } catch (error) {
+      throw new Error('Failed to fetch validator metrics from Solana RPC');
+    }
+  }
+
+  async getRPCEpochMetrics() {
+    try {
+      const rpcUrl = 'https://api.mainnet-beta.solana.com';
+      
+      const response = await fetch(rpcUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'getEpochInfo'
+        })
+      });
+
+      const data = await response.json();
+      const epochInfo = data.result;
+
+      return {
+        epoch: epochInfo?.epoch || null,
+        slot_index: epochInfo?.slotIndex || null,
+        slots_in_epoch: epochInfo?.slotsInEpoch || null,
+        absolute_slot: epochInfo?.absoluteSlot || null,
+        block_height: epochInfo?.blockHeight || null,
+        transaction_count: null
+      };
+    } catch (error) {
+      throw new Error('Failed to fetch epoch metrics from Solana RPC');
     }
   }
 

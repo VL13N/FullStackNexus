@@ -5,12 +5,26 @@ import { alertManager, alertTemplates } from "./alerts/alerting.js";
 
 // Initialize Supabase client
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_KEY;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 let supabase = null;
 
-if (SUPABASE_URL && SUPABASE_KEY) {
-  supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-  console.log("Supabase client initialized successfully");
+if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+  supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  console.log("Supabase configuration available");
+  
+  // Quick persistence check
+  (async () => {
+    try {
+      const { error } = await supabase.from('live_predictions').select('id').limit(1);
+      if (!error) {
+        console.log('Persistence check: Database connection successful');
+      } else {
+        console.warn('Persistence check failed:', error.message);
+      }
+    } catch (err) {
+      console.warn('Persistence check error:', err.message);
+    }
+  })();
 } else {
   console.warn("Supabase credentials not found - database endpoints will be unavailable");
 }

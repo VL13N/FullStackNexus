@@ -129,7 +129,11 @@ export async function fetchBulkIndicators(interval = "1h") {
       symbol: "SOL/USDT", 
       interval 
     },
-    indicators: "rsi,macd,ema"
+    indicators: [
+      { name: "rsi" },
+      { name: "macd" },
+      { name: "ema", params: { period: 20 } }
+    ]
   };
 
   try {
