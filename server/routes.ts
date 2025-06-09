@@ -28,7 +28,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/taapi/rsi", async (req, res) => {
     try {
       const { fetchTAIndicator } = await import('../api/taapi.js');
-      const interval = req.query.interval as string || '1h';
+      const interval = req.query.interval || '1h';
       const value = await fetchTAIndicator('rsi', interval);
       
       res.json({
@@ -50,7 +50,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/taapi/macd", async (req, res) => {
     try {
       const { fetchTAIndicator } = await import('../api/taapi.js');
-      const interval = req.query.interval as string || '1h';
+      const interval = req.query.interval || '1h';
       const value = await fetchTAIndicator('macd', interval);
       
       res.json({
@@ -72,7 +72,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/taapi/bulk", async (req, res) => {
     try {
       const { fetchBulkIndicators } = await import('../api/taapi.js');
-      const interval = req.query.interval as string || '1h';
+      const interval = req.query.interval || '1h';
       const data = await fetchBulkIndicators(interval);
       
       res.json({
@@ -453,8 +453,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const params = new URLSearchParams({
         api_key: process.env.CRYPTORANK_API_KEY,
-        timeframe: timeframe as string,
-        currency: currency as string
+        timeframe: timeframe,
+        currency: currency
       });
 
       const response = await fetch(`https://api.cryptorank.io/v0/coins/solana/chart?${params}`);
@@ -980,9 +980,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const params = new URLSearchParams({
         secret: process.env.TAAPI_API_KEY,
-        exchange: exchange as string,
+        exchange: exchange,
         symbol: 'SOL/USDT',
-        interval: interval as string,
+        interval: interval,
         period: period.toString()
       });
 
@@ -995,7 +995,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         symbol: 'SOL/USDT',
         exchange,
         interval,
-        period: parseInt(period as string),
+        period: parseInt(period),
         data,
         timestamp: new Date().toISOString()
       });
@@ -1028,9 +1028,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const params = new URLSearchParams({
         secret: process.env.TAAPI_API_KEY,
-        exchange: exchange as string,
+        exchange: exchange,
         symbol: 'SOL/USDT',
-        interval: interval as string,
+        interval: interval,
         fast_period: fastPeriod.toString(),
         slow_period: slowPeriod.toString(),
         signal_period: signalPeriod.toString()
@@ -1046,9 +1046,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         exchange,
         interval,
         parameters: {
-          fastPeriod: parseInt(fastPeriod as string),
-          slowPeriod: parseInt(slowPeriod as string),
-          signalPeriod: parseInt(signalPeriod as string)
+          fastPeriod: parseInt(fastPeriod),
+          slowPeriod: parseInt(slowPeriod),
+          signalPeriod: parseInt(signalPeriod)
         },
         data,
         timestamp: new Date().toISOString()
@@ -1076,9 +1076,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const params = new URLSearchParams({
         secret: process.env.TAAPI_API_KEY,
-        exchange: exchange as string,
+        exchange: exchange,
         symbol: 'SOL/USDT',
-        interval: interval as string,
+        interval: interval,
         period: period.toString()
       });
 
@@ -1091,7 +1091,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         symbol: 'SOL/USDT',
         exchange,
         interval,
-        period: parseInt(period as string),
+        period: parseInt(period),
         data,
         timestamp: new Date().toISOString()
       });
@@ -1120,9 +1120,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const indicators = ['rsi', 'macd', 'ema', 'sma'];
       const params = new URLSearchParams({
         secret: process.env.TAAPI_API_KEY,
-        exchange: exchange as string,
+        exchange: exchange,
         symbol: 'SOL/USDT',
-        interval: interval as string,
+        interval: interval,
         indicators: indicators.join(',')
       });
 
@@ -1183,9 +1183,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const params = new URLSearchParams({
         secret: process.env.TAAPI_API_KEY,
-        exchange: exchange as string,
+        exchange: exchange,
         symbol,
-        interval: interval as string
+        interval: interval
       });
 
       const response = await fetch(`https://api.taapi.io/rsi?${params}`);
@@ -1357,7 +1357,7 @@ Keep response concise and professional.`;
     try {
       const astroModule = await import('astronomy-engine');
       const Astronomy = astroModule.default || astroModule;
-      const date = req.query.date ? new Date(req.query.date as string) : new Date();
+      const date = req.query.date ? new Date(req.query.date) : new Date();
       
       const astroDate = new Astronomy.AstroTime(date);
       const moonIllum = Astronomy.Illumination(Astronomy.Body.Moon, astroDate);
@@ -1413,7 +1413,7 @@ Keep response concise and professional.`;
     try {
       const astroModule = await import('astronomy-engine');
       const Astronomy = astroModule.default || astroModule;
-      const date = req.query.date ? new Date(req.query.date as string) : new Date();
+      const date = req.query.date ? new Date(req.query.date) : new Date();
       
       const astroDate = new Astronomy.AstroTime(date);
       const zodiacSigns = [
@@ -1503,8 +1503,8 @@ Keep response concise and professional.`;
     try {
       const astroModule = await import('astronomy-engine');
       const Astronomy = astroModule.default || astroModule;
-      const date = req.query.date ? new Date(req.query.date as string) : new Date();
-      const orb = req.query.orb ? parseFloat(req.query.orb as string) : 8;
+      const date = req.query.date ? new Date(req.query.date) : new Date();
+      const orb = req.query.orb ? parseFloat(req.query.orb) : 8;
       
       res.json({
         success: true,
@@ -1529,8 +1529,8 @@ Keep response concise and professional.`;
     try {
       const astroModule = await import('astronomy-engine');
       const Astronomy = astroModule.default || astroModule;
-      const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear();
-      const month = req.query.month ? parseInt(req.query.month as string) : new Date().getMonth() + 1;
+      const year = req.query.year ? parseInt(req.query.year) : new Date().getFullYear();
+      const month = req.query.month ? parseInt(req.query.month) : new Date().getMonth() + 1;
       
       res.json({
         success: true,
@@ -1555,7 +1555,7 @@ Keep response concise and professional.`;
     try {
       const astroModule = await import('astronomy-engine');
       const Astronomy = astroModule.default || astroModule;
-      const date = req.query.date ? new Date(req.query.date as string) : new Date();
+      const date = req.query.date ? new Date(req.query.date) : new Date();
       
       res.json({
         success: true,
@@ -1965,7 +1965,7 @@ Keep response concise and professional.`;
         });
       }
 
-      const limit = parseInt(req.query.limit as string) || 20;
+      const limit = parseInt(req.query.limit) || 20;
       
       const { data, error } = await supabase
         .from('news_scores')
@@ -2033,7 +2033,7 @@ Keep response concise and professional.`;
   app.get("/api/astrology/financial-index", async (req, res) => {
     try {
       const { computeFinancialAstrologyIndex } = await import('../services/financialAstrology.js');
-      const date = req.query.date ? new Date(req.query.date as string) : new Date();
+      const date = req.query.date ? new Date(req.query.date) : new Date();
       
       const financialIndex = computeFinancialAstrologyIndex(date);
       
@@ -2055,7 +2055,7 @@ Keep response concise and professional.`;
   app.get("/api/astrology/weighted-aspects", async (req, res) => {
     try {
       const { computeWeightedAspectScore } = await import('../services/financialAstrology.js');
-      const date = req.query.date ? new Date(req.query.date as string) : new Date();
+      const date = req.query.date ? new Date(req.query.date) : new Date();
       
       const aspectScore = computeWeightedAspectScore(date);
       
@@ -2077,7 +2077,7 @@ Keep response concise and professional.`;
   app.get("/api/astrology/planetary-stations", async (req, res) => {
     try {
       const { computeStationScore } = await import('../services/financialAstrology.js');
-      const date = req.query.date ? new Date(req.query.date as string) : new Date();
+      const date = req.query.date ? new Date(req.query.date) : new Date();
       
       const stationScore = computeStationScore(date);
       
@@ -2192,7 +2192,7 @@ Keep response concise and professional.`;
         });
       }
 
-      const limit = parseInt(req.query.limit as string) || 24;
+      const limit = parseInt(req.query.limit) || 24;
       
       const { data, error } = await supabase
         .from('live_predictions')
