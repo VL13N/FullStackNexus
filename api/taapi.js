@@ -124,9 +124,11 @@ export async function fetchBulkIndicators(interval = "1h") {
 
   const requestBody = {
     secret: process.env.TAAPI_API_KEY,
-    exchange: "binance",
-    symbol: "SOL/USDT",
-    interval: interval,
+    construct: {
+      exchange: "binance",
+      symbol: "SOL/USDT",
+      interval: interval
+    },
     indicators: "rsi,macd,ema"
   };
 
