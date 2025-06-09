@@ -22,34 +22,88 @@ class LunarCrushService {
   }
 
   /**
-   * Makes authenticated request to LunarCrush endpoint
+   * Makes authenticated request to LunarCrush endpoint with retry logic
    */
-  async makeRequest(params = {}) {
+  async makeRequest(endpoint, params = {}, maxRetries = 3) {
     this.validateApiKey();
     
+    // Build URL with endpoint and parameters
     const queryParams = new URLSearchParams({
       key: this.apiKey,
       ...params
     });
 
-    const url = `${this.baseUrl}?${queryParams}`;
+    const url = `${this.baseUrl}/${endpoint}?${queryParams}`;
     
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`LunarCrush API Request (attempt ${attempt}): ${endpoint}`);
+        
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`,
+            'X-API-Key': this.apiKey,
+            'User-Agent': 'CryptoAnalytics/1.0'
+          },
+          timeout: 15000
+        });
+        
+        if (!response.ok) {
+          if (response.status === 429) {
+            // Rate limit - wait longer before retry
+            const waitTime = Math.pow(2, attempt) * 2000; // 2s, 4s, 8s
+            console.warn(`Rate limited, waiting ${waitTime}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            continue;
+          }
+          
+          if (response.status >= 500) {
+            // Server error - retry with exponential backoff
+            const waitTime = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
+            console.warn(`Server error ${response.status}, retrying in ${waitTime}ms...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            continue;
+          }
+          
+          // Client error - don't retry
+          const errorText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const data = await response.json();
+        
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
+        console.log(`LunarCrush API Success: ${endpoint}`);
+        return data;
+        
+      } catch (error) {
+        if (attempt === maxRetries) {
+          console.error(`LunarCrush API failed after ${maxRetries} attempts:`, error.message);
+          throw error;
+        }
+        
+        // Network error - retry with exponential backoff
+        const waitTime = Math.pow(2, attempt) * 1000;
+        console.warn(`Network error, retrying in ${waitTime}ms:`, error.message);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+    }
+  }
+
+  /**
+   * Check API key validity by making a test request
+   */
+  async validateApiKeyConnection() {
     try {
-      const response = await fetch(url);
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      if (data.error) {
-        throw new Error(data.error);
-      }
-      
-      return data;
+      const response = await this.makeRequest('coins', { symbol: 'BTC', limit: 1 });
+      return { valid: true, message: 'API key is valid' };
     } catch (error) {
-      console.error('LunarCrush API request failed:', error.message);
-      throw error;
+      return { valid: false, message: error.message };
     }
   }
 
@@ -65,7 +119,7 @@ class LunarCrushService {
       interval: interval
     };
 
-    const data = await this.makeRequest(params);
+    const data = await this.makeRequest('', params);
     
     if (data.data && data.data.length > 0) {
       const solanaData = data.data[0]; // First result should be SOL
