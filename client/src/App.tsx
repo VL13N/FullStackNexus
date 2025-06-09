@@ -13,6 +13,7 @@ import Dashboard from "@/pages/dashboard";
 import SettingsPage from "@/pages/settings";
 import LivePredictions from "@/pages/live-predictions";
 import MLTraining from "@/pages/ml-training";
+import AdvancedAstrology from "@/pages/advanced-astrology";
 import TaapiDemo from "../../components/TaapiDemo";
 import CryptoRankDemo from "../../components/CryptoRankDemo";
 import OnChainDemo from "../../components/OnChainDemo";
@@ -208,6 +209,11 @@ function Navigation() {
                 Astrology
               </Button>
             </Link>
+            <Link href="/advanced-astrology">
+              <Button variant={location === '/advanced-astrology' ? 'default' : 'ghost'} size="sm">
+                Advanced Astro
+              </Button>
+            </Link>
             <Link href="/lunarcrush">
               <Button variant={location === '/lunarcrush' ? 'default' : 'ghost'} size="sm">
                 LunarCrush
@@ -253,6 +259,7 @@ function Router() {
         <Route path="/lunarcrush" component={LunarCrushDemo} />
         <Route path="/live-predictions" component={LivePredictions} />
         <Route path="/ml-training" component={MLTraining} />
+        <Route path="/advanced-astrology" component={AdvancedAstrology} />
         <Route path="/settings" component={SettingsPage} />
         <Route component={NotFound} />
       </Switch>

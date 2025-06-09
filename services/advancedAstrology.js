@@ -4,7 +4,7 @@
  * Including lunar phases, planetary aspects, declinations, and significant events
  */
 
-import { Astronomy } from 'astronomy-engine';
+import { AstrologyService } from '../api/astrology.js';
 
 export class AdvancedAstrologyService {
   constructor() {
