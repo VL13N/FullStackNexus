@@ -12,6 +12,7 @@ import PredictionsPage from "@/pages/predictions";
 import Dashboard from "@/pages/dashboard";
 import SettingsPage from "@/pages/settings";
 import LivePredictions from "@/pages/live-predictions";
+import MLTraining from "@/pages/ml-training";
 import TaapiDemo from "../../components/TaapiDemo";
 import CryptoRankDemo from "../../components/CryptoRankDemo";
 import OnChainDemo from "../../components/OnChainDemo";
@@ -218,6 +219,12 @@ function Navigation() {
                 Live AI
               </Button>
             </Link>
+            <Link href="/ml-training">
+              <Button variant={location === '/ml-training' ? 'default' : 'ghost'} size="sm">
+                <Brain className="h-4 w-4 mr-1" />
+                ML Training
+              </Button>
+            </Link>
             <Link href="/settings">
               <Button variant={location === '/settings' ? 'default' : 'ghost'} size="sm">
                 <Settings className="h-4 w-4 mr-1" />
@@ -245,6 +252,7 @@ function Router() {
         <Route path="/astrology" component={AstrologyDemo} />
         <Route path="/lunarcrush" component={LunarCrushDemo} />
         <Route path="/live-predictions" component={LivePredictions} />
+        <Route path="/ml-training" component={MLTraining} />
         <Route path="/settings" component={SettingsPage} />
         <Route component={NotFound} />
       </Switch>

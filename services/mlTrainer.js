@@ -160,7 +160,7 @@ export class MLTrainer {
     this.model.compile({
       optimizer: tf.train.adam(0.001),
       loss: 'categoricalCrossentropy',
-      metrics: ['accuracy', 'precision', 'recall']
+      metrics: ['accuracy']
     });
     
     console.log('✅ Model architecture created:');
