@@ -21,7 +21,8 @@ const crCache = new LRUCache({ max: 20, ttl: 1000 * 60 * 60 }); // 1 hour cache
  * Makes authenticated request to CryptoRank v2 endpoint with retry logic
  */
 async function makeV2Request(endpoint, maxRetries = 3) {
-  const url = `https://api.cryptorank.io/v2/${endpoint}`;
+  // v2 API uses query parameter authentication as per documentation
+  const url = `https://api.cryptorank.io/v2/${endpoint}${endpoint.includes('?') ? '&' : '?'}api_key=${CR_API_KEY}`;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -33,7 +34,6 @@ async function makeV2Request(endpoint, maxRetries = 3) {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
-          'X-API-Key': CR_API_KEY,
           'User-Agent': 'CryptoAnalytics/1.0'
         },
         timeout: 15000
@@ -91,8 +91,8 @@ export async function fetchSolanaCurrent() {
   if (crCache.has(cacheKey)) return crCache.get(cacheKey);
   
   try {
-    // Use v2 endpoint with Solana's numeric ID (5663)
-    const responseData = await makeV2Request('currencies/5663');
+    // Use v2 endpoint with currency slug as per documentation
+    const responseData = await makeV2Request('currencies/solana');
     
     if (responseData.data) {
       const coinData = responseData.data;
