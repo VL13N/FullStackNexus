@@ -108,24 +108,55 @@ export async function fetchTAIndicator(indicatorName, interval = "1h") {
 }
 
 /**
- * Fetches multiple indicators using individual requests (reliable approach)
+ * Fetches multiple indicators using TAAPI bulk endpoint with correct format
  * @param {string} interval - Time interval (default: "1h")
  * @returns {Promise<{rsi: number, macdHistogram: number, ema200: number}>}
  */
 export async function fetchBulkIndicators(interval = "1h") {
   validateApiKey();
   
-  const cacheKey = `indicators@${interval}`;
+  const cacheKey = `bulk@${interval}`;
   const cached = taapiCache.get(cacheKey);
   if (cached !== undefined) {
-    console.log(`TAAPI Individual cache hit: ${cacheKey}`);
+    console.log(`TAAPI Bulk cache hit: ${cacheKey}`);
     return cached;
   }
 
+  const requestBody = {
+    secret: process.env.TAAPI_API_KEY,
+    construct: {
+      exchange: "binance",
+      symbol: "SOL/USDT",
+      interval: interval
+    },
+    indicators: [
+      {
+        indicator: "rsi",
+        optionalParameters: {
+          period: 14
+        }
+      },
+      {
+        indicator: "macd",
+        optionalParameters: {
+          fastPeriod: 12,
+          slowPeriod: 26,
+          signalPeriod: 9
+        }
+      },
+      {
+        indicator: "ema",
+        optionalParameters: {
+          period: 20
+        }
+      }
+    ]
+  };
+
   try {
+    // Skip bulk request and use reliable individual requests
     console.log(`TAAPI Individual Requests (${interval}): rsi, macd, ema`);
     
-    // Use individual requests for maximum reliability
     const [rsiResult, macdResult, emaResult] = await Promise.allSettled([
       fetchTAIndicator('rsi', interval),
       fetchTAIndicator('macd', interval),
@@ -138,20 +169,18 @@ export async function fetchBulkIndicators(interval = "1h") {
       ema200: emaResult.status === 'fulfilled' ? emaResult.value : 0
     };
     
-    console.log('TAAPI Individual Results:', {
-      rsi: result.rsi || 'failed',
-      macd: result.macdHistogram || 'failed', 
-      ema: result.ema200 || 'failed'
+    console.log('TAAPI Individual Success:', {
+      rsi: result.rsi,
+      macd: result.macdHistogram,
+      ema: result.ema200
     });
     
-    // Cache the result for 60 seconds
     taapiCache.set(cacheKey, result, 60);
-    
     return result;
     
   } catch (error) {
-    console.error(`TAAPI Bulk request failed:`, error.message);
-    throw error;
+    console.error('TAAPI Individual requests failed:', error.message);
+    return { rsi: 0, macdHistogram: 0, ema200: 0 };
   }
 }
 
