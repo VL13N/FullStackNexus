@@ -118,9 +118,9 @@ class PredictionService {
         const features = [
           normalized.rsi_1h || normalized.rsi || 50,
           normalized.macdHistogram || normalized.macd || 0,
-          normalized.ema_20 || normalized.ema || normalized.ema8 || 150,
-          normalized.market_cap_usd || normalized.marketCap || 50000000000,
-          normalized.volume_24h_usd || normalized.volume24h || 1000000000,
+          normalized.ema_20 || normalized.ema || normalized.ema8 || 50,
+          normalized.market_cap_usd || normalized.marketCap || 50,
+          normalized.volume_24h_usd || normalized.volume24h || 50,
           normalized.social_score || normalized.socialVolume || socialScore,
           normalized.astro_score || astroScore
         ];

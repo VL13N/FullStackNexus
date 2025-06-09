@@ -358,7 +358,5 @@ class LunarCrushService {
 // Create singleton instance
 const lunarCrushService = new LunarCrushService();
 
-module.exports = {
-  LunarCrushService,
-  lunarCrushService
-};
+export { LunarCrushService };
+export const lunarCrushService = new LunarCrushService();

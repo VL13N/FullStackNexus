@@ -100,6 +100,7 @@ Return this exact JSON structure:
           source: article.source || 'LunarCrush',
           published_at: article.published_at || new Date().toISOString()
         });
+      }
     }
 
     return {
