@@ -195,7 +195,7 @@ export async function registerRoutes(app) {
       const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
       
       const { data, error } = await supabase
-        .from('ml_features')
+        .from('live_predictions')
         .select('*')
         .eq('symbol', symbol)
         .gte('timestamp', startDate)
@@ -237,6 +237,150 @@ export async function registerRoutes(app) {
       });
     }
   });
+
+  // ML Dataset export endpoints
+  app.post('/api/ml/export', async (req, res) => {
+    try {
+      const { DatasetExporter } = await import('../services/datasetExporter.js');
+      const exporter = new DatasetExporter();
+      
+      const options = {
+        startDate: req.body.startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+        endDate: req.body.endDate || new Date().toISOString(),
+        symbol: req.body.symbol || 'SOL',
+        format: req.body.format || 'json',
+        includeTargets: req.body.includeTargets !== false
+      };
+      
+      console.log(`Exporting ML dataset for ${options.symbol} (${options.format})`);
+      const dataset = await exporter.exportTrainingDataset(options);
+      
+      res.json({
+        success: true,
+        dataset: dataset,
+        export_options: options,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('ML dataset export failed:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.post('/api/ml/splits', async (req, res) => {
+    try {
+      const { DatasetExporter } = await import('../services/datasetExporter.js');
+      const exporter = new DatasetExporter();
+      
+      const options = {
+        startDate: req.body.startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+        endDate: req.body.endDate || new Date().toISOString(),
+        symbol: req.body.symbol || 'SOL',
+        format: 'json'
+      };
+      
+      const dataset = await exporter.exportTrainingDataset(options);
+      const splits = exporter.createDataSplits(dataset, 
+        req.body.trainRatio || 0.7,
+        req.body.valRatio || 0.15,
+        req.body.testRatio || 0.15
+      );
+      
+      res.json({
+        success: true,
+        splits: splits,
+        split_ratios: {
+          train: req.body.trainRatio || 0.7,
+          validation: req.body.valRatio || 0.15,
+          test: req.body.testRatio || 0.15
+        },
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('ML data splits generation failed:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get('/api/ml/stats', async (req, res) => {
+    try {
+      const symbol = req.query.symbol || 'SOL';
+      const days = parseInt(req.query.days) || 7;
+      const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+      
+      const { data, error } = await supabase
+        .from('live_predictions')
+        .select('*')
+        .eq('symbol', symbol)
+        .gte('timestamp', startDate)
+        .order('timestamp', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      // Calculate ML-ready statistics
+      const stats = {
+        total_samples: data.length,
+        timeframe_days: days,
+        data_sources: {
+          technical: data.filter(d => d.technical_score > 0).length,
+          social: data.filter(d => d.social_score > 0).length,
+          fundamental: data.filter(d => d.fundamental_score > 0).length,
+          astrology: data.filter(d => d.astrology_score > 0).length
+        },
+        score_distributions: {
+          technical: calculateDistribution(data.map(d => d.technical_score).filter(s => s)),
+          social: calculateDistribution(data.map(d => d.social_score).filter(s => s)),
+          fundamental: calculateDistribution(data.map(d => d.fundamental_score).filter(s => s)),
+          astrology: calculateDistribution(data.map(d => d.astrology_score).filter(s => s))
+        },
+        classification_distribution: calculateClassificationDistribution(data),
+        recent_quality: data.slice(0, 10).reduce((sum, d) => sum + (d.data_quality_score || 0), 0) / Math.min(10, data.length)
+      };
+
+      res.json({
+        success: true,
+        statistics: stats,
+        symbol: symbol,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Utility functions for ML statistics
+  function calculateDistribution(scores) {
+    if (!scores.length) return { min: 0, max: 0, mean: 0, std: 0 };
+    
+    const min = Math.min(...scores);
+    const max = Math.max(...scores);
+    const mean = scores.reduce((a, b) => a + b, 0) / scores.length;
+    const variance = scores.reduce((sum, score) => sum + Math.pow(score - mean, 2), 0) / scores.length;
+    const std = Math.sqrt(variance);
+    
+    return { min, max, mean: Math.round(mean * 100) / 100, std: Math.round(std * 100) / 100 };
+  }
+
+  function calculateClassificationDistribution(data) {
+    const classifications = data.map(d => d.classification).filter(c => c);
+    const counts = {};
+    classifications.forEach(c => counts[c] = (counts[c] || 0) + 1);
+    return counts;
+  }
 
   // Manual schema migration endpoint
   app.post('/api/admin/schema-migrate', async (req, res) => {
