@@ -886,6 +886,167 @@ export async function registerRoutes(app) {
     }
   });
 
+  // Solana On-Chain Metrics API - Direct RPC Implementation
+  app.get("/api/onchain/metrics", async (req, res) => {
+    try {
+      const solanaRpcUrl = 'https://api.mainnet-beta.solana.com';
+      
+      // Fetch multiple metrics in parallel
+      const [epochResponse, slotResponse, supplyResponse, performanceResponse] = await Promise.all([
+        fetch(solanaRpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'getEpochInfo'
+          })
+        }),
+        fetch(solanaRpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'getSlot'
+          })
+        }),
+        fetch(solanaRpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 3,
+            method: 'getSupply'
+          })
+        }),
+        fetch(solanaRpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 4,
+            method: 'getRecentPerformanceSamples',
+            params: [5]
+          })
+        })
+      ]);
+
+      const [epochData, slotData, supplyData, performanceData] = await Promise.all([
+        epochResponse.json(),
+        slotResponse.json(),
+        supplyResponse.json(),
+        performanceResponse.json()
+      ]);
+
+      // Calculate TPS from performance samples
+      let tps = 0;
+      if (performanceData.result && performanceData.result.length > 0) {
+        let totalTransactions = 0;
+        let totalSlots = 0;
+        
+        performanceData.result.forEach(sample => {
+          totalTransactions += sample.numTransactions;
+          totalSlots += sample.numSlots;
+        });
+        
+        if (totalSlots > 0) {
+          const avgTransactionsPerSlot = totalTransactions / totalSlots;
+          tps = Math.round(avgTransactionsPerSlot * 2.5); // 2.5 slots per second
+        }
+      }
+
+      const metrics = {
+        timestamp: new Date().toISOString(),
+        source: 'solana_rpc',
+        network: {
+          tps: tps,
+          current_slot: slotData.result || 0,
+          epoch: epochData.result?.epoch || 0,
+          slot_index: epochData.result?.slotIndex || 0,
+          slots_in_epoch: epochData.result?.slotsInEpoch || 0,
+          epoch_progress: epochData.result ? 
+            ((epochData.result.slotIndex / epochData.result.slotsInEpoch) * 100).toFixed(2) : 0
+        },
+        supply: {
+          total: supplyData.result?.value?.total || 0,
+          circulating: supplyData.result?.value?.circulating || 0,
+          non_circulating: supplyData.result?.value?.nonCirculating || 0
+        },
+        performance: {
+          avg_block_time: 0.4,
+          network_utilization: Math.min(100, (tps / 65000) * 100)
+        }
+      };
+
+      res.json({
+        success: true,
+        type: 'network_metrics',
+        data: metrics,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get("/api/onchain/tps", async (req, res) => {
+    try {
+      const solanaRpcUrl = 'https://api.mainnet-beta.solana.com';
+      
+      const performanceResponse = await fetch(solanaRpcUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'getRecentPerformanceSamples',
+          params: [10]
+        })
+      });
+
+      const performanceData = await performanceResponse.json();
+      
+      let tps = 0;
+      if (performanceData.result && performanceData.result.length > 0) {
+        let totalTransactions = 0;
+        let totalSlots = 0;
+        
+        performanceData.result.forEach(sample => {
+          totalTransactions += sample.numTransactions;
+          totalSlots += sample.numSlots;
+        });
+        
+        if (totalSlots > 0) {
+          const avgTransactionsPerSlot = totalTransactions / totalSlots;
+          tps = Math.round(avgTransactionsPerSlot * 2.5);
+        }
+      }
+
+      res.json({
+        success: true,
+        type: 'tps_monitoring',
+        data: {
+          tps: tps,
+          timestamp: new Date().toISOString(),
+          source: 'solana_rpc',
+          samples_analyzed: performanceData.result?.length || 0
+        },
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // OpenAI integration endpoints
   app.post("/api/openai/analyze-news", async (req, res) => {
     try {
