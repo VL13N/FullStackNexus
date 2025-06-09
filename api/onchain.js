@@ -5,109 +5,181 @@
  */
 class SolanaOnChainService {
   constructor() {
-    // Primary data sources for Solana on-chain metrics
+    // Primary Solana RPC endpoints for authentic on-chain data
+    this.solanaRpcUrls = [
+      'https://api.mainnet-beta.solana.com',
+      'https://solana-api.projectserum.com',
+      'https://rpc.ankr.com/solana'
+    ];
+    this.currentRpcIndex = 0;
+    
+    // Backup data sources
     this.solanaTrackerBaseUrl = 'https://data.solanatracker.io/v1';
-    this.solanaRpcUrl = 'https://api.mainnet-beta.solana.com';
     this.bitqueryBaseUrl = 'https://graphql.bitquery.io';
-    this.stakingRewardsUrl = 'https://api.stakingrewards.com';
     
     // API keys
     this.bitqueryApiKey = process.env.BITQUERY_API_KEY;
-    this.stakingRewardsApiKey = process.env.STAKING_REWARDS_API_KEY;
     
-    if (!this.bitqueryApiKey) {
-      console.warn('BITQUERY_API_KEY not found in environment variables');
-    }
-    if (!this.stakingRewardsApiKey) {
-      console.warn('STAKING_REWARDS_API_KEY not found in environment variables');
-    }
+    console.log('Solana On-Chain Service initialized with direct RPC endpoints');
   }
 
   /**
-   * Validates Bitquery API key availability
+   * Makes direct RPC request to Solana blockchain
    */
-  validateBitqueryApiKey() {
-    if (!this.bitqueryApiKey) {
-      throw new Error('Bitquery API key not configured. Please set BITQUERY_API_KEY environment variable.');
-    }
-  }
-
-  /**
-   * Makes request to Solana Tracker API (no auth required for basic endpoints)
-   */
-  async makeSolanaTrackerRequest(endpoint) {
+  async makeSolanaRpcRequest(method, params = []) {
+    const rpcUrl = this.solanaRpcUrls[this.currentRpcIndex];
+    
     try {
-      // Try alternative Solana data sources if Solana Tracker is unavailable
-      if (endpoint === '/network') {
-        return await this.getRPCNetworkMetrics();
-      }
-      if (endpoint === '/validators') {
-        return await this.getRPCValidatorMetrics();
-      }
-      if (endpoint === '/epoch') {
-        return await this.getRPCEpochMetrics();
-      }
-      
-      const response = await fetch(`${this.solanaTrackerBaseUrl}${endpoint}`, {
-        method: 'GET',
+      const response = await fetch(rpcUrl, {
+        method: 'POST',
         headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'SolanaAnalyticsBot/1.0'
-        }
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: method,
+          params: params
+        })
       });
-      
+
       if (!response.ok) {
-        throw new Error(`Solana Tracker error: ${response.status}`);
+        throw new Error(`RPC request failed: ${response.status}`);
       }
-      
+
       const data = await response.json();
-      return data;
+      
+      if (data.error) {
+        throw new Error(`RPC error: ${data.error.message}`);
+      }
+
+      return data.result;
     } catch (error) {
-      console.error('Solana Tracker API request failed:', error.message);
-      throw error;
+      console.warn(`RPC request failed for ${rpcUrl}:`, error.message);
+      
+      // Try next RPC endpoint
+      if (this.currentRpcIndex < this.solanaRpcUrls.length - 1) {
+        this.currentRpcIndex++;
+        return await this.makeSolanaRpcRequest(method, params);
+      } else {
+        this.currentRpcIndex = 0; // Reset for next time
+        throw error;
+      }
     }
   }
 
-  async getRPCNetworkMetrics() {
+  /**
+   * Get current slot and block information
+   */
+  async getCurrentSlotAndBlock() {
     try {
-      const rpcUrl = 'https://api.mainnet-beta.solana.com';
-      
-      const [slotResponse, epochResponse] = await Promise.all([
-        fetch(rpcUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            id: 1,
-            method: 'getSlot'
-          })
-        }),
-        fetch(rpcUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            id: 2,
-            method: 'getEpochInfo'
-          })
-        })
-      ]);
-
-      const [slotData, epochData] = await Promise.all([
-        slotResponse.json(),
-        epochResponse.json()
+      const [slot, blockTime, blockHeight] = await Promise.all([
+        this.makeSolanaRpcRequest('getSlot'),
+        this.makeSolanaRpcRequest('getBlockTime', [await this.makeSolanaRpcRequest('getSlot')]),
+        this.makeSolanaRpcRequest('getBlockHeight')
       ]);
 
       return {
-        tps: null, // TPS requires additional calculation
-        block_height: slotData.result || null,
-        total_transactions: null,
-        average_block_time: 0.4,
-        epoch: epochData.result?.epoch || null,
-        slot_index: epochData.result?.slotIndex || null
+        currentSlot: slot,
+        blockTime: blockTime,
+        blockHeight: blockHeight,
+        timestamp: new Date().toISOString()
       };
     } catch (error) {
-      throw new Error('Failed to fetch network metrics from Solana RPC');
+      console.error('Failed to get current slot and block:', error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Calculate TPS from recent performance samples
+   */
+  async calculateTPS() {
+    try {
+      const performanceSamples = await this.makeSolanaRpcRequest('getRecentPerformanceSamples', [5]);
+      
+      if (!performanceSamples || performanceSamples.length === 0) {
+        return 0;
+      }
+
+      // Calculate average TPS from recent samples
+      let totalTransactions = 0;
+      let totalSlots = 0;
+      
+      performanceSamples.forEach(sample => {
+        totalTransactions += sample.numTransactions;
+        totalSlots += sample.numSlots;
+      });
+
+      // TPS = transactions per slot * slots per second (approximately 2.5 slots/second)
+      const avgTransactionsPerSlot = totalTransactions / totalSlots;
+      const slotsPerSecond = 2.5; // Solana target block time
+      const tps = avgTransactionsPerSlot * slotsPerSecond;
+
+      return Math.round(tps);
+    } catch (error) {
+      console.error('Failed to calculate TPS:', error.message);
+      return 0;
+    }
+  }
+
+  /**
+   * Get comprehensive network metrics using direct RPC calls
+   */
+  async getNetworkMetrics() {
+    try {
+      console.log('Fetching Solana network metrics from RPC...');
+      
+      const [blockInfo, tps, epochInfo, supply] = await Promise.all([
+        this.getCurrentSlotAndBlock(),
+        this.calculateTPS(),
+        this.makeSolanaRpcRequest('getEpochInfo'),
+        this.makeSolanaRpcRequest('getSupply')
+      ]);
+
+      const metrics = {
+        success: true,
+        timestamp: new Date().toISOString(),
+        network: {
+          tps: tps,
+          current_slot: blockInfo?.currentSlot || 0,
+          block_height: blockInfo?.blockHeight || 0,
+          epoch: epochInfo?.epoch || 0,
+          slot_index: epochInfo?.slotIndex || 0,
+          slots_in_epoch: epochInfo?.slotsInEpoch || 0,
+          epoch_progress: epochInfo ? (epochInfo.slotIndex / epochInfo.slotsInEpoch * 100).toFixed(2) : 0
+        },
+        supply: {
+          total: supply?.value?.total || 0,
+          circulating: supply?.value?.circulating || 0,
+          non_circulating: supply?.value?.nonCirculating || 0
+        },
+        performance: {
+          avg_block_time: 0.4, // Solana target block time
+          network_utilization: Math.min(100, (tps / 65000) * 100) // Theoretical max TPS
+        }
+      };
+
+      console.log('Solana RPC metrics retrieved successfully:', {
+        tps: metrics.network.tps,
+        slot: metrics.network.current_slot,
+        epoch: metrics.network.epoch
+      });
+
+      return metrics;
+    } catch (error) {
+      console.error('Failed to fetch Solana network metrics:', error.message);
+      return {
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString(),
+        network: {
+          tps: 0,
+          current_slot: 0,
+          block_height: 0,
+          epoch: 0
+        }
+      };
     }
   }
 
@@ -595,51 +667,32 @@ class SolanaOnChainService {
   }
 
   /**
-   * Get real-time TPS monitoring data
+   * Get real-time TPS monitoring data using direct RPC
    */
-  async getTpsMonitoring(sampleSize = 100) {
+  async getTpsMonitoring(sampleSize = 5) {
     try {
-      const [trackerData, bitqueryData] = await Promise.allSettled([
-        this.makeSolanaTrackerRequest('/network'),
-        this.getTransactionAnalytics('1h')
-      ]);
-
-      const tpsData = {
-        timestamp: new Date().toISOString(),
-        sources: {}
-      };
-
-      if (trackerData.status === 'fulfilled') {
-        tpsData.sources.solanaTracker = {
-          currentTps: trackerData.value.tps || null,
-          averageBlockTime: trackerData.value.average_block_time || null,
-          blockHeight: trackerData.value.block_height || null
-        };
-      }
-
-      if (bitqueryData.status === 'fulfilled') {
-        const analytics = bitqueryData.value;
-        tpsData.sources.bitquery = {
-          transactionsLastHour: analytics.transactions.total || null,
-          calculatedTps: analytics.transactions.total ? analytics.transactions.total / 3600 : null,
-          successRate: analytics.transactions.total > 0 ? 
-            (analytics.transactions.successful / analytics.transactions.total * 100) : null
-        };
-      }
-
-      // Combined TPS estimate
-      const trackerTps = tpsData.sources.solanaTracker?.currentTps;
-      const bitqueryTps = tpsData.sources.bitquery?.calculatedTps;
+      const metrics = await this.getNetworkMetrics();
       
-      if (trackerTps && bitqueryTps) {
-        tpsData.combinedTps = (trackerTps + bitqueryTps) / 2;
-      } else {
-        tpsData.combinedTps = trackerTps || bitqueryTps || null;
-      }
-
-      return tpsData;
+      return {
+        timestamp: new Date().toISOString(),
+        tps: metrics.network?.tps || 0,
+        current_slot: metrics.network?.current_slot || 0,
+        block_height: metrics.network?.block_height || 0,
+        epoch: metrics.network?.epoch || 0,
+        network_utilization: metrics.performance?.network_utilization || 0,
+        source: 'solana_rpc'
+      };
     } catch (error) {
-      throw new Error(`TPS monitoring fetch failed: ${error.message}`);
+      console.error('TPS monitoring failed:', error.message);
+      return {
+        timestamp: new Date().toISOString(),
+        tps: 0,
+        current_slot: 0,
+        block_height: 0,
+        epoch: 0,
+        network_utilization: 0,
+        source: 'error'
+      };
     }
   }
 }
