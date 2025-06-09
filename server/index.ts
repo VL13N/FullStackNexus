@@ -1,7 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes.js";
 import { setupVite, serveStatic, log } from "./vite";
-import { scheduler } from "../services/scheduler.js";
+import scheduler from "../services/scheduler.js";
 
 // Verify OpenAI API key on startup
 if (!process.env.OPENAI_API_KEY) {
@@ -128,8 +128,8 @@ async function scheduleOpenAITasks(port: number) {
   const port = parseInt(process.env.PORT || "5000");
 
   // Connect scheduler with broadcast function
-  if (app.broadcastPrediction) {
-    scheduler.setBroadcastFunction(app.broadcastPrediction);
+  if ((app as any).broadcastPrediction) {
+    scheduler.setBroadcastFunction((app as any).broadcastPrediction);
     scheduler.start();
   }
 
