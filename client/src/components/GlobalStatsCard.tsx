@@ -39,14 +39,23 @@ export default function GlobalStatsCard() {
     }
   };
 
-  const formatCurrency = (value: number) => {
+  const formatCurrency = (value: number | undefined | null) => {
+    if (!value || value === 0) return '$0';
     if (value >= 1e12) return `$${(value / 1e12).toFixed(2)}T`;
     if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
     if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
     return `$${value.toLocaleString()}`;
   };
 
-  const formatPercentage = (value: number) => `${value.toFixed(2)}%`;
+  const formatPercentage = (value: number | undefined | null) => {
+    if (!value && value !== 0) return 'N/A';
+    return `${value.toFixed(2)}%`;
+  };
+
+  const formatNumber = (value: number | undefined | null) => {
+    if (!value && value !== 0) return 'N/A';
+    return value.toLocaleString();
+  };
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
@@ -127,7 +136,7 @@ export default function GlobalStatsCard() {
             
             <div className="text-center">
               <div className="text-lg font-semibold text-gray-600">
-                {stats.activeCryptocurrencies.toLocaleString()}
+                {formatNumber(stats.activeCryptocurrencies)}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">Active Coins</div>
             </div>
