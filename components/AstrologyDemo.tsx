@@ -56,6 +56,12 @@ export default function AstrologyDemo() {
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Safe number formatting helper
+  const safeToFixed = (value: any, decimals: number = 2): string => {
+    if (value == null || isNaN(Number(value))) return 'Calculating...';
+    return Number(value).toFixed(decimals);
+  };
+
   const fetchData = async (endpoint: string, setter: Function, key: string) => {
     setLoading(prev => ({ ...prev, [key]: true }));
     setErrors(prev => ({ ...prev, [key]: '' }));
@@ -195,19 +201,11 @@ export default function AstrologyDemo() {
                         </div>
                         <div className="flex justify-between">
                           <span>Phase Angle:</span>
-                          <span className="font-mono">
-                            {moonPhaseData.moonPhase.phase != null 
-                              ? `${moonPhaseData.moonPhase.phase.toFixed(2)}°`
-                              : 'Calculating...'}
-                          </span>
+                          <span className="font-mono">{safeToFixed(moonPhaseData.moonPhase.phase)}°</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Illumination:</span>
-                          <span className="font-mono">
-                            {moonPhaseData.moonPhase.illumination !== null 
-                              ? `${moonPhaseData.moonPhase.illumination.toFixed(1)}%` 
-                              : 'Calculating...'}
-                          </span>
+                          <span className="font-mono">{safeToFixed(moonPhaseData.moonPhase.illumination, 1)}%</span>
                         </div>
                       </div>
                     </div>
@@ -230,19 +228,11 @@ export default function AstrologyDemo() {
                         </div>
                         <div className="flex justify-between">
                           <span>Longitude:</span>
-                          <span className="font-mono">
-                            {moonPhaseData.moonPhase.position.longitude != null 
-                              ? `${moonPhaseData.moonPhase.position.longitude.toFixed(2)}°`
-                              : 'Calculating...'}
-                          </span>
+                          <span className="font-mono">{safeToFixed(moonPhaseData.moonPhase.position.longitude)}°</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Latitude:</span>
-                          <span className="font-mono">
-                            {moonPhaseData.moonPhase.position.latitude != null 
-                              ? `${moonPhaseData.moonPhase.position.latitude.toFixed(2)}°`
-                              : 'Calculating...'}
-                          </span>
+                          <span className="font-mono">{safeToFixed(moonPhaseData.moonPhase.position.latitude)}°</span>
                         </div>
                       </div>
                     </div>
@@ -299,9 +289,7 @@ export default function AstrologyDemo() {
                             <div className="text-sm text-muted-foreground space-y-1">
                               <div>{position.degreeInSign || 'Calculating...'}°</div>
                               <div className="font-mono text-xs">
-                                {position.longitude != null && position.latitude != null 
-                                  ? `${position.longitude.toFixed(2)}° / ${position.latitude.toFixed(2)}°`
-                                  : 'Calculating coordinates...'}
+                                {safeToFixed(position.longitude)}° / {safeToFixed(position.latitude)}°
                               </div>
                             </div>
                           </div>
