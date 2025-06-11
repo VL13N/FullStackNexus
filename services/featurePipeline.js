@@ -225,58 +225,71 @@ class FeaturePipeline {
   }
 
   /**
-   * Fetch fundamental market features from CryptoRank and market sentiment APIs
+   * Fetch fundamental market features from CryptoRank V2 and market sentiment APIs
    */
   async fetchFundamentalFeatures(symbol) {
-    const { CryptoRankService, makeV2Request } = await import('../api/cryptorank.js');
-    const cryptoRank = new CryptoRankService();
+    const { 
+      fetchGlobalStats, 
+      fetchSolanaData, 
+      fetchSolanaSparkline,
+      CryptoRankV2Service 
+    } = await import('./cryptoRankService.js');
+    
+    const service = new CryptoRankV2Service();
 
     try {
-      const [current, marketStats, sentimentData] = await Promise.allSettled([
-        cryptoRank.getSolanaData(),
-        cryptoRank.getSolanaMarketStats(),
+      const [globalData, solanaData, sparklineData, sentimentData] = await Promise.allSettled([
+        fetchGlobalStats(),
+        fetchSolanaData(),
+        fetchSolanaSparkline(), // Uses corrected from/to timestamps
         this.fetchMarketSentiment()
       ]);
 
-      const currentData = current.status === 'fulfilled' ? current.value : {};
-      const stats = marketStats.status === 'fulfilled' ? marketStats.value : {};
+      const global = globalData.status === 'fulfilled' ? globalData.value.data : {};
+      const solana = solanaData.status === 'fulfilled' ? solanaData.value.data : {};
+      const sparkline = sparklineData.status === 'fulfilled' ? sparklineData.value : {};
       const sentiment = sentimentData.status === 'fulfilled' ? sentimentData.value : {};
 
       return {
-        // Price and market cap
-        current_price: currentData.price,
-        market_cap: currentData.market_cap,
-        volume_24h: currentData.volume_24h,
+        // Solana price and market metrics from CryptoRank V2
+        current_price: parseFloat(solana.price || 0),
+        market_cap: parseFloat(solana.marketCap || 0),
+        volume_24h: parseFloat(solana.volume24h || 0),
         
-        // Price changes
-        price_change_1h: currentData.price_change_1h,
-        price_change_24h: currentData.price_change_24h,
-        price_change_7d: currentData.price_change_7d,
-        price_change_30d: currentData.price_change_30d,
+        // Price changes from CryptoRank V2 percentChange
+        price_change_24h: parseFloat(solana.percentChange?.h24 || 0),
+        price_change_7d: parseFloat(solana.percentChange?.d7 || 0),
+        price_change_30d: parseFloat(solana.percentChange?.d30 || 0),
         
-        // Market metrics
-        market_cap_rank: currentData.market_cap_rank,
-        volume_rank: currentData.volume_rank,
-        circulating_supply: currentData.circulating_supply,
-        total_supply: currentData.total_supply,
+        // Market metrics from CryptoRank V2
+        market_cap_rank: parseInt(solana.rank || 0),
+        circulating_supply: parseFloat(solana.circulatingSupply || 0),
+        total_supply: parseFloat(solana.totalSupply || 0),
+        high_24h: parseFloat(solana.high24h || 0),
+        low_24h: parseFloat(solana.low24h || 0),
         
-        // Market sentiment indicators
-        btc_dominance: sentiment.btcDominance,
-        eth_dominance: sentiment.ethDominance,
-        defi_dominance: sentiment.defiDominance,
-        fear_greed_index: sentiment.fearGreedIndex,
-        total_market_cap: sentiment.totalMarketCap,
-        total_24h_volume: sentiment.total24hVolume,
+        // Global market sentiment from CryptoRank V2
+        btc_dominance: parseFloat(global.btcDominance || 0),
+        eth_dominance: parseFloat(global.ethDominance || 0),
+        total_market_cap: parseFloat(global.totalMarketCap || 0),
+        total_24h_volume: parseFloat(global.totalVolume24h || 0),
+        
+        // Fear & Greed Index
+        fear_greed_index: sentiment.fearGreedIndex || 50,
+        
+        // Sparkline features for trend analysis
+        sparkline_trend: this.calculateSparklineTrend(sparkline.values || []),
+        sparkline_volatility: this.calculateSparklineVolatility(sparkline.values || []),
         
         // Derived fundamental features
-        volume_price_ratio: currentData.volume_24h / currentData.price,
+        volume_price_ratio: (parseFloat(solana.volume24h || 0)) / (parseFloat(solana.price || 1)),
         price_volatility: this.calculatePriceVolatility([
-          currentData.price_change_1h,
-          currentData.price_change_24h,
-          currentData.price_change_7d
+          parseFloat(solana.percentChange?.h24 || 0),
+          parseFloat(solana.percentChange?.d7 || 0),
+          parseFloat(solana.percentChange?.d30 || 0)
         ]),
-        momentum_score: this.calculateMomentumScore(currentData),
-        market_strength: this.calculateMarketStrength(currentData),
+        momentum_score: this.calculateMomentumScore(solana),
+        market_strength: this.calculateMarketStrength(solana, global),
         sentiment_score: this.calculateSentimentScore(sentiment)
       };
 
