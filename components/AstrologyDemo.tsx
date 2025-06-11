@@ -195,7 +195,11 @@ export default function AstrologyDemo() {
                         </div>
                         <div className="flex justify-between">
                           <span>Phase Angle:</span>
-                          <span className="font-mono">{moonPhaseData.moonPhase.phase.toFixed(2)}°</span>
+                          <span className="font-mono">
+                            {moonPhaseData.moonPhase.phase != null 
+                              ? `${moonPhaseData.moonPhase.phase.toFixed(2)}°`
+                              : 'Calculating...'}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span>Illumination:</span>
@@ -226,11 +230,19 @@ export default function AstrologyDemo() {
                         </div>
                         <div className="flex justify-between">
                           <span>Longitude:</span>
-                          <span className="font-mono">{moonPhaseData.moonPhase.position.longitude.toFixed(2)}°</span>
+                          <span className="font-mono">
+                            {moonPhaseData.moonPhase.position.longitude != null 
+                              ? `${moonPhaseData.moonPhase.position.longitude.toFixed(2)}°`
+                              : 'Calculating...'}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span>Latitude:</span>
-                          <span className="font-mono">{moonPhaseData.moonPhase.position.latitude.toFixed(2)}°</span>
+                          <span className="font-mono">
+                            {moonPhaseData.moonPhase.position.latitude != null 
+                              ? `${moonPhaseData.moonPhase.position.latitude.toFixed(2)}°`
+                              : 'Calculating...'}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -285,9 +297,11 @@ export default function AstrologyDemo() {
                               <Badge variant="outline">{position.zodiacSign}</Badge>
                             </div>
                             <div className="text-sm text-muted-foreground space-y-1">
-                              <div>{position.degreeInSign}°</div>
+                              <div>{position.degreeInSign || 'Calculating...'}°</div>
                               <div className="font-mono text-xs">
-                                {position.longitude.toFixed(2)}° / {position.latitude.toFixed(2)}°
+                                {position.longitude != null && position.latitude != null 
+                                  ? `${position.longitude.toFixed(2)}° / ${position.latitude.toFixed(2)}°`
+                                  : 'Calculating coordinates...'}
                               </div>
                             </div>
                           </div>
@@ -332,8 +346,8 @@ export default function AstrologyDemo() {
                       <h4 className="font-semibold mb-2">Development Status</h4>
                       <p className="text-sm text-muted-foreground">{aspectsData.aspects.note}</p>
                       <div className="mt-3 space-y-1 text-sm">
-                        <div>Orb Tolerance: {aspectsData.aspects.orb}°</div>
-                        <div>Calculation Date: {new Date(aspectsData.aspects.date).toLocaleString()}</div>
+                        <div>Orb Tolerance: {aspectsData.aspects.orb != null ? `${aspectsData.aspects.orb}°` : 'N/A'}</div>
+                        <div>Calculation Date: {aspectsData.aspects.date ? new Date(aspectsData.aspects.date).toLocaleString() : 'N/A'}</div>
                       </div>
                     </div>
                   </div>
