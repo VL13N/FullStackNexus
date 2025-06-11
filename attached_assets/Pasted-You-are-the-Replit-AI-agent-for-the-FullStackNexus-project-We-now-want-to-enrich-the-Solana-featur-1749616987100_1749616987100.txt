@@ -1,0 +1,69 @@
+You are the Replit AI agent for the FullStackNexus project.  We now want to enrich the Solana feature pipeline with two new indicators—Fear & Greed and BTC Dominance—using only the CryptoRank V2 Basic plan endpoints and the Alternative.me FNG API.  Your task is:
+
+1. **Respect Plan Limits**  
+   - CryptoRank V2: 100 calls/min, 5 000/day, 100 000/month.  
+   - Cache all CryptoRank calls for 1 hour via an LRUCache to stay under rate limits.
+
+2. **Fetch BTC Dominance**  
+   - Use the CryptoRank V2 **Global** endpoint:  
+     ```
+     GET https://api.cryptorank.io/v2/global?api_key=${process.env.CRYPTORANK_API_KEY}
+     ```  
+   - Extract `data.btcDominance` (a percentage).
+
+3. **Fetch Fear & Greed**  
+   - Call the Alternative.me API:  
+     ```
+     GET https://api.alternative.me/fng/?limit=1
+     ```  
+   - Extract `data[0].value` as an integer 0–100.
+
+4. **Extend Supabase Schema**  
+   - In your Supabase SQL migration, run:
+     ```sql
+     ALTER TABLE public.historical_metrics
+       ADD COLUMN IF NOT EXISTS btc_dominance NUMERIC,
+       ADD COLUMN IF NOT EXISTS fear_greed_index NUMERIC;
+     ```
+
+5. **Update Feature Generator**  
+   - In `services/featureService.js` (or equivalent), import and await both new metrics in parallel:
+     ```js
+     const [btcDom, fng] = await Promise.all([
+       makeV2Request('global').then(r => r.data.btcDominance),
+       fetch('https://api.alternative.me/fng/?limit=1').then(r => r.json()).then(j => Number(j.data[0].value))
+     ]);
+     ```
+   - Include `btcDominance` and `fearGreedIndex` in the feature‐vector object before persisting.
+
+6. **Add Express Route**  
+   - Create `routes/marketSentiment.js`:
+     ```js
+     router.get('/api/market-sentiment', async (_req, res) => {
+       const { data: g } = await makeV2Request('global');
+       const btcDom = g.btcDominance;
+       const fg = await fetch('https://api.alternative.me/fng/?limit=1').then(r=>r.json()).then(j=>Number(j.data[0].value));
+       res.json({ success: true, btcDominance: btcDom, fearGreedIndex: fg });
+     });
+     ```
+   - Mount it in `server/index.ts`.
+
+7. **Build React Card**  
+   - Create `components/MarketSentimentCard.tsx` that on mount:
+     ```jsx
+     fetch('/api/market-sentiment')
+       .then(r=>r.json())
+       .then(j=>setData({btcDom:j.btcDominance, fng:j.fearGreedIndex}));
+     ```
+   - Display “BTC Dominance: X%” and “Fear & Greed Index: Y%” with proper loading/error states.
+
+8. **Verify & Test**  
+   - Restart the server.  
+   - Run:
+     ```
+     curl -s http://localhost:5000/api/market-sentiment | jq .
+     ```
+     Should return 200 OK with `{ btcDominance: number, fearGreedIndex: number }`.  
+   - Check your Dashboard: the new card should display non-null values under plan limits.
+
+Commit all changes and push to `origin main`.  

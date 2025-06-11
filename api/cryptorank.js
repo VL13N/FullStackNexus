@@ -10,12 +10,18 @@
 import { rateLimit } from '../services/cryptoRankLimiter.js';
 import { LRUCache } from 'lru-cache';
 
+console.log("CRYPTORANK_API_KEY loaded:", Boolean(process.env.CRYPTORANK_API_KEY));
+
 const CR_API_KEY = process.env.CRYPTORANK_API_KEY;
 if (!CR_API_KEY) {
-  throw new Error("CRYPTORANK_API_KEY is undefined—check Replit Secrets and restart.");
+  console.error("❌ Missing CRYPTORANK_API_KEY – set it in Replit Secrets");
+  process.exit(1);
 }
 
 const crCache = new LRUCache({ max: 20, ttl: 1000 * 60 * 60 }); // 1 hour cache
+
+// Export the makeV2Request function for use in other modules
+export { makeV2Request };
 
 /**
  * Makes authenticated request to CryptoRank v2 endpoint with retry logic
