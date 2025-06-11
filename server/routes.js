@@ -1277,6 +1277,10 @@ export async function registerRoutes(app) {
     }
   });
 
+  // CryptoRank V2 API Routes
+  const cryptoRankRoutes = await import('./cryptoRankRoutes.js');
+  app.use('/api/cryptorank', cryptoRankRoutes.default);
+
   // Error monitoring endpoint
   app.get("/api/system/errors", async (req, res) => {
     try {
