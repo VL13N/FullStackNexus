@@ -1244,28 +1244,27 @@ export async function registerRoutes(app) {
   // Market sentiment indicators (BTC Dominance + Fear & Greed)
   app.get('/api/market-sentiment', async (_req, res) => {
     try {
-      const { makeV2Request } = await import('../api/cryptorank.js');
-      
-      // Fetch data from both APIs in parallel
-      const [cryptoRankResponse, fearGreedResponse] = await Promise.all([
-        makeV2Request('global'),
-        fetch('https://api.alternative.me/fng/?limit=1')
-          .then(r => r.json())
-          .catch(err => {
-            console.warn('Fear & Greed API failed:', err.message);
-            return { data: [{ value: null }] };
-          })
-      ]);
+      // Fetch Fear & Greed Index (free API - always available)
+      const fearGreedResponse = await fetch('https://api.alternative.me/fng/?limit=1')
+        .then(r => r.json())
+        .catch(err => {
+          console.warn('Fear & Greed API failed:', err.message);
+          return { data: [{ value: null }] };
+        });
 
-      const btcDominance = cryptoRankResponse?.data?.btcDominance || null;
       const fearGreedIndex = fearGreedResponse?.data?.[0]?.value ? 
         Number(fearGreedResponse.data[0].value) : null;
+
+      // For BTC dominance, we need a valid CryptoRank API key
+      // Setting to null until user provides valid credentials
+      const btcDominance = null;
 
       res.json({
         success: true,
         btcDominance,
         fearGreedIndex,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        note: 'BTC dominance requires valid CryptoRank API key (Basic plan or higher)'
       });
 
     } catch (error) {

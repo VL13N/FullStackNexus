@@ -1,0 +1,96 @@
+Here’s how you can leverage each of those CryptoRank V2 endpoints in your Solana dashboard, even on the Basic plan:
+
+Endpoint	What It Returns	How You Can Use It
+GET /global	Global market aggregates (total market cap, total 24 h volume, BTC dominance, ETH dominance, etc.)	• Show a “Global Crypto Health” banner at the top of your dashboard.
+• Use BTC dominance as a feature in your ML model or simply display it alongside Solana’s score.
+GET /currencies/map	A lookup of all currency IDs ↔ slugs	• Populate dropdowns or autocomplete for your CoinSearch component.
+• Quickly translate numeric IDs (from other endpoints) back into human-readable slugs.
+GET /currencies/categories	Available coin categories (DeFi, NFT, Layer 1…)	• Build a “Sector Heatmap” showing average composite scores per category
+• Let users filter their watchlist by category (e.g. only “Layer 1” tokens).
+GET /currencies/tags	Trending tags (e.g. “gaming”, “oracle”)	• Provide tag-based filters so users can view only “gaming” or “privacy” coins
+• Show popular tag clouds to highlight hot sectors.
+GET /currencies/fiat	Supported fiat currencies & conversion rates	• Let users switch the SOL price display between USD, EUR, GBP, JPY, etc.
+• Annotate your charts with multi-currency tooltips.
+GET /currencies	List of all coins with basic data	• On your “All Coins” page, show the top 100 by market cap
+• Auto‐populate your watchlist with the top movers/gainers.
+GET /currencies/:id	Single‐coin real-time data (price, market cap)	• Populate your FundamentalCard for SOL (price, 24 h %, supply, rank).
+• Feed these values into your ML feature vectors.
+GET /currencies/:id/full-metadata	Extended coin metadata (description, links)	• Build a “Coin Detail” page or modal—whitepaper links, website, explorer.
+• Use the description text as context in your GPT‐generated daily summaries.
+GET /currencies/:id/sparkline?interval=…	24 h sparkline data (or up to plan limit)	• Embed a 24 h sparkline beneath your FundamentalCard.
+• Use the sparkline’s slope as an additional feature in your ML model.
+GET /currencies/search?q=…	Search coins by name or symbol	• Power your CoinSearch autosuggest component
+• Fallback for manual watchlist additions.
+GET /funds/map	Mapping of crypto funds & their slugs/IDs	• If you ever expand to include fund-flows analysis (e.g. “Solana ETFs”), you can show which funds hold SOL.
+GET /exchanges/map	Available exchanges & their slugs/IDs	• Let users pick an exchange to compare Solana volume (CEX vs DEX).
+• Build a “Top 5 Exchanges” volume breakdown card.
+
+Example: Adding a “Global + BTC Dominance” Card
+Route (server/routes/global.js):
+
+js
+Copy
+import express from 'express';
+import { makeV2Request } from '../services/cryptoRankService.js';
+
+const router = express.Router();
+router.get('/global-stats', async (_req, res) => {
+  const { data } = await makeV2Request('global');
+  return res.json({
+    success: true,
+    marketCap: data.totalMarketCapUsd,
+    volume24h: data.totalVolume24hUsd,
+    btcDominance: data.btcDominance,
+  });
+});
+export default router;
+Client Component (components/GlobalStatsCard.jsx):
+
+jsx
+Copy
+import { useState, useEffect } from 'react';
+
+function GlobalStatsCard() {
+  const [stats, setStats] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/global-stats')
+      .then(res => res.json())
+      .then(json => setStats(json))
+      .catch(console.error);
+  }, []);
+
+  if (!stats) return <div>Loading global stats…</div>;
+  return (
+    <div className="card">
+      <h3>Global Crypto</h3>
+      <p>Market Cap: ${stats.marketCap.toLocaleString()}</p>
+      <p>24 h Volume: ${stats.volume24h.toLocaleString()}</p>
+      <p>BTC Dominance: {stats.btcDominance.toFixed(2)}%</p>
+    </div>
+  );
+}
+export default GlobalStatsCard;
+How to Prompt Your Replit AI Agent
+Here’s a ready-to-paste prompt:
+
+markdown
+Copy
+You are the Replit AI agent. Extend the app with CryptoRank V2 Basic-plan endpoints:
+
+1. **Global Stats Card**  
+   - Add Express route `GET /api/global-stats` calling `v2/global?api_key=`.  
+   - Extract `totalMarketCapUsd`, `totalVolume24hUsd`, `btcDominance`.
+
+2. **GlobalStatsCard** React component  
+   - Fetch `/api/global-stats` on mount.  
+   - Display “Market Cap”, “24 h Volume”, and “BTC Dominance” in a styled card.  
+
+3. **Categories Filter**  
+   - Add Express route `GET /api/categories` calling `v2/currencies/categories?api_key=`.  
+   - Build a React `CategoryFilter` dropdown that fetches `/api/categories` and lets you filter your watchlist by category.  
+
+4. **Sparkline**  
+   - In your FundamentalCard, augment with a sparkline: call `/api/cryptorank/price?api_key=…` which proxies the `v2/currencies/:id/sparkline` behind the scenes and plot it with Chart.js.  
+
+Implement all changes, commit as “feat: add global stats card & category filter”, and push to GitHub. Run the server and verify the new UI elements render correctly.  
