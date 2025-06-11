@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { RefreshCw, TrendingUp, TrendingDown, Activity, Brain, Star, AlertCircle } from 'lucide-react';
 import ConfidenceSparkline from '../components/ConfidenceSparkline';
 import Heatmap from '../components/Heatmap';
-import MarketSentimentCard from '../../../components/MarketSentimentCard';
+import MarketSentimentCard from '../components/MarketSentimentCard';
 
 interface PredictionData {
   id: string;
@@ -397,6 +397,12 @@ export default function Dashboard() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+
+          {/* Market Sentiment Section */}
+          <div className="mt-6">
+            <h2 className="text-xl font-semibold mb-4">Market Sentiment Indicators</h2>
+            <MarketSentimentCard />
           </div>
         </TabsContent>
 
