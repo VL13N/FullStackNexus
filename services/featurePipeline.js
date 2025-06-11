@@ -794,6 +794,29 @@ class FeaturePipeline {
     return first ? (last - first) / first : 0;
   }
 
+  calculateSparklineTrend(sparklineValues) {
+    if (!sparklineValues || sparklineValues.length < 2) return 0;
+    const prices = sparklineValues.map(v => parseFloat(v.price || 0));
+    const firstPrice = prices[0];
+    const lastPrice = prices[prices.length - 1];
+    return firstPrice ? (lastPrice - firstPrice) / firstPrice : 0;
+  }
+
+  calculateSparklineVolatility(sparklineValues) {
+    if (!sparklineValues || sparklineValues.length < 2) return 0;
+    const prices = sparklineValues.map(v => parseFloat(v.price || 0));
+    const returns = [];
+    for (let i = 1; i < prices.length; i++) {
+      if (prices[i-1] > 0) {
+        returns.push((prices[i] - prices[i-1]) / prices[i-1]);
+      }
+    }
+    if (returns.length === 0) return 0;
+    const mean = returns.reduce((a, b) => a + b, 0) / returns.length;
+    const variance = returns.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / returns.length;
+    return Math.sqrt(variance);
+  }
+
   calculatePriceVolatility(changes) {
     const validChanges = changes.filter(c => c !== null && c !== undefined);
     if (!validChanges.length) return 0;
