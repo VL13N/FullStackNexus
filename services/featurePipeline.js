@@ -260,6 +260,10 @@ class FeaturePipeline {
         circulating_supply: currentData.circulating_supply,
         total_supply: currentData.total_supply,
         
+        // Market sentiment indicators
+        btc_dominance: sentiment.btcDominance,
+        fear_greed_index: sentiment.fearGreedIndex,
+        
         // Derived fundamental features
         volume_price_ratio: currentData.volume_24h / currentData.price,
         price_volatility: this.calculatePriceVolatility([
@@ -268,7 +272,8 @@ class FeaturePipeline {
           currentData.price_change_7d
         ]),
         momentum_score: this.calculateMomentumScore(currentData),
-        market_strength: this.calculateMarketStrength(currentData)
+        market_strength: this.calculateMarketStrength(currentData),
+        sentiment_score: this.calculateSentimentScore(sentiment)
       };
 
     } catch (error) {
@@ -506,7 +511,10 @@ class FeaturePipeline {
       price_volatility_norm: this.normalizeLog(fundamental.price_volatility),
       momentum_score_norm: this.normalizeRange(fundamental.momentum_score, 0, 100),
       market_strength_norm: this.normalizeRange(fundamental.market_strength, 0, 100),
-      market_cap_rank_norm: this.normalizeRank(fundamental.market_cap_rank, 1, 1000)
+      market_cap_rank_norm: this.normalizeRank(fundamental.market_cap_rank, 1, 1000),
+      btc_dominance_norm: this.normalizeRange(fundamental.btc_dominance, 30, 70),
+      fear_greed_index_norm: this.normalizeRange(fundamental.fear_greed_index, 0, 100),
+      sentiment_score_norm: this.normalizeRange(fundamental.sentiment_score, 0, 100)
     };
 
     // Astrological normalization
@@ -791,6 +799,69 @@ class FeaturePipeline {
     const rankScore = data.market_cap_rank ? Math.max(0, 100 - data.market_cap_rank) : 50;
     const volumeScore = data.volume_24h ? Math.min(100, Math.log10(data.volume_24h) * 10) : 50;
     return (rankScore + volumeScore) / 2;
+  }
+
+  /**
+   * Fetch market sentiment indicators (BTC Dominance and Fear & Greed)
+   */
+  async fetchMarketSentiment() {
+    try {
+      const { makeV2Request } = await import('../api/cryptorank.js');
+      
+      // Fetch data from both APIs in parallel
+      const [cryptoRankResponse, fearGreedResponse] = await Promise.all([
+        makeV2Request('global'),
+        fetch('https://api.alternative.me/fng/?limit=1')
+          .then(r => r.json())
+          .catch(err => {
+            console.warn('Fear & Greed API failed:', err.message);
+            return { data: [{ value: null }] };
+          })
+      ]);
+
+      const btcDominance = cryptoRankResponse?.data?.btcDominance || null;
+      const fearGreedIndex = fearGreedResponse?.data?.[0]?.value ? 
+        Number(fearGreedResponse.data[0].value) : null;
+
+      return {
+        btcDominance,
+        fearGreedIndex,
+        timestamp: new Date().toISOString()
+      };
+
+    } catch (error) {
+      console.warn('Market sentiment fetch failed:', error.message);
+      return {
+        btcDominance: null,
+        fearGreedIndex: null,
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
+  /**
+   * Calculate composite sentiment score from BTC dominance and Fear & Greed
+   */
+  calculateSentimentScore(sentiment) {
+    if (!sentiment.btcDominance && !sentiment.fearGreedIndex) return 50;
+    
+    let score = 0;
+    let components = 0;
+    
+    // BTC Dominance contribution (inverse relationship with altcoin strength)
+    if (sentiment.btcDominance !== null) {
+      const dominanceScore = 100 - ((sentiment.btcDominance - 30) / 40) * 100;
+      score += Math.max(0, Math.min(100, dominanceScore));
+      components++;
+    }
+    
+    // Fear & Greed Index contribution
+    if (sentiment.fearGreedIndex !== null) {
+      score += sentiment.fearGreedIndex;
+      components++;
+    }
+    
+    return components > 0 ? score / components : 50;
   }
 
   countMajorAspects(aspects) {
