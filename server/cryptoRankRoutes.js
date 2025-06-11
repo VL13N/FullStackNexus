@@ -304,12 +304,10 @@ router.get('/solana/metadata', async (req, res) => {
 
 router.get('/solana/sparkline', async (req, res) => {
   try {
-    const interval = req.query.interval || '24h';
-    const data = await fetchSolanaSparkline(interval);
+    const data = await fetchSolanaSparkline();
     res.json({ 
       success: true, 
-      data: data.data,
-      interval,
+      data,
       timestamp: new Date().toISOString()
     });
   } catch (error) {

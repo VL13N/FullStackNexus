@@ -101,14 +101,64 @@ export const fetchAllCurrencies = (limit = 100, offset = 0) =>
 // Single currency data
 export const fetchCurrencyById = (id) => makeV2Request(`currencies/${id}`);
 export const fetchCurrencyMetadata = (id) => makeV2Request(`currencies/${id}/full-metadata`);
-export const fetchCurrencySparkline = (id, interval = '24h') => 
+
+// Enhanced sparkline with proper timestamp parameters
+export async function fetchSolanaSparkline() {
+  const cacheKey = 'solana_sparkline_24h';
+  
+  // Check cache first
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  if (!API_KEY) {
+    throw new Error('CRYPTORANK_API_KEY is not configured');
+  }
+
+  const now = new Date();
+  const from = new Date(now.getTime() - 24*60*60*1000); // last 24h
+  
+  const params = new URLSearchParams({
+    from: from.toISOString(),
+    to: now.toISOString(),
+    interval: '1h' // hourly points for 24h data
+  });
+  
+  const url = `${CRYPTORANK_BASE_URL}/currencies/${SOLANA_ID}/sparkline?${params.toString()}`;
+  
+  console.log(`CryptoRank v2 Sparkline Request: ${url}`);
+  
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json',
+      'User-Agent': 'CryptoAnalytics/1.0',
+      'X-API-KEY': API_KEY
+    }
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Sparkline error ${response.status}: ${errorText}`);
+  }
+
+  const result = await response.json();
+  
+  // Cache successful response for 1 hour
+  cache.set(cacheKey, result.data);
+  
+  console.log(`CryptoRank v2 Sparkline Success: ${result.data.length} data points`);
+  return result.data;
+}
+
+export const fetchCurrencySparkline = (id, interval = '1h') => 
   makeV2Request(`currencies/${id}/sparkline`, { interval });
 
 // Solana-specific helpers (using numeric ID)
 const SOLANA_ID = 5663; // Solana's numeric ID in CryptoRank
 export const fetchSolanaData = () => fetchCurrencyById(SOLANA_ID);
 export const fetchSolanaMetadata = () => fetchCurrencyMetadata(SOLANA_ID);
-export const fetchSolanaSparkline = (interval = '24h') => fetchCurrencySparkline(SOLANA_ID, interval);
 
 // Funds and exchanges
 export const fetchFundsMap = () => makeV2Request('funds/map');
