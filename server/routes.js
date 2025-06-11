@@ -1199,6 +1199,116 @@ export async function registerRoutes(app) {
     }
   });
 
+  // Backtesting API endpoints
+  app.post('/api/backtest/run', async (req, res) => {
+    try {
+      const { runBacktest } = await import('../services/backtestingService.js');
+      const { startDate, endDate, symbol = 'SOL' } = req.body;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({
+          success: false,
+          error: 'startDate and endDate are required',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      if (start >= end) {
+        return res.status(400).json({
+          success: false,
+          error: 'startDate must be before endDate',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      const results = await runBacktest(startDate, endDate, symbol);
+      
+      res.json({
+        success: true,
+        data: results,
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get('/api/backtest/periods', async (req, res) => {
+    try {
+      const { getAvailablePeriods } = await import('../services/backtestingService.js');
+      const periods = await getAvailablePeriods();
+      
+      res.json({
+        success: true,
+        data: periods,
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get('/api/backtest/quick', async (req, res) => {
+    try {
+      const { runBacktest } = await import('../services/backtestingService.js');
+      const endDate = new Date().toISOString();
+      const startDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      
+      const results = await runBacktest(startDate, endDate, 'SOL');
+      
+      res.json({
+        success: true,
+        data: results,
+        period: '24h',
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get('/api/backtest/weekly', async (req, res) => {
+    try {
+      const { runBacktest } = await import('../services/backtestingService.js');
+      const endDate = new Date().toISOString();
+      const startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      
+      const results = await runBacktest(startDate, endDate, 'SOL');
+      
+      res.json({
+        success: true,
+        data: results,
+        period: '7d',
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // Configuration endpoints
   app.get("/api/config/scheduler", async (req, res) => {
     res.json({
