@@ -9,6 +9,9 @@ import { RefreshCw, TrendingUp, TrendingDown, Activity, Brain, Star, AlertCircle
 import ConfidenceSparkline from '../components/ConfidenceSparkline';
 import Heatmap from '../components/Heatmap';
 import MarketSentimentCard from '../components/MarketSentimentCard';
+import GlobalStatsCard from '../components/GlobalStatsCard';
+import CurrencySearch from '../components/CurrencySearch';
+import TagCloud from '../components/TagCloud';
 
 interface PredictionData {
   id: string;
@@ -399,10 +402,29 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          {/* Market Sentiment Section */}
-          <div className="mt-6">
-            <h2 className="text-xl font-semibold mb-4">Market Sentiment Indicators</h2>
+          {/* CryptoRank V2 Integration Section */}
+          <div className="mt-6 space-y-6">
+            <h2 className="text-xl font-semibold">CryptoRank V2 Market Intelligence</h2>
+            
+            {/* Global Market Stats */}
+            <GlobalStatsCard />
+            
+            {/* Currency Search */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Currency Search</h3>
+              <CurrencySearch 
+                onSelect={(currency) => console.log('Selected currency:', currency)}
+                placeholder="Search any cryptocurrency..."
+              />
+            </div>
+            
+            {/* Market Sentiment */}
             <MarketSentimentCard />
+            
+            {/* Category Tags */}
+            <TagCloud 
+              onTagSelect={(tag) => console.log('Selected tag:', tag)}
+            />
           </div>
         </TabsContent>
 

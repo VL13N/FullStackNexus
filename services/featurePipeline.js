@@ -262,7 +262,11 @@ class FeaturePipeline {
         
         // Market sentiment indicators
         btc_dominance: sentiment.btcDominance,
+        eth_dominance: sentiment.ethDominance,
+        defi_dominance: sentiment.defiDominance,
         fear_greed_index: sentiment.fearGreedIndex,
+        total_market_cap: sentiment.totalMarketCap,
+        total_24h_volume: sentiment.total24hVolume,
         
         // Derived fundamental features
         volume_price_ratio: currentData.volume_24h / currentData.price,
@@ -802,15 +806,18 @@ class FeaturePipeline {
   }
 
   /**
-   * Fetch market sentiment indicators (BTC Dominance and Fear & Greed)
+   * Fetch market sentiment indicators using CryptoRank V2 global endpoint
    */
   async fetchMarketSentiment() {
     try {
-      const { makeV2Request } = await import('../api/cryptorank.js');
+      const { fetchGlobalStats } = await import('../services/cryptoRankService.js');
       
       // Fetch data from both APIs in parallel
-      const [cryptoRankResponse, fearGreedResponse] = await Promise.all([
-        makeV2Request('global'),
+      const [globalStats, fearGreedResponse] = await Promise.all([
+        fetchGlobalStats().catch(err => {
+          console.warn('CryptoRank V2 global API failed:', err.message);
+          return { data: null };
+        }),
         fetch('https://api.alternative.me/fng/?limit=1')
           .then(r => r.json())
           .catch(err => {
@@ -819,12 +826,22 @@ class FeaturePipeline {
           })
       ]);
 
-      const btcDominance = cryptoRankResponse?.data?.btcDominance || null;
+      const globalData = globalStats?.data;
+      const btcDominance = globalData?.btcDominance || null;
+      const ethDominance = globalData?.ethDominance || null;
+      const defiDominance = globalData?.defiDominance || null;
+      const totalMarketCap = globalData?.totalMarketCapUsd || null;
+      const total24hVolume = globalData?.totalVolume24hUsd || null;
+
       const fearGreedIndex = fearGreedResponse?.data?.[0]?.value ? 
         Number(fearGreedResponse.data[0].value) : null;
 
       return {
         btcDominance,
+        ethDominance,
+        defiDominance,
+        totalMarketCap,
+        total24hVolume,
         fearGreedIndex,
         timestamp: new Date().toISOString()
       };
@@ -833,7 +850,50 @@ class FeaturePipeline {
       console.warn('Market sentiment fetch failed:', error.message);
       return {
         btcDominance: null,
+        ethDominance: null,
+        defiDominance: null,
+        totalMarketCap: null,
+        total24hVolume: null,
         fearGreedIndex: null,
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
+  /**
+   * Fetch category and tag features for ML model
+   */
+  async fetchCategoryFeatures() {
+    try {
+      const { fetchCategories, fetchTags } = await import('../services/cryptoRankService.js');
+      
+      const [categories, tags] = await Promise.allSettled([
+        fetchCategories(),
+        fetchTags()
+      ]);
+
+      const categoryData = categories.status === 'fulfilled' ? categories.value.data : [];
+      const tagData = tags.status === 'fulfilled' ? tags.value.data : [];
+
+      // Extract popular categories and trending tags as features
+      const popularCategories = categoryData.slice(0, 10).map(cat => cat.name);
+      const trendingTags = tagData.filter(tag => tag.trending).slice(0, 5).map(tag => tag.name);
+
+      return {
+        popularCategories,
+        trendingTags,
+        categoryCount: categoryData.length,
+        trendingTagCount: trendingTags.length,
+        timestamp: new Date().toISOString()
+      };
+
+    } catch (error) {
+      console.warn('Category features fetch failed:', error.message);
+      return {
+        popularCategories: [],
+        trendingTags: [],
+        categoryCount: 0,
+        trendingTagCount: 0,
         timestamp: new Date().toISOString()
       };
     }
