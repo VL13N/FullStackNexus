@@ -31,7 +31,6 @@ export async function makeV2Request(endpoint, params = {}, maxRetries = 3) {
   }
 
   const url = new URL(`${CRYPTORANK_BASE_URL}/${endpoint}`);
-  url.searchParams.append('api_key', API_KEY);
   
   // Add additional parameters
   Object.entries(params).forEach(([key, value]) => {
@@ -48,7 +47,8 @@ export async function makeV2Request(endpoint, params = {}, maxRetries = 3) {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
-          'User-Agent': 'FullStackNexus/1.0'
+          'User-Agent': 'CryptoAnalytics/1.0',
+          'X-API-KEY': API_KEY
         }
       });
 
@@ -104,10 +104,11 @@ export const fetchCurrencyMetadata = (id) => makeV2Request(`currencies/${id}/ful
 export const fetchCurrencySparkline = (id, interval = '24h') => 
   makeV2Request(`currencies/${id}/sparkline`, { interval });
 
-// Solana-specific helpers
-export const fetchSolanaData = () => fetchCurrencyById('solana');
-export const fetchSolanaMetadata = () => fetchCurrencyMetadata('solana');
-export const fetchSolanaSparkline = (interval = '24h') => fetchCurrencySparkline('solana', interval);
+// Solana-specific helpers (using numeric ID)
+const SOLANA_ID = 325; // Solana's numeric ID in CryptoRank
+export const fetchSolanaData = () => fetchCurrencyById(SOLANA_ID);
+export const fetchSolanaMetadata = () => fetchCurrencyMetadata(SOLANA_ID);
+export const fetchSolanaSparkline = (interval = '24h') => fetchCurrencySparkline(SOLANA_ID, interval);
 
 // Funds and exchanges
 export const fetchFundsMap = () => makeV2Request('funds/map');
