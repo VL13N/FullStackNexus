@@ -225,20 +225,22 @@ class FeaturePipeline {
   }
 
   /**
-   * Fetch fundamental market features from CryptoRank
+   * Fetch fundamental market features from CryptoRank and market sentiment APIs
    */
   async fetchFundamentalFeatures(symbol) {
-    const { CryptoRankService } = await import('../api/cryptorank.js');
+    const { CryptoRankService, makeV2Request } = await import('../api/cryptorank.js');
     const cryptoRank = new CryptoRankService();
 
     try {
-      const [current, marketStats] = await Promise.allSettled([
+      const [current, marketStats, sentimentData] = await Promise.allSettled([
         cryptoRank.getSolanaData(),
-        cryptoRank.getSolanaMarketStats()
+        cryptoRank.getSolanaMarketStats(),
+        this.fetchMarketSentiment()
       ]);
 
       const currentData = current.status === 'fulfilled' ? current.value : {};
       const stats = marketStats.status === 'fulfilled' ? marketStats.value : {};
+      const sentiment = sentimentData.status === 'fulfilled' ? sentimentData.value : {};
 
       return {
         // Price and market cap

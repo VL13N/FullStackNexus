@@ -1241,6 +1241,43 @@ export async function registerRoutes(app) {
     }
   });
 
+  // Market sentiment indicators (BTC Dominance + Fear & Greed)
+  app.get('/api/market-sentiment', async (_req, res) => {
+    try {
+      const { makeV2Request } = await import('../api/cryptorank.js');
+      
+      // Fetch data from both APIs in parallel
+      const [cryptoRankResponse, fearGreedResponse] = await Promise.all([
+        makeV2Request('global'),
+        fetch('https://api.alternative.me/fng/?limit=1')
+          .then(r => r.json())
+          .catch(err => {
+            console.warn('Fear & Greed API failed:', err.message);
+            return { data: [{ value: null }] };
+          })
+      ]);
+
+      const btcDominance = cryptoRankResponse?.data?.btcDominance || null;
+      const fearGreedIndex = fearGreedResponse?.data?.[0]?.value ? 
+        Number(fearGreedResponse.data[0].value) : null;
+
+      res.json({
+        success: true,
+        btcDominance,
+        fearGreedIndex,
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error('Market sentiment API error:', error.message);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // Error monitoring endpoint
   app.get("/api/system/errors", async (req, res) => {
     try {
