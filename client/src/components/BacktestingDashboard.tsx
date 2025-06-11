@@ -148,7 +148,7 @@ export function BacktestingDashboard() {
         </div>
         <Badge variant="outline" className="flex items-center gap-2">
           <Activity className="h-4 w-4" />
-          {periods?.data?.dataPoints || 0} Data Points Available
+          {(periods as any)?.data?.dataPoints || 0} Data Points Available
         </Badge>
       </div>
 

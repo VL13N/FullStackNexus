@@ -14,13 +14,14 @@ import SettingsPage from "@/pages/settings";
 import LivePredictions from "@/pages/live-predictions";
 import MLTraining from "@/pages/ml-training";
 import AdvancedAstrology from "@/pages/advanced-astrology";
+import { BacktestPage } from "@/pages/BacktestPage";
 import TaapiDemo from "../../components/TaapiDemo";
 import CryptoRankDemo from "../../components/CryptoRankDemo";
 import OnChainDemo from "../../components/OnChainDemo";
 import AstrologyDemo from "../../components/AstrologyDemo";
 import LunarCrushDemo from "../../components/LunarCrushDemo";
 import PredictionWidget from "../../components/PredictionWidget";
-import { Activity, BarChart3, Database, TrendingUp, Sparkles, Brain, Settings } from "lucide-react";
+import { Activity, BarChart3, Database, TrendingUp, Sparkles, Brain, Settings, Target } from "lucide-react";
 
 function LandingPage() {
   return (
@@ -113,6 +114,23 @@ function LandingPage() {
                 Authentic astronomical calculations and planetary positions
               </p>
               <Badge variant="default">Live</Badge>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/backtest">
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow border-2 border-green-300">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="h-5 w-5" />
+                Strategy Backtest
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-3">
+                Replay predictions against historical price movements
+              </p>
+              <Badge variant="default">New Feature</Badge>
             </CardContent>
           </Card>
         </Link>
@@ -231,6 +249,12 @@ function Navigation() {
                 ML Training
               </Button>
             </Link>
+            <Link href="/backtest">
+              <Button variant={location === '/backtest' ? 'default' : 'ghost'} size="sm">
+                <Target className="h-4 w-4 mr-1" />
+                Backtest
+              </Button>
+            </Link>
             <Link href="/settings">
               <Button variant={location === '/settings' ? 'default' : 'ghost'} size="sm">
                 <Settings className="h-4 w-4 mr-1" />
@@ -260,6 +284,7 @@ function Router() {
         <Route path="/live-predictions" component={LivePredictions} />
         <Route path="/ml-training" component={MLTraining} />
         <Route path="/advanced-astrology" component={AdvancedAstrology} />
+        <Route path="/backtest" component={BacktestPage} />
         <Route path="/settings" component={SettingsPage} />
         <Route component={NotFound} />
       </Switch>
