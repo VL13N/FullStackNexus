@@ -105,7 +105,7 @@ export const fetchCurrencySparkline = (id, interval = '24h') =>
   makeV2Request(`currencies/${id}/sparkline`, { interval });
 
 // Solana-specific helpers (using numeric ID)
-const SOLANA_ID = 325; // Solana's numeric ID in CryptoRank
+const SOLANA_ID = 5663; // Solana's numeric ID in CryptoRank
 export const fetchSolanaData = () => fetchCurrencyById(SOLANA_ID);
 export const fetchSolanaMetadata = () => fetchCurrencyMetadata(SOLANA_ID);
 export const fetchSolanaSparkline = (interval = '24h') => fetchCurrencySparkline(SOLANA_ID, interval);
