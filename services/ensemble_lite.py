@@ -343,6 +343,145 @@ class EnsembleLiteModel:
             'top_features': dict(list(sorted_importance.items())[:top_k]),
             'all_features': sorted_importance
         }
+    
+    def retrain(self, training_data, optimized_params=None):
+        """
+        Retrain the ensemble models with new data and optionally optimized hyperparameters
+        """
+        try:
+            print(f"🔄 Starting ensemble retraining with {len(training_data)} samples...")
+            
+            # Convert training data to DataFrame
+            df = pd.DataFrame(training_data)
+            
+            # Prepare features and target
+            feature_columns = [col for col in df.columns if col not in ['timestamp', 'prediction', 'actual_outcome']]
+            
+            # Use actual_outcome as target if available, otherwise use prediction
+            if 'actual_outcome' in df.columns and df['actual_outcome'].notna().sum() > 10:
+                target_col = 'actual_outcome'
+                # Filter out rows without actual outcomes for training
+                train_df = df[df['actual_outcome'].notna()].copy()
+            else:
+                target_col = 'prediction'
+                train_df = df.copy()
+            
+            if len(train_df) < 10:
+                return {
+                    'success': False,
+                    'error': 'Insufficient training data with outcomes'
+                }
+            
+            X = train_df[feature_columns]
+            y = train_df[target_col]
+            
+            # Convert to classification problem
+            y_class = pd.cut(y, bins=[-np.inf, -0.1, 0.1, np.inf], labels=['BEARISH', 'NEUTRAL', 'BULLISH'])
+            
+            # Handle any remaining NaN values
+            X = X.fillna(X.median())
+            
+            # Split data
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y_class, test_size=0.2, random_state=42, stratify=y_class
+            )
+            
+            # Apply hyperparameters if provided
+            xgb_params = {
+                'n_estimators': 100,
+                'max_depth': 6,
+                'learning_rate': 0.1,
+                'random_state': 42
+            }
+            
+            if optimized_params:
+                if 'xgb_n_estimators' in optimized_params:
+                    xgb_params['n_estimators'] = optimized_params['xgb_n_estimators']
+                if 'xgb_max_depth' in optimized_params:
+                    xgb_params['max_depth'] = optimized_params['xgb_max_depth']
+                if 'xgb_learning_rate' in optimized_params:
+                    xgb_params['learning_rate'] = optimized_params['xgb_learning_rate']
+            
+            # Train XGBoost model
+            print("   Training XGBoost...")
+            self.xgb_model = xgb.XGBClassifier(**xgb_params)
+            self.xgb_model.fit(X_train, y_train)
+            
+            # Train neural network
+            print("   Training neural network...")
+            self.nn_model = MLPClassifier(hidden_layer_sizes=(50, 25), max_iter=500, random_state=42)
+            self.nn_model.fit(X_train, y_train)
+            
+            # Train meta-learner
+            print("   Training meta-learner...")
+            xgb_pred = self.xgb_model.predict_proba(X_train)
+            nn_pred = self.nn_model.predict_proba(X_train)
+            
+            meta_features = np.column_stack([xgb_pred, nn_pred])
+            self.meta_model = LogisticRegression(random_state=42)
+            self.meta_model.fit(meta_features, y_train)
+            
+            # Evaluate on test set
+            xgb_test_pred = self.xgb_model.predict_proba(X_test)
+            nn_test_pred = self.nn_model.predict_proba(X_test)
+            meta_test_features = np.column_stack([xgb_test_pred, nn_test_pred])
+            
+            ensemble_pred = self.meta_model.predict(meta_test_features)
+            accuracy = accuracy_score(y_test, ensemble_pred)
+            
+            # Update class attributes
+            self.feature_columns = feature_columns
+            self.is_trained = True
+            
+            # Save models to temporary directory for deployment
+            self._save_models_for_deployment()
+            
+            print(f"✅ Ensemble retraining completed with accuracy: {accuracy:.3f}")
+            
+            return {
+                'success': True,
+                'accuracy': float(accuracy),
+                'training_samples': len(X_train),
+                'test_samples': len(X_test),
+                'feature_count': len(feature_columns),
+                'model_params': xgb_params
+            }
+            
+        except Exception as e:
+            print(f"❌ Ensemble retraining failed: {e}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def _save_models_for_deployment(self):
+        """Save trained models to temporary directory for deployment"""
+        try:
+            import os
+            import pickle
+            
+            temp_dir = '/tmp/training_models'
+            os.makedirs(temp_dir, exist_ok=True)
+            
+            # Save ensemble models
+            with open(os.path.join(temp_dir, 'ensemble_xgb.pkl'), 'wb') as f:
+                pickle.dump(self.xgb_model, f)
+            
+            with open(os.path.join(temp_dir, 'ensemble_nn.pkl'), 'wb') as f:
+                pickle.dump(self.nn_model, f)
+            
+            with open(os.path.join(temp_dir, 'ensemble_meta.pkl'), 'wb') as f:
+                pickle.dump(self.meta_model, f)
+            
+            # Save feature columns
+            import json
+            with open(os.path.join(temp_dir, 'feature_columns.json'), 'w') as f:
+                json.dump(self.feature_columns, f)
+            
+            print(f"   Models saved to {temp_dir} for deployment")
+            
+        except Exception as e:
+            print(f"   Warning: Failed to save models for deployment: {e}")
 
 # Global instance
 ensemble_lite = EnsembleLiteModel()
@@ -363,3 +502,7 @@ def get_ensemble_status():
         'models': ['xgboost', 'neural_network', 'meta_learner'],
         'version': 'lite'
     }
+
+def retrain_ensemble(training_data, optimized_params=None):
+    """Retrain ensemble models with new data and optimized hyperparameters"""
+    return ensemble_lite.retrain(training_data, optimized_params)
