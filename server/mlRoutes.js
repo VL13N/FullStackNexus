@@ -707,5 +707,83 @@ except Exception as e:
     }
   });
 
+  // ML Demo routes
+  app.post('/api/ml/demo/train', async (req, res) => {
+    try {
+      const trainingScript = `
+import sys
+sys.path.append('/home/runner/workspace')
+from services.ml_demo import train_ml_demo
+import json
+
+try:
+    result = train_ml_demo()
+    print(json.dumps(result))
+except Exception as e:
+    print(json.dumps({"success": False, "error": str(e)}))
+`;
+
+      const result = await runPythonMLScript(trainingScript, 30000);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/ml/demo/predict', async (req, res) => {
+    try {
+      const { features } = req.body;
+      
+      if (!features || typeof features !== 'object') {
+        return res.status(400).json({
+          success: false,
+          error: 'Features object is required'
+        });
+      }
+
+      const predictionScript = `
+import sys
+sys.path.append('/home/runner/workspace')
+from services.ml_demo import predict_ml_demo
+import json
+
+features = ${JSON.stringify(features)}
+
+try:
+    result = predict_ml_demo(features)
+    print(json.dumps(result))
+except Exception as e:
+    print(json.dumps({"success": False, "error": str(e)}))
+`;
+
+      const result = await runPythonMLScript(predictionScript, 20000);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/ml/demo/importance', async (req, res) => {
+    try {
+      const importanceScript = `
+import sys
+sys.path.append('/home/runner/workspace')
+from services.ml_demo import get_ml_demo_importance
+import json
+
+try:
+    result = get_ml_demo_importance()
+    print(json.dumps(result))
+except Exception as e:
+    print(json.dumps({"success": False, "error": str(e)}))
+`;
+
+      const result = await runPythonMLScript(importanceScript, 10000);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   console.log('Advanced ML routes registered');
 }
