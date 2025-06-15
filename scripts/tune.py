@@ -408,85 +408,195 @@ class CryptoHyperparameterOptimizer:
     
     def optimize_models(self, n_trials=100, optimize_ensemble=True):
         """
-        Run hyperparameter optimization for XGBoost, LSTM, and ensemble
+        Run hyperparameter optimization using grid search for XGBoost, LSTM, and ensemble
         """
-        # Setup storage
-        storage_url = f"sqlite:///{self.storage_path}"
-        storage = RDBStorage(url=storage_url)
+        # Setup SQLite storage
+        conn = sqlite3.connect(self.storage_path)
+        cursor = conn.cursor()
+        
+        # Create tables for storing results
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS optimization_results (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                study_name TEXT,
+                model_type TEXT,
+                params TEXT,
+                score REAL,
+                accuracy REAL,
+                precision REAL,
+                recall REAL,
+                f1 REAL,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        conn.commit()
         
         results = {}
         
         if optimize_ensemble:
-            # Optimize ensemble model
-            logger.info(f"Starting ensemble optimization with {n_trials} trials...")
-            study_ensemble = optuna.create_study(
-                study_name=f"{self.study_name}_ensemble",
-                storage=storage,
-                direction='maximize',
-                load_if_exists=True
-            )
+            logger.info(f"Starting ensemble optimization with grid search...")
             
-            study_ensemble.optimize(self.objective_ensemble, n_trials=n_trials)
-            
-            best_trial = study_ensemble.best_trial
-            results['ensemble'] = {
-                'best_value': best_trial.value,
-                'best_params': best_trial.params,
-                'accuracy': best_trial.user_attrs.get('accuracy', 0),
-                'precision': best_trial.user_attrs.get('precision', 0),
-                'recall': best_trial.user_attrs.get('recall', 0),
-                'f1': best_trial.user_attrs.get('f1', 0),
-                'xgb_params': best_trial.user_attrs.get('xgb_params', {}),
-                'nn_params': best_trial.user_attrs.get('nn_params', {})
+            # Define parameter grids
+            xgb_grid = {
+                'objective': ['binary:logistic'],
+                'eval_metric': ['logloss'],
+                'verbosity': [0],
+                'random_state': [self.random_state],
+                'n_estimators': [50, 100, 150],
+                'max_depth': [3, 6, 9],
+                'learning_rate': [0.01, 0.1, 0.2],
+                'subsample': [0.8, 1.0],
+                'colsample_bytree': [0.8, 1.0]
             }
             
-            logger.info(f"Best ensemble score: {best_trial.value:.4f}")
+            nn_grid = {
+                'units': [64, 128, 256],
+                'dropout': [0.1, 0.2, 0.3],
+                'lr': [0.001, 0.01]
+            }
+            
+            best_score = 0
+            best_result = None
+            trials_completed = 0
+            
+            # Generate parameter combinations
+            xgb_combinations = list(product(*xgb_grid.values()))
+            nn_combinations = list(product(*nn_grid.values()))
+            
+            # Limit combinations based on n_trials
+            max_xgb_trials = min(len(xgb_combinations), n_trials // 2)
+            max_nn_trials = min(len(nn_combinations), n_trials // 2)
+            
+            for i, xgb_values in enumerate(xgb_combinations[:max_xgb_trials]):
+                xgb_params = dict(zip(xgb_grid.keys(), xgb_values))
+                
+                for j, nn_values in enumerate(nn_combinations[:max_nn_trials]):
+                    nn_params = dict(zip(nn_grid.keys(), nn_values))
+                    
+                    if trials_completed >= n_trials:
+                        break
+                    
+                    logger.info(f"Trial {trials_completed + 1}/{n_trials}: Testing ensemble combination...")
+                    
+                    result = self.evaluate_ensemble_params(xgb_params, nn_params)
+                    
+                    # Store in database
+                    cursor.execute('''
+                        INSERT INTO optimization_results 
+                        (study_name, model_type, params, score, accuracy, precision, recall, f1)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (
+                        self.study_name, 'ensemble', 
+                        json.dumps({'xgb': xgb_params, 'nn': nn_params}),
+                        result['score'], result['accuracy'], 
+                        result['precision'], result['recall'], result['f1']
+                    ))
+                    
+                    if result['score'] > best_score:
+                        best_score = result['score']
+                        best_result = result
+                    
+                    trials_completed += 1
+                    
+                    if trials_completed >= n_trials:
+                        break
+            
+            results['ensemble'] = {
+                'best_value': best_result['score'],
+                'best_params': {'xgb': best_result['xgb_params'], 'nn': best_result['nn_params']},
+                'accuracy': best_result['accuracy'],
+                'precision': best_result['precision'],
+                'recall': best_result['recall'],
+                'f1': best_result['f1'],
+                'xgb_params': best_result['xgb_params'],
+                'nn_params': best_result['nn_params']
+            }
+            
+            logger.info(f"Best ensemble score: {best_result['score']:.4f}")
             
         else:
             # Optimize XGBoost separately
-            logger.info(f"Starting XGBoost optimization with {n_trials//2} trials...")
-            study_xgb = optuna.create_study(
-                study_name=f"{self.study_name}_xgboost",
-                storage=storage,
-                direction='maximize',
-                load_if_exists=True
-            )
+            logger.info(f"Starting XGBoost optimization with grid search...")
             
-            study_xgb.optimize(self.objective_xgboost, n_trials=n_trials//2)
-            
-            best_xgb = study_xgb.best_trial
-            results['xgboost'] = {
-                'best_value': best_xgb.value,
-                'best_params': best_xgb.params,
-                'accuracy': best_xgb.user_attrs.get('accuracy', 0),
-                'precision': best_xgb.user_attrs.get('precision', 0),
-                'recall': best_xgb.user_attrs.get('recall', 0),
-                'f1': best_xgb.user_attrs.get('f1', 0)
+            xgb_grid = {
+                'objective': ['binary:logistic'],
+                'eval_metric': ['logloss'],
+                'verbosity': [0],
+                'random_state': [self.random_state],
+                'n_estimators': [50, 100, 200],
+                'max_depth': [3, 6, 9, 12],
+                'learning_rate': [0.01, 0.1, 0.2, 0.3],
+                'subsample': [0.6, 0.8, 1.0],
+                'colsample_bytree': [0.6, 0.8, 1.0]
             }
+            
+            xgb_combinations = list(product(*xgb_grid.values()))
+            best_xgb_score = 0
+            best_xgb_result = None
+            
+            for i, values in enumerate(xgb_combinations[:n_trials//2]):
+                params = dict(zip(xgb_grid.keys(), values))
+                logger.info(f"XGBoost trial {i + 1}/{n_trials//2}")
+                
+                result = self.evaluate_xgboost_params(params)
+                
+                cursor.execute('''
+                    INSERT INTO optimization_results 
+                    (study_name, model_type, params, score, accuracy, precision, recall, f1)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    self.study_name, 'xgboost', json.dumps(params),
+                    result['score'], result['accuracy'], 
+                    result['precision'], result['recall'], result['f1']
+                ))
+                
+                if result['score'] > best_xgb_score:
+                    best_xgb_score = result['score']
+                    best_xgb_result = result
+            
+            results['xgboost'] = best_xgb_result
             
             # Optimize LSTM separately
-            logger.info(f"Starting LSTM optimization with {n_trials//2} trials...")
-            study_lstm = optuna.create_study(
-                study_name=f"{self.study_name}_lstm",
-                storage=storage,
-                direction='maximize',
-                load_if_exists=True
-            )
+            logger.info(f"Starting LSTM optimization with grid search...")
             
-            study_lstm.optimize(self.objective_lstm, n_trials=n_trials//2)
-            
-            best_lstm = study_lstm.best_trial
-            results['lstm'] = {
-                'best_value': best_lstm.value,
-                'best_params': best_lstm.params,
-                'accuracy': best_lstm.user_attrs.get('accuracy', 0),
-                'precision': best_lstm.user_attrs.get('precision', 0),
-                'recall': best_lstm.user_attrs.get('recall', 0),
-                'f1': best_lstm.user_attrs.get('f1', 0)
+            lstm_grid = {
+                'units': [32, 64, 128, 256],
+                'dropout': [0.1, 0.2, 0.3, 0.4, 0.5],
+                'lr': [0.0001, 0.001, 0.01],
+                'batch_size': [16, 32, 64, 128]
             }
             
-            logger.info(f"Best XGBoost score: {best_xgb.value:.4f}")
-            logger.info(f"Best LSTM score: {best_lstm.value:.4f}")
+            lstm_combinations = list(product(*lstm_grid.values()))
+            best_lstm_score = 0
+            best_lstm_result = None
+            
+            for i, values in enumerate(lstm_combinations[:n_trials//2]):
+                params = dict(zip(lstm_grid.keys(), values))
+                logger.info(f"LSTM trial {i + 1}/{n_trials//2}")
+                
+                result = self.evaluate_lstm_params(params)
+                
+                cursor.execute('''
+                    INSERT INTO optimization_results 
+                    (study_name, model_type, params, score, accuracy, precision, recall, f1)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    self.study_name, 'lstm', json.dumps(params),
+                    result['score'], result['accuracy'], 
+                    result['precision'], result['recall'], result['f1']
+                ))
+                
+                if result['score'] > best_lstm_score:
+                    best_lstm_score = result['score']
+                    best_lstm_result = result
+            
+            results['lstm'] = best_lstm_result
+            
+            logger.info(f"Best XGBoost score: {best_xgb_score:.4f}")
+            logger.info(f"Best LSTM score: {best_lstm_score:.4f}")
+        
+        conn.commit()
+        conn.close()
         
         return results
     
@@ -535,8 +645,9 @@ class CryptoHyperparameterOptimizer:
             test_accuracy = accuracy_score(self.y_test, test_pred)
             
             logger.info(f"Final ensemble test accuracy: {test_accuracy:.4f}")
+            return test_accuracy
             
-        return test_accuracy if 'ensemble' in results else 0.0
+        return 0.0
 
 def main():
     """
@@ -563,7 +674,7 @@ def main():
     logger.info(f"Samples: {args.n_samples}")
     
     # Initialize optimizer
-    optimizer = OptunaCryptoOptimizer(
+    optimizer = CryptoHyperparameterOptimizer(
         study_name=args.study_name,
         storage_path=args.storage_path
     )
