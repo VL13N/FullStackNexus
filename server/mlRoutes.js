@@ -586,5 +586,126 @@ print(json.dumps(result))
     }
   });
 
+  // Ensemble model endpoints
+  app.post('/api/ensemble/train', async (req, res) => {
+    try {
+      const { limit = 1000 } = req.body;
+      
+      const trainingScript = `
+import sys
+sys.path.append('/home/runner/workspace')
+from services.ensemble_lite import train_ensemble_model
+import json
+
+try:
+    result = train_ensemble_model()
+    print(json.dumps(result))
+except Exception as e:
+    print(json.dumps({"success": False, "error": str(e)}))
+`;
+
+      const result = await runPythonMLScript(trainingScript, 120000);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  app.post('/api/ensemble/predict', async (req, res) => {
+    try {
+      const { features } = req.body;
+      
+      if (!features || typeof features !== 'object') {
+        return res.status(400).json({
+          success: false,
+          error: 'Features object is required'
+        });
+      }
+
+      const predictionScript = `
+import sys
+sys.path.append('/home/runner/workspace')
+from services.ensemble_lite import predict_ensemble
+import json
+
+features = ${JSON.stringify(features)}
+
+try:
+    prediction = predict_ensemble(features)
+    result = {
+        "success": True,
+        "prediction": float(prediction),
+        "features_used": list(features.keys())
+    }
+    print(json.dumps(result))
+except Exception as e:
+    print(json.dumps({"success": False, "error": str(e)}))
+`;
+
+      const result = await runPythonMLScript(predictionScript, 30000);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  app.get('/api/ensemble/status', async (req, res) => {
+    try {
+      const statusScript = `
+import sys
+sys.path.append('/home/runner/workspace')
+from services.ensemble import get_ensemble_status
+import json
+
+try:
+    status = get_ensemble_status()
+    print(json.dumps(status))
+except Exception as e:
+    print(json.dumps({"success": False, "error": str(e)}))
+`;
+
+      const result = await runPythonMLScript(statusScript, 10000);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  app.get('/api/ensemble/importance', async (req, res) => {
+    try {
+      const { top_k = 10 } = req.query;
+      
+      const importanceScript = `
+import sys
+sys.path.append('/home/runner/workspace')
+from services.ensemble import ensemble_model
+import json
+
+try:
+    importance = ensemble_model.get_feature_importance(top_k=${top_k})
+    print(json.dumps(importance))
+except Exception as e:
+    print(json.dumps({"success": False, "error": str(e)}))
+`;
+
+      const result = await runPythonMLScript(importanceScript, 10000);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
   console.log('Advanced ML routes registered');
 }
