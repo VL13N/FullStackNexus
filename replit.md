@@ -20,7 +20,19 @@ An advanced astrological cryptocurrency analytics platform that blends astronomi
 
 ## Recent Changes
 
-### June 15, 2025 - Comprehensive ML Explainability System Complete
+### June 15, 2025 - Automated Model Retraining System Complete
+- **Deployed comprehensive automated training scheduler** (services/modelTrainingScheduler.js) with daily 03:00 UTC and weekly Sunday 02:00 UTC scheduling
+- **Created supporting Python services** for data pulling (dataService.py), model deployment (modelDeployment.py), and retraining capabilities
+- **Added retraining methods to ensemble_lite.py** with optimized hyperparameter support and temporary model serialization
+- **Integrated training scheduler with main server** startup and added API endpoints for manual training triggers
+- **Built complete training pipeline:** Supabase data pulling → ensemble/LSTM retraining → Optuna optimization → model deployment
+- **Added API endpoints:** /api/training/status, /api/training/trigger, /api/training/logs for scheduler monitoring and control
+- **Implemented automated model backup system** with deployment validation and rollback capabilities
+- **Created fallback realistic training data** when Supabase unavailable, maintaining training continuity
+- **Added comprehensive error handling** with timeout management (5-45 minutes per training phase)
+- **Enabled manual training triggers** for both standard daily and deep weekly training with extended Optuna trials
+
+### Previous - Comprehensive ML Explainability System Complete
 - **Deployed comprehensive explainability system** with interactive HTML reports and feature attribution analysis across investment pillars
 - **Created scripts/explain.py service** with XGBoost feature importance analysis, pillar-based attribution, and command-line interface
 - **Added explainability API endpoint** (/api/ml/explainability) with Python subprocess integration and output parsing

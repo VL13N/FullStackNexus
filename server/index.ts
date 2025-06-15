@@ -136,6 +136,9 @@ async function scheduleOpenAITasks(port: number) {
     scheduler.start();
   }
 
+  // Start model training scheduler
+  modelTrainingScheduler.start();
+
   // Start OpenAI scheduling after routes are registered
   await scheduleOpenAITasks(port);
 

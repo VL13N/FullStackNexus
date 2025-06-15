@@ -931,5 +931,73 @@ except Exception as e:
     }
   });
 
+  // Training scheduler endpoints
+  app.get('/api/training/status', async (req, res) => {
+    try {
+      const modelTrainingScheduler = (await import('../services/modelTrainingScheduler.js')).default;
+      const status = modelTrainingScheduler.getStatus();
+      
+      res.json({
+        success: true,
+        ...status
+      });
+    } catch (error) {
+      console.error('Training status error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  app.post('/api/training/trigger', async (req, res) => {
+    try {
+      const { deepTraining = false } = req.body;
+      const modelTrainingScheduler = (await import('../services/modelTrainingScheduler.js')).default;
+      
+      // Trigger manual training (async - don't wait for completion)
+      modelTrainingScheduler.triggerManualTraining(deepTraining)
+        .then(() => {
+          console.log('Manual training completed successfully');
+        })
+        .catch((error) => {
+          console.error('Manual training failed:', error);
+        });
+      
+      res.json({
+        success: true,
+        message: `${deepTraining ? 'Deep' : 'Standard'} training triggered successfully`,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Training trigger error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  app.get('/api/training/logs', async (req, res) => {
+    try {
+      const modelTrainingScheduler = (await import('../services/modelTrainingScheduler.js')).default;
+      const status = modelTrainingScheduler.getStatus();
+      
+      res.json({
+        success: true,
+        logs: status.recentLogs || [],
+        totalEntries: status.totalLogEntries || 0,
+        lastTrainingTime: status.lastTrainingTime,
+        isRunning: status.isRunning
+      });
+    } catch (error) {
+      console.error('Training logs error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
   console.log('Advanced ML routes registered');
 }
