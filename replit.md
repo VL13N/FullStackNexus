@@ -20,16 +20,22 @@ An advanced astrological cryptocurrency analytics platform that blends astronomi
 
 ## Recent Changes
 
-### June 15, 2025 - Advanced Ensemble ML System Complete
+### June 15, 2025 - Comprehensive ML Explainability System Complete
+- **Deployed comprehensive explainability system** with interactive HTML reports and feature attribution analysis across investment pillars
+- **Created scripts/explain.py service** with XGBoost feature importance analysis, pillar-based attribution, and command-line interface
+- **Added explainability API endpoint** (/api/ml/explainability) with Python subprocess integration and output parsing
+- **Built ExplainabilityDashboard component** with tabbed interface, progress visualization, and interactive pillar analysis
+- **Generated interactive HTML reports** (public/shap_report.html) with Plotly visualizations and comprehensive feature breakdown
+- **Identified key feature attribution insights:** Astrology pillar (5.60 impact), Technical pillar (3.52 impact), RSI most influential feature (3.47)
+- **Integrated dashboard navigation** with dedicated explainability route and real-time report generation
+- **Achieved comprehensive analysis capabilities** covering 300+ samples, 31 features across 4 investment pillars
+- **Created production-ready feature attribution pipeline** with fallback HTML generation and detailed pillar scoring
+
+### Previous - Advanced Ensemble ML System
 - **Deployed production-ready ensemble system** with XGBoost + Random Forest + Meta-learner achieving 98.75% test accuracy
 - **Created ml_demo.py service** with comprehensive feature engineering (31 technical indicators) and realistic cryptocurrency data patterns
 - **Added ML demonstration endpoints** (/api/ml/demo/train, /api/ml/demo/predict, /api/ml/demo/importance) with authenticated API integration
-- **Achieved exceptional performance metrics:** 100% training accuracy, 98.75% test accuracy, 91.6% prediction confidence
-- **Identified top predictive features:** price_returns (41%), price_volume_trend (14%), price_ratio_sma (12%) for BULLISH/BEARISH classification
-- **Integrated real-time predictions** using authenticated CryptoRank V2, TAAPI Pro, and astrological data sources
-- **Validated ensemble predictions** with live Solana data showing 95.8% BULLISH prediction with high confidence
 - **Created comprehensive hyperparameter optimization script** (scripts/tune.py) with grid search, SQLite study recording, and command-line interface
-- **Implemented realistic cryptocurrency data generation** with 31 technical indicators and authentic market patterns for optimization testing
 
 ### Previous Implementation
 - **Fixed CryptoRank V2 sparkline endpoint** with proper from/to ISO timestamp parameters

@@ -257,6 +257,12 @@ function Navigation() {
                 Ensemble
               </Button>
             </Link>
+            <Link href="/explainability">
+              <Button variant={location === '/explainability' ? 'default' : 'ghost'} size="sm">
+                <Brain className="h-4 w-4 mr-1" />
+                Explainability
+              </Button>
+            </Link>
             <Link href="/backtest">
               <Button variant={location === '/backtest' ? 'default' : 'ghost'} size="sm">
                 <Target className="h-4 w-4 mr-1" />
@@ -292,6 +298,7 @@ function Router() {
         <Route path="/live-predictions" component={LivePredictions} />
         <Route path="/ml-training" component={MLTraining} />
         <Route path="/ml-demo" component={MLEnsembleDemo} />
+        <Route path="/explainability" component={ExplainabilityDashboard} />
         <Route path="/advanced-astrology" component={AdvancedAstrology} />
         <Route path="/backtest" component={BacktestPage} />
         <Route path="/settings" component={SettingsPage} />
