@@ -660,7 +660,7 @@ except Exception as e:
       const statusScript = `
 import sys
 sys.path.append('/home/runner/workspace')
-from services.ensemble import get_ensemble_status
+from services.ensemble_lite import get_ensemble_status
 import json
 
 try:

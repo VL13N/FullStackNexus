@@ -249,14 +249,17 @@ class EnsembleLiteModel:
         
         logger.info(f"Ensemble training completed - Train: {train_acc:.3f}, Test: {test_acc:.3f}")
         
+        # Convert numpy types to Python native types for JSON serialization
+        sorted_importance_json = {k: float(v) for k, v in sorted_importance.items()}
+        
         return {
             'success': True,
             'train_accuracy': float(train_acc),
             'test_accuracy': float(test_acc),
-            'feature_importance': sorted_importance,
+            'feature_importance': sorted_importance_json,
             'models_trained': ['xgboost', 'neural_network', 'meta_learner'],
-            'feature_count': len(self.feature_columns),
-            'training_samples': len(X_train)
+            'feature_count': int(len(self.feature_columns)),
+            'training_samples': int(len(X_train))
         }
     
     def predict_ensemble(self, features: dict) -> float:
