@@ -21,7 +21,7 @@ import OnChainDemo from "../../components/OnChainDemo";
 import AstrologyDemo from "../../components/AstrologyDemo";
 import LunarCrushDemo from "../../components/LunarCrushDemo";
 import PredictionWidget from "../../components/PredictionWidget";
-import MLEnsembleDemo from "../../components/MLEnsembleDemo";
+import MLEnsembleDemo from "@/components/MLEnsembleDemo";
 import { Activity, BarChart3, Database, TrendingUp, Sparkles, Brain, Settings, Target } from "lucide-react";
 
 function LandingPage() {
@@ -290,6 +290,7 @@ function Router() {
         <Route path="/lunarcrush" component={LunarCrushDemo} />
         <Route path="/live-predictions" component={LivePredictions} />
         <Route path="/ml-training" component={MLTraining} />
+        <Route path="/ml-demo" component={MLEnsembleDemo} />
         <Route path="/advanced-astrology" component={AdvancedAstrology} />
         <Route path="/backtest" component={BacktestPage} />
         <Route path="/settings" component={SettingsPage} />
