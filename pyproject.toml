@@ -9,10 +9,8 @@ dependencies = [
     "python-dotenv>=1.1.0",
     "supabase>=2.15.2",
     "tensorflow>=2.14.0",
-    "xgboost>=1.7.0",
-    "optuna>=2.10.0",
-    "shap>=0.41.0",
-    "scikit-learn>=1.2.0",
+    "xgboost",
+    "scikit-learn",
 ]
 
 [[tool.uv.index]]
