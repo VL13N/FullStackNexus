@@ -21,6 +21,7 @@ import OnChainDemo from "../../components/OnChainDemo";
 import AstrologyDemo from "../../components/AstrologyDemo";
 import LunarCrushDemo from "../../components/LunarCrushDemo";
 import PredictionWidget from "../../components/PredictionWidget";
+import MLEnsembleDemo from "../../components/MLEnsembleDemo";
 import { Activity, BarChart3, Database, TrendingUp, Sparkles, Brain, Settings, Target } from "lucide-react";
 
 function LandingPage() {
@@ -247,6 +248,12 @@ function Navigation() {
               <Button variant={location === '/ml-training' ? 'default' : 'ghost'} size="sm">
                 <Brain className="h-4 w-4 mr-1" />
                 ML Training
+              </Button>
+            </Link>
+            <Link href="/ml-demo">
+              <Button variant={location === '/ml-demo' ? 'default' : 'ghost'} size="sm">
+                <Target className="h-4 w-4 mr-1" />
+                Ensemble
               </Button>
             </Link>
             <Link href="/backtest">
