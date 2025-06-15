@@ -23,6 +23,7 @@ import LunarCrushDemo from "../../components/LunarCrushDemo";
 import PredictionWidget from "../../components/PredictionWidget";
 import MLEnsembleDemo from "@/components/MLEnsembleDemo";
 import ExplainabilityDashboard from "@/components/ExplainabilityDashboard";
+import EnsembleComparison from "@/components/EnsembleComparison";
 import { Activity, BarChart3, Database, TrendingUp, Sparkles, Brain, Settings, Target } from "lucide-react";
 
 function LandingPage() {
@@ -263,6 +264,12 @@ function Navigation() {
                 Explainability
               </Button>
             </Link>
+            <Link href="/ensemble">
+              <Button variant={location === '/ensemble' ? 'default' : 'ghost'} size="sm">
+                <BarChart3 className="h-4 w-4 mr-1" />
+                Ensemble
+              </Button>
+            </Link>
             <Link href="/backtest">
               <Button variant={location === '/backtest' ? 'default' : 'ghost'} size="sm">
                 <Target className="h-4 w-4 mr-1" />
@@ -299,6 +306,7 @@ function Router() {
         <Route path="/ml-training" component={MLTraining} />
         <Route path="/ml-demo" component={MLEnsembleDemo} />
         <Route path="/explainability" component={ExplainabilityDashboard} />
+        <Route path="/ensemble" component={EnsembleComparison} />
         <Route path="/advanced-astrology" component={AdvancedAstrology} />
         <Route path="/backtest" component={BacktestPage} />
         <Route path="/settings" component={SettingsPage} />

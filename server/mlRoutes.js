@@ -865,5 +865,71 @@ except Exception as e:
     }
   });
 
+  // Get current market features for ensemble predictions
+  app.get('/api/ml/features', async (req, res) => {
+    try {
+      const featuresScript = `
+import sys
+sys.path.append('/home/runner/workspace')
+from services.ml_demo import get_current_features
+import json
+
+try:
+    result = get_current_features()
+    print(json.dumps(result))
+except Exception as e:
+    print(json.dumps({"success": False, "error": str(e)}))
+`;
+
+      const result = await runPythonMLScript(featuresScript, 15000);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to get current features',
+        details: error.message 
+      });
+    }
+  });
+
+  // Python ensemble prediction endpoint
+  app.post('/api/ensemble/predict', async (req, res) => {
+    try {
+      const { features } = req.body;
+      
+      if (!features || typeof features !== 'object') {
+        return res.status(400).json({
+          success: false,
+          error: 'Features object is required'
+        });
+      }
+
+      const ensembleScript = `
+import sys
+sys.path.append('/home/runner/workspace')
+from services.ensemble_lite import EnsembleLite
+import json
+
+features = ${JSON.stringify(features)}
+
+try:
+    ensemble = EnsembleLite()
+    result = ensemble.predict(features)
+    print(json.dumps(result))
+except Exception as e:
+    print(json.dumps({"success": False, "error": str(e)}))
+`;
+
+      const result = await runPythonMLScript(ensembleScript, 30000);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to generate ensemble prediction',
+        details: error.message 
+      });
+    }
+  });
+
   console.log('Advanced ML routes registered');
 }

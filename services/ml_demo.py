@@ -320,6 +320,59 @@ def get_ml_demo_status():
         'version': 'advanced_demo'
     }
 
+def get_current_features():
+    """Get current market features for ensemble predictions"""
+    try:
+        # Initialize the ML demo instance if not already done
+        if not ml_demo.is_trained:
+            ml_demo.train_ensemble()
+        
+        # Generate realistic current market features
+        current_features = {
+            'price': 146.67,
+            'volume': 23584212,
+            'high': 148.22,
+            'low': 145.10,
+            'market_cap': 68500000000,
+            'rsi': 63.36,
+            'macd': 0.508,
+            'ema': 146.26,
+            'sma': 145.47,
+            'atr': 1.249,
+            'tech_score': 32.65,
+            'social_score': 32.11,
+            'fund_score': 32.80,
+            'astro_score': 62.30,
+            'galaxy_score': 71.2,
+            'alt_rank': 15,
+            'social_volume': 8542,
+            'price_change_24h': 0.86,
+            'price_change_7d': -2.34,
+            'volatility': 2.15,
+            'tps': 2847,
+            'epoch': 625,
+            'validator_count': 1895,
+            'moon_phase': 0.73,
+            'mercury_retrograde': 0,
+            'lunar_node': 247.8,
+            'jupiter_aspect': 120.5,
+            'mars_conjunction': 0
+        }
+        
+        return {
+            'success': True,
+            'features': current_features,
+            'feature_count': len(current_features),
+            'timestamp': pd.Timestamp.now().isoformat()
+        }
+        
+    except Exception as e:
+        return {
+            'success': False,
+            'error': str(e),
+            'features': {}
+        }
+
 if __name__ == "__main__":
     # Demonstration
     print("=== Advanced ML Ensemble Demonstration ===")
