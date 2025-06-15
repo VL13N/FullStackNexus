@@ -22,6 +22,7 @@ import AstrologyDemo from "../../components/AstrologyDemo";
 import LunarCrushDemo from "../../components/LunarCrushDemo";
 import PredictionWidget from "../../components/PredictionWidget";
 import MLEnsembleDemo from "@/components/MLEnsembleDemo";
+import ExplainabilityDashboard from "@/components/ExplainabilityDashboard";
 import { Activity, BarChart3, Database, TrendingUp, Sparkles, Brain, Settings, Target } from "lucide-react";
 
 function LandingPage() {

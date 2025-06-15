@@ -785,5 +785,85 @@ except Exception as e:
     }
   });
 
+  // Explainability endpoint
+  app.post('/api/ml/explainability', async (req, res) => {
+    try {
+      console.log('🔍 Starting explainability analysis...');
+      const { samples = 200, verbose = false } = req.body;
+      
+      const { spawn } = require('child_process');
+      const path = require('path');
+      
+      // Run the explainability script
+      const scriptPath = path.join(__dirname, '../scripts/explain.py');
+      const args = [
+        '--n_samples', samples.toString(),
+        '--output_path', '../public/',
+        ...(verbose ? ['--verbose'] : [])
+      ];
+      
+      const pythonProcess = spawn('python', [scriptPath, ...args], {
+        cwd: path.join(__dirname, '../scripts')
+      });
+      
+      let output = '';
+      let errorOutput = '';
+      
+      pythonProcess.stdout.on('data', (data) => {
+        output += data.toString();
+        if (verbose) console.log(data.toString());
+      });
+      
+      pythonProcess.stderr.on('data', (data) => {
+        errorOutput += data.toString();
+        if (verbose) console.error(data.toString());
+      });
+      
+      pythonProcess.on('close', (code) => {
+        if (code === 0) {
+          console.log('✅ Explainability analysis complete');
+          
+          // Parse the output to extract pillar analysis
+          const pillarMatches = output.match(/([A-Z ]+) PILLAR:\s*Total Impact Score: ([\d.]+)/g);
+          const pillars = [];
+          
+          if (pillarMatches) {
+            pillarMatches.forEach(match => {
+              const [, pillarName, score] = match.match(/([A-Z ]+) PILLAR:\s*Total Impact Score: ([\d.]+)/);
+              pillars.push({
+                pillar: pillarName.toLowerCase().trim(),
+                totalImpact: parseFloat(score)
+              });
+            });
+          }
+          
+          res.json({
+            success: true,
+            samples: samples,
+            pillars: pillars,
+            reportUrl: '/shap_report.html',
+            timestamp: new Date().toISOString(),
+            output: verbose ? output : null
+          });
+        } else {
+          console.error('❌ Explainability analysis failed:', errorOutput);
+          res.status(500).json({
+            success: false,
+            error: 'Failed to generate explainability analysis',
+            details: errorOutput
+          });
+        }
+      });
+      
+    } catch (error) {
+      console.error('❌ Explainability endpoint error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+        message: error.message
+      });
+    }
+  });
+
   console.log('Advanced ML routes registered');
 }

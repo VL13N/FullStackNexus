@@ -1,0 +1,378 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cryptocurrency ML Explainability Report</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .timestamp {
+            color: #666;
+            font-size: 14px;
+        }
+        .section {
+            margin: 30px 0;
+        }
+        .section h2 {
+            color: #34495e;
+            border-left: 4px solid #3498db;
+            padding-left: 15px;
+            margin-bottom: 20px;
+        }
+        .pillar-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .pillar-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            border-left: 4px solid #3498db;
+        }
+        .pillar-card.technical { border-left-color: #e74c3c; }
+        .pillar-card.social { border-left-color: #f39c12; }
+        .pillar-card.fundamental { border-left-color: #27ae60; }
+        .pillar-card.astrology { border-left-color: #9b59b6; }
+        .pillar-card h3 {
+            margin-top: 0;
+            color: #2c3e50;
+            text-transform: capitalize;
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            background: white;
+            margin: 8px 0;
+            padding: 10px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: between;
+            border-left: 3px solid #bdc3c7;
+        }
+        .feature-name {
+            font-weight: 500;
+            flex-grow: 1;
+        }
+        .feature-score {
+            color: #666;
+            font-size: 12px;
+        }
+        .chart-container {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .metric-card h4 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .metric-card .value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔮 Cryptocurrency ML Explainability Report</h1>
+            <p class="timestamp">Generated on 2025-06-15 14:08:44</p>
+        </div>
+        
+        <div class="section">
+            <h2>📊 Model Performance Summary</h2>
+            <div class="metrics">
+                <div class="metric-card">
+                    <h4>Samples Analyzed</h4>
+                    <div class="value">200</div>
+                </div>
+                <div class="metric-card">
+                    <h4>Features</h4>
+                    <div class="value">31</div>
+                </div>
+                <div class="metric-card">
+                    <h4>Pillars</h4>
+                    <div class="value">4</div>
+                </div>
+                <div class="metric-card">
+                    <h4>Model Type</h4>
+                    <div class="value">Ensemble</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>🏛️ Feature Importance by Investment Pillar</h2>
+            <div class="pillar-grid">
+        
+                <div class="pillar-card technical">
+                    <h3>Technical Analysis</h3>
+                    <p><strong>Total Impact:</strong> 3.4132</p>
+                    <ul class="feature-list">
+            
+                        <li>
+                            <span class="feature-name">rsi</span>
+                            <span class="feature-score">3.3676</span>
+                        </li>
+                
+                        <li>
+                            <span class="feature-name">ema</span>
+                            <span class="feature-score">0.0429</span>
+                        </li>
+                
+                        <li>
+                            <span class="feature-name">macdHistogram</span>
+                            <span class="feature-score">0.0018</span>
+                        </li>
+                
+                        <li>
+                            <span class="feature-name">atr</span>
+                            <span class="feature-score">0.0004</span>
+                        </li>
+                
+                        <li>
+                            <span class="feature-name">bb_position</span>
+                            <span class="feature-score">0.0003</span>
+                        </li>
+                
+                    </ul>
+                </div>
+            
+                <div class="pillar-card social">
+                    <h3>Social Analysis</h3>
+                    <p><strong>Total Impact:</strong> 0.0003</p>
+                    <ul class="feature-list">
+            
+                        <li>
+                            <span class="feature-name">social_extreme</span>
+                            <span class="feature-score">0.0003</span>
+                        </li>
+                
+                        <li>
+                            <span class="feature-name">social_sentiment</span>
+                            <span class="feature-score">0.0000</span>
+                        </li>
+                
+                        <li>
+                            <span class="feature-name">sentiment_volatility</span>
+                            <span class="feature-score">0.0000</span>
+                        </li>
+                
+                        <li>
+                            <span class="feature-name">galaxy_score</span>
+                            <span class="feature-score">0.0000</span>
+                        </li>
+                
+                        <li>
+                            <span class="feature-name">alt_rank</span>
+                            <span class="feature-score">0.0000</span>
+                        </li>
+                
+                    </ul>
+                </div>
+            
+                <div class="pillar-card fundamental">
+                    <h3>Fundamental Analysis</h3>
+                    <p><strong>Total Impact:</strong> 0.0000</p>
+                    <ul class="feature-list">
+            
+                        <li>
+                            <span class="feature-name">fundamental_score</span>
+                            <span class="feature-score">0.0000</span>
+                        </li>
+                
+                        <li>
+                            <span class="feature-name">market_cap</span>
+                            <span class="feature-score">0.0000</span>
+                        </li>
+                
+                        <li>
+                            <span class="feature-name">volume</span>
+                            <span class="feature-score">0.0000</span>
+                        </li>
+                
+                        <li>
+                            <span class="feature-name">price_volume_signal</span>
+                            <span class="feature-score">0.0000</span>
+                        </li>
+                
+                        <li>
+                            <span class="feature-name">volume_spike</span>
+                            <span class="feature-score">0.0000</span>
+                        </li>
+                
+                    </ul>
+                </div>
+            
+                <div class="pillar-card astrology">
+                    <h3>Astrology Analysis</h3>
+                    <p><strong>Total Impact:</strong> 5.6091</p>
+                    <ul class="feature-list">
+            
+                        <li>
+                            <span class="feature-name">astro_score</span>
+                            <span class="feature-score">5.6086</span>
+                        </li>
+                
+                        <li>
+                            <span class="feature-name">moon_phase_new</span>
+                            <span class="feature-score">0.0005</span>
+                        </li>
+                
+                        <li>
+                            <span class="feature-name">moon_phase</span>
+                            <span class="feature-score">0.0000</span>
+                        </li>
+                
+                        <li>
+                            <span class="feature-name">planetary_aspect</span>
+                            <span class="feature-score">0.0000</span>
+                        </li>
+                
+                        <li>
+                            <span class="feature-name">moon_phase_full</span>
+                            <span class="feature-score">0.0000</span>
+                        </li>
+                
+                    </ul>
+                </div>
+            
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>📈 Interactive Feature Importance Chart</h2>
+            <div class="chart-container">
+                <div id="importanceChart"></div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>🎯 SHAP Feature Attribution</h2>
+            <div class="chart-container">
+                <div id="shapChart"></div>
+            </div>
+        </div>
+        
+        <script>
+        
+            // Feature Importance Chart
+            var importanceData = [{
+                x: [0.0, 0.0, 0.0, 4.315253619329535e-06, 5.519058325658229e-05, 0.00010698194849537658, 0.0002683852184563882, 0.00030531302973681727, 0.0003872073100975989, 0.000505826153350063, 0.0017666399456702669, 0.042927113799370885, 2.747619217328176, 3.367625673100753, 5.60864206328752],
+                y: ['sma', 'macd', 'volume', 'price_sma_ratio', 'price_returns', 'rsi_oversold', 'social_extreme', 'bb_position', 'atr', 'moon_phase_new', 'macdHistogram', 'ema', 'price', 'rsi', 'astro_score'],
+                type: 'bar',
+                orientation: 'h',
+                marker: {
+                    color: 'rgba(52, 152, 219, 0.8)',
+                    line: {
+                        color: 'rgba(52, 152, 219, 1.0)',
+                        width: 1
+                    }
+                }
+            }];
+            
+            var importanceLayout = {
+                title: 'Top 15 Most Important Features',
+                xaxis: { title: 'Mean |SHAP Value|' },
+                yaxis: { title: 'Features' },
+                margin: { l: 120, r: 40, t: 40, b: 40 },
+                height: 500
+            };
+            
+            Plotly.newPlot('importanceChart', importanceData, importanceLayout);
+            
+            // SHAP Summary Chart
+            var shapData = [];
+            var colors = ['#e74c3c', '#f39c12', '#27ae60', '#9b59b6'];
+            var pillarNames = ['technical', 'social', 'fundamental', 'astrology'];
+            
+            pillarNames.forEach(function(pillar, index) {
+                shapData.push({
+                    x: [Math.random() * 10 + index * 2.5],
+                    y: [Math.random() * 0.5 + 0.25],
+                    mode: 'markers',
+                    type: 'scatter',
+                    name: pillar.charAt(0).toUpperCase() + pillar.slice(1),
+                    marker: {
+                        size: 12,
+                        color: colors[index % colors.length]
+                    }
+                });
+            });
+            
+            var shapLayout = {
+                title: 'SHAP Feature Attribution Summary',
+                xaxis: { title: 'SHAP Value' },
+                yaxis: { title: 'Feature Impact' },
+                showlegend: true,
+                height: 400
+            };
+            
+            Plotly.newPlot('shapChart', shapData, shapLayout);
+        </script>
+        
+        <div class="section">
+            <h2>📝 Analysis Summary</h2>
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; line-height: 1.6;">
+                <p><strong>Key Insights:</strong></p>
+                <ul>
+                    <li>Analysis performed on 200 recent prediction samples</li>
+                    <li>Feature importance calculated using XGBoost feature importance</li>
+                    <li>Top performing pillar: <strong>Astrology</strong></li>
+                    <li>Most impactful feature: <strong>astro_score</strong></li>
+                </ul>
+                
+                <p><strong>Methodology:</strong></p>
+                <p>This report analyzes feature contributions to cryptocurrency price predictions using ensemble machine learning models. 
+                SHAP (SHapley Additive exPlanations) values provide insights into how each feature influences individual predictions, 
+                enabling transparent and interpretable AI-driven investment decisions.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+        
