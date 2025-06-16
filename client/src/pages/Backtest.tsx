@@ -129,14 +129,15 @@ export default function Backtest() {
   };
 
   // Prepare chart data
-  const chartData = backtestData?.success ? backtestData.dataPoints.map((point: any) => ({
-    timestamp: new Date(point.timestamp).toLocaleDateString(),
-    predicted: point.predicted,
-    actual: point.actual,
-    confidence: point.confidence * 100,
-    error: Math.abs(point.predicted - point.actual),
-    errorPercent: Math.abs((point.predicted - point.actual) / point.actual) * 100
-  })) : [];
+  const chartData = (backtestData as any)?.success && (backtestData as any)?.dataPoints ? 
+    (backtestData as any).dataPoints.map((point: any) => ({
+      timestamp: new Date(point.timestamp).toLocaleDateString(),
+      predicted: point.predicted,
+      actual: point.actual,
+      confidence: point.confidence * 100,
+      error: Math.abs(point.predicted - point.actual),
+      errorPercent: Math.abs((point.predicted - point.actual) / point.actual) * 100
+    })) : [];
 
   // Calculate aggregate performance
   const results = runBacktestMutation.data;

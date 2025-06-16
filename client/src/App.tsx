@@ -308,7 +308,7 @@ function Router() {
         <Route path="/explainability" component={ExplainabilityDashboard} />
         <Route path="/ensemble" component={EnsembleComparison} />
         <Route path="/advanced-astrology" component={AdvancedAstrology} />
-        <Route path="/backtest" component={BacktestPage} />
+        <Route path="/backtest" component={Backtest} />
         <Route path="/settings" component={SettingsPage} />
         <Route component={NotFound} />
       </Switch>

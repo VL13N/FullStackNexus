@@ -63,27 +63,49 @@ class WalkForwardBacktester {
   }
 
   /**
-   * Fetch actual price data from external APIs for comparison
+   * Fetch actual price data from CryptoRank sparkline API
    */
   async fetchActualPrices(startDate, endDate) {
     try {
-      // Import CryptoRank service to get historical prices
-      const { fetchSolanaCurrent } = await import('../api/cryptorank.js');
+      // Calculate hours between dates for sparkline interval
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const hoursDiff = Math.ceil((end - start) / (1000 * 60 * 60));
       
-      // For backtesting, we'll use the current price as a proxy for actual prices
-      // In a production system, you'd fetch historical price data from the sparkline endpoint
-      const currentData = await fetchSolanaCurrent();
+      // Fetch historical prices from CryptoRank sparkline endpoint
+      const response = await fetch(`https://api.cryptorank.io/v2/currencies/5663/sparkline?from=${start.toISOString()}&to=${end.toISOString()}&interval=1h`, {
+        headers: {
+          'Authorization': `Bearer ${process.env.CRYPTORANK_API_KEY}`
+        }
+      });
       
-      if (!currentData.success) {
-        throw new Error('Failed to fetch current price data');
+      if (!response.ok) {
+        throw new Error(`CryptoRank API failed: ${response.status}`);
       }
-
-      // Generate synthetic historical prices for demonstration
-      // In production, replace with actual historical price API calls
-      const prices = this.generateHistoricalPrices(startDate, endDate, currentData.data.price);
       
-      console.log(`📈 Generated ${prices.length} historical price points for comparison`);
-      return prices;
+      const data = await response.json();
+      
+      if (data.data && Array.isArray(data.data)) {
+        const prices = data.data.map(point => ({
+          timestamp: new Date(point.timestamp * 1000).toISOString(),
+          actual_price: point.price
+        }));
+        
+        console.log(`📈 Fetched ${prices.length} actual price points from CryptoRank`);
+        return prices;
+      } else {
+        // Fallback to current price with realistic variation
+        const { fetchSolanaCurrent } = await import('../api/cryptorank.js');
+        const currentData = await fetchSolanaCurrent();
+        
+        if (!currentData.success) {
+          throw new Error('Failed to fetch current price data for fallback');
+        }
+        
+        const prices = this.generateHistoricalPrices(startDate, endDate, currentData.data.price);
+        console.log(`📈 Using ${prices.length} generated price points (CryptoRank sparkline unavailable)`);
+        return prices;
+      }
     } catch (error) {
       console.error('❌ Failed to fetch actual prices:', error);
       throw error;
