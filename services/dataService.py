@@ -258,7 +258,6 @@ class DataService:
     def store_training_results(self, results: Dict) -> bool:
         """Store training results back to Supabase"""
         if not self.supabase:
-            print("⚠️ Supabase not available, skipping result storage")
             return False
         
         try:
@@ -278,11 +277,9 @@ class DataService:
             }
             
             response = self.supabase.table('training_history').insert(training_record).execute()
-            print(f"✅ Training results stored with ID: {response.data[0]['id']}")
             return True
             
         except Exception as e:
-            print(f"❌ Failed to store training results: {e}")
             return False
     
     def get_training_history(self, limit: int = 10) -> List[Dict]:
@@ -300,7 +297,6 @@ class DataService:
             return response.data if response.data else []
             
         except Exception as e:
-            print(f"❌ Failed to retrieve training history: {e}")
             return []
 
 # Global instance
@@ -315,13 +311,16 @@ def store_training_results(results: Dict) -> bool:
     return data_service.store_training_results(results)
 
 if __name__ == "__main__":
-    # Test the data service
-    print("=== Testing Data Service ===")
+    # Test the data service when called directly
+    import sys
     
-    result = pull_supabase_features(7)  # Test with 7 days
-    print(f"✅ Pulled {result['rows_fetched']} feature vectors")
-    print(f"📅 Date range: {result['date_range']}")
-    print(f"🔧 Source: {result['source']}")
+    # Called from command line with days_back argument
+    import json
     
-    if result['data']:
-        print(f"📊 Sample feature keys: {list(result['data'][0].keys())}")
+    if len(sys.argv) > 1:
+        days_back = int(sys.argv[1])
+    else:
+        days_back = 30
+    
+    result = pull_supabase_features(days_back)
+    print(json.dumps(result))
