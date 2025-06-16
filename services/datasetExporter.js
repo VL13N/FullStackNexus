@@ -35,7 +35,6 @@ class DatasetExporter {
       const { data: records, error } = await this.supabase
         .from('live_predictions')
         .select('*')
-        .eq('symbol', symbol)
         .gte('timestamp', startDate)
         .lte('timestamp', endDate)
         .order('timestamp', { ascending: true });

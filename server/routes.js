@@ -197,7 +197,6 @@ export async function registerRoutes(app) {
       const { data, error } = await supabase
         .from('live_predictions')
         .select('*')
-        .eq('symbol', symbol)
         .gte('timestamp', startDate)
         .order('timestamp', { ascending: true });
 
@@ -319,7 +318,6 @@ export async function registerRoutes(app) {
       const { data, error } = await supabase
         .from('live_predictions')
         .select('*')
-        .eq('symbol', symbol)
         .gte('timestamp', startDate)
         .order('timestamp', { ascending: false });
 
@@ -1652,7 +1650,6 @@ export async function registerRoutes(app) {
           const { data, error } = await supabase
             .from('live_predictions')
             .select('*')
-            .eq('symbol', symbol.trim().toUpperCase())
             .order('timestamp', { ascending: false })
             .limit(1);
 
