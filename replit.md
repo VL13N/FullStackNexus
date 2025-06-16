@@ -20,6 +20,16 @@ An advanced astrological cryptocurrency analytics platform that blends astronomi
 
 ## Recent Changes
 
+### June 16, 2025 - Walk-Forward Backtesting Framework Complete
+- **Built comprehensive walk-forward backtesting system** (services/backtester.js) with rolling train/test windows for rigorous model validation
+- **Implemented performance metrics calculation** including MSE, RMSE, MAE, MAPE, directional accuracy, R-squared, and confidence-weighted error analysis
+- **Created complete REST API endpoints** (/api/backtest/run, /api/backtest/summary, /api/backtest/data, /api/backtest/window/:id) for backtesting execution and results retrieval
+- **Added interactive React UI** (client/src/pages/Backtest.tsx) with comprehensive visualization of predicted vs actual prices, performance metrics tables, and window-by-window analysis
+- **Integrated authentic data alignment** using CryptoRank sparkline API for historical price comparison with fallback to realistic synthetic data generation
+- **Built pillar correlation analysis** examining relationships between technical, social, fundamental, and astrology scores with prediction accuracy
+- **Created aggregate statistics framework** with mean, median, min, max, and standard deviation calculations across all validation windows
+- **Added comprehensive testing suite** (test_backtest_framework.js) validating rolling window creation, metrics calculation, and API functionality
+
 ### June 16, 2025 - LSTM Time-Series Module with Ensemble Stacking Complete
 - **Created dedicated LSTM predictor service** (services/lstmPredictor.js) with multi-layer TensorFlow.js architecture featuring 128+64+32 unit LSTM layers with dropout regularization
 - **Implemented windowed sequence processing** with 60-step rolling windows across 16 features including price, volume, market cap, and pillar scores
@@ -103,6 +113,12 @@ An advanced astrological cryptocurrency analytics platform that blends astronomi
 - `/api/training/status` - Automated scheduler status and logs
 - `/api/training/trigger` - Manual training initiation (standard/deep)
 - `/api/training/logs` - Training history and performance metrics
+
+**Walk-Forward Backtesting:**
+- `/api/backtest/run` - Execute rolling train/test window validation
+- `/api/backtest/summary` - Aggregate performance metrics across windows
+- `/api/backtest/data` - Predicted vs actual data points for visualization
+- `/api/backtest/window/:id` - Individual window performance details
 
 ## Current Status
 - **All API integrations operational** with proper authentication
