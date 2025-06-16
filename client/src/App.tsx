@@ -16,6 +16,7 @@ import MLTraining from "@/pages/ml-training";
 import AdvancedAstrology from "@/pages/advanced-astrology";
 import Backtest from "@/pages/Backtest";
 import Alerts from "@/pages/Alerts";
+import CorrelationAnalysis from "@/pages/CorrelationAnalysis";
 import TaapiDemo from "../../components/TaapiDemo";
 import CryptoRankDemo from "../../components/CryptoRankDemo";
 import OnChainDemo from "../../components/OnChainDemo";
@@ -25,7 +26,7 @@ import PredictionWidget from "../../components/PredictionWidget";
 import MLEnsembleDemo from "@/components/MLEnsembleDemo";
 import ExplainabilityDashboard from "@/components/ExplainabilityDashboard";
 import EnsembleComparison from "@/components/EnsembleComparison";
-import { Activity, BarChart3, Database, TrendingUp, Sparkles, Brain, Settings, Target, Bell } from "lucide-react";
+import { Activity, BarChart3, Database, TrendingUp, Sparkles, Brain, Settings, Target, Bell, GitBranch } from "lucide-react";
 
 function LandingPage() {
   return (
@@ -283,6 +284,12 @@ function Navigation() {
                 Alerts
               </Button>
             </Link>
+            <Link href="/correlation">
+              <Button variant={location === '/correlation' ? 'default' : 'ghost'} size="sm">
+                <GitBranch className="h-4 w-4 mr-1" />
+                Correlations
+              </Button>
+            </Link>
             <Link href="/settings">
               <Button variant={location === '/settings' ? 'default' : 'ghost'} size="sm">
                 <Settings className="h-4 w-4 mr-1" />
@@ -317,6 +324,7 @@ function Router() {
         <Route path="/advanced-astrology" component={AdvancedAstrology} />
         <Route path="/backtest" component={Backtest} />
         <Route path="/alerts" component={Alerts} />
+        <Route path="/correlation" component={CorrelationAnalysis} />
         <Route path="/settings" component={SettingsPage} />
         <Route component={NotFound} />
       </Switch>
