@@ -17,7 +17,6 @@ try:
     SUPABASE_AVAILABLE = True
 except ImportError:
     SUPABASE_AVAILABLE = False
-    print("Supabase client not available - using fallback data")
 
 class DataService:
     def __init__(self):
@@ -35,11 +34,10 @@ class DataService:
             
             if url and key:
                 self.supabase = create_client(url, key)
-                print("✅ Supabase connection initialized")
             else:
-                print("⚠️ Supabase credentials not found")
+                pass  # Credentials not found - will use fallback
         except Exception as e:
-            print(f"❌ Failed to initialize Supabase: {e}")
+            pass  # Failed to initialize - will use fallback
     
     def pull_supabase_features(self, days_back: int = 30) -> Dict:
         """

@@ -581,22 +581,6 @@ class DatasetExporter {
 export { DatasetExporter };
 
   /**
-   * Export dataset in NumPy-compatible format
-   */
-  exportAsNumPy(exportData) {
-    return {
-      format: 'numpy',
-      features_shape: [exportData.features.length, exportData.features[0].length],
-      features: exportData.features,
-      targets_shape: exportData.targets ? [exportData.targets.length, exportData.targets[0].length] : null,
-      targets: exportData.targets,
-      feature_names: exportData.feature_names,
-      target_names: exportData.target_names,
-      metadata: exportData.metadata
-    };
-  }
-
-  /**
    * Export dataset in TensorFlow-compatible format
    */
   exportAsTensorFlow(exportData) {
