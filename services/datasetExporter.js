@@ -118,6 +118,10 @@ class DatasetExporter {
                 'mercury_retrograde_norm', 'financial_planets_strength_norm',
                 'lunar_market_influence_norm', 'planetary_volatility_norm');
       
+      // Sentiment features (6)
+      names.push('news_sentiment_24h_norm', 'news_confidence_24h_norm', 'news_volume_24h_norm',
+                'sentiment_trend_6h_norm', 'positive_news_ratio_norm', 'negative_news_ratio_norm');
+      
       // Composite scores (4)
       names.push('technical_composite', 'social_composite', 
                 'fundamental_composite', 'astrology_composite');

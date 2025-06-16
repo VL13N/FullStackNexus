@@ -360,6 +360,52 @@ export async function registerRoutes(app) {
     }
   });
 
+  // Database migration endpoint
+  app.post('/api/database/migrate', async (req, res) => {
+    try {
+      const { DatabaseMigration } = await import('../services/databaseMigration.js');
+      const migration = new DatabaseMigration();
+      
+      const result = await migration.addSentimentScoreColumn();
+      
+      res.json({
+        success: result.success,
+        message: result.message,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Migration endpoint error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Database schema validation endpoint
+  app.get('/api/database/validate', async (req, res) => {
+    try {
+      const { DatabaseMigration } = await import('../services/databaseMigration.js');
+      const migration = new DatabaseMigration();
+      
+      const result = await migration.validateSchema();
+      
+      res.json({
+        success: result.valid,
+        message: result.message,
+        recordCount: result.recordCount,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // ML Training endpoints
   app.post('/api/ml/train', async (req, res) => {
     try {
