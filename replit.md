@@ -20,6 +20,17 @@ An advanced astrological cryptocurrency analytics platform that blends astronomi
 
 ## Recent Changes
 
+### June 16, 2025 - Optuna Bayesian Hyperparameter Optimization Complete
+- **Created comprehensive Optuna HPO service** (services/optunaTuner.py, services/optunaTuner.js) with Bayesian optimization for ensemble, LSTM, and hybrid model types
+- **Implemented intelligent search spaces** for LSTM units (64-256), learning rates (0.0001-0.01), dropout rates, XGBoost parameters, and ensemble weights
+- **Added complete REST API endpoints** (/api/ml/hpo/start, /api/ml/hpo/status, /api/ml/hpo/history, /api/ml/hpo/best-params) for optimization management
+- **Integrated weekly deep-tuning scheduler** with automated Optuna optimization (100 ensemble trials, 75 LSTM trials, 50 hybrid trials) every Sunday at 02:00 UTC
+- **Built comprehensive study analytics** including parameter importance analysis, convergence detection, and performance improvement tracking
+- **Created TPE sampler configuration** with MedianPruner for efficient trial optimization and early stopping of poor configurations
+- **Added SQLite study persistence** with trial logging, best parameter storage, and optimization history tracking for reproducible results
+- **Built dashboard data integration** with real-time status monitoring, search space visualization, and trial progress tracking
+- **Created comprehensive testing suite** (test_optuna_hpo.js) validating optimization workflows, parameter application, and multi-type study management
+
 ### June 16, 2025 - Walk-Forward Backtesting Framework Complete
 - **Built comprehensive walk-forward backtesting system** (services/backtester.js) with rolling train/test windows for rigorous model validation
 - **Implemented performance metrics calculation** including MSE, RMSE, MAE, MAPE, directional accuracy, R-squared, and confidence-weighted error analysis
@@ -85,14 +96,15 @@ An advanced astrological cryptocurrency analytics platform that blends astronomi
 - **Solana RPC:** On-chain metrics, validator stats, real-time TPS
 - **Astronomy Engine:** Authentic lunar phases, planetary positions, aspects
 
-### Enhanced ML Pipeline
+### Enhanced ML Pipeline with Bayesian Optimization
 1. **Data Collection:** Multi-source authenticated data fetching with 60-step windowed sequences
 2. **Feature Engineering:** 16 technical indicators, sentiment analysis, astrological features with min-max normalization
-3. **Ensemble Training:** Multi-layer LSTM (128+64+32 units) + XGBoost + Random Forest with automated hyperparameter optimization
-4. **Ensemble Stacking:** Weighted combination (XGBoost 60%, LSTM 40%) with confidence-based scoring
-5. **Prediction Generation:** Real-time price forecasting with volatility-adjusted confidence and directional classification
-6. **Automated Retraining:** Nightly LSTM + ensemble retraining with Optuna optimization at 03:00 UTC
-7. **Backtesting:** Historical validation with ensemble performance metrics and walk-forward analysis
+3. **Hyperparameter Optimization:** Optuna TPE sampler with intelligent search spaces for LSTM units, learning rates, XGBoost parameters, and ensemble weights
+4. **Ensemble Training:** Multi-layer LSTM (128+64+32 units) + XGBoost + Random Forest with Bayesian-optimized hyperparameters
+5. **Ensemble Stacking:** Weighted combination (XGBoost 60%, LSTM 40%) with confidence-based scoring and optimized weights
+6. **Prediction Generation:** Real-time price forecasting with volatility-adjusted confidence and directional classification
+7. **Automated Retraining:** Nightly LSTM + ensemble retraining with weekly Optuna deep-tuning (225 total trials) on Sundays
+8. **Backtesting:** Historical validation with walk-forward analysis and optimized model performance metrics
 
 ### API Endpoints
 **Core ML Pipeline:**
@@ -119,6 +131,17 @@ An advanced astrological cryptocurrency analytics platform that blends astronomi
 - `/api/backtest/summary` - Aggregate performance metrics across windows
 - `/api/backtest/data` - Predicted vs actual data points for visualization
 - `/api/backtest/window/:id` - Individual window performance details
+
+**Bayesian Hyperparameter Optimization:**
+- `/api/ml/hpo/search-spaces` - Get available optimization search spaces
+- `/api/ml/hpo/start` - Start Optuna optimization study with specified trials
+- `/api/ml/hpo/status` - Get current optimization progress and status
+- `/api/ml/hpo/stop` - Stop active optimization study
+- `/api/ml/hpo/history` - Get trial history and optimization results
+- `/api/ml/hpo/best-params/:type` - Get best parameters for model type
+- `/api/ml/hpo/statistics/:type` - Get study analytics and convergence data
+- `/api/ml/hpo/apply-best/:type` - Apply optimized parameters to models
+- `/api/ml/hpo/dashboard-data` - Get comprehensive HPO dashboard data
 
 ## Current Status
 - **All API integrations operational** with proper authentication
