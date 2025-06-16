@@ -629,6 +629,137 @@ export async function registerRoutes(app) {
     }
   });
 
+  // SHAP-based Feature Importance endpoint
+  app.get('/api/ml/feature-importance', async (req, res) => {
+    try {
+      const tf = await import('@tensorflow/tfjs-node');
+      const fs = await import('fs');
+      
+      // Load the latest TensorFlow.js model
+      const modelPath = './models/crypto-predictor/model.json';
+      if (!fs.existsSync(modelPath)) {
+        return res.status(404).json({
+          success: false,
+          error: 'TensorFlow.js model not found. Train a model first.',
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Load the model
+      const model = await tf.loadLayersModel(`file://${modelPath}`);
+      
+      // Get the most recent feature vector from ml_features
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      );
+
+      const { data: featuresData, error: featuresError } = await supabase
+        .from('ml_features')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(1);
+
+      if (featuresError || !featuresData || featuresData.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'No feature vectors found in database',
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const latestFeature = featuresData[0];
+      
+      // Define feature names (must match the order used in training)
+      const featureNames = [
+        'price', 'volume', 'market_cap', 'price_change_24h', 'volume_change_24h',
+        'rsi', 'macd_histogram', 'ema_20', 'sma_50', 'bollinger_upper', 'bollinger_lower',
+        'stoch_rsi', 'williams_r', 'atr', 'obv', 'cci',
+        'social_volume', 'social_engagement', 'galaxy_score', 'alt_rank', 'news_sentiment',
+        'moon_phase', 'mercury_retrograde', 'market_sentiment', 'fear_greed_index', 'btc_dominance',
+        'sentiment_volume', 'sentiment_consistency', 'narrative_strength', 'sentiment_momentum',
+        'news_activity_level', 'social_engagement_rate', 'influencer_sentiment', 'reddit_sentiment', 'twitter_sentiment',
+        'tps', 'validator_count', 'staking_yield', 'epoch_progress', 'slot_height',
+        'network_congestion', 'transaction_volume', 'active_addresses', 'dex_volume', 'defi_tvl',
+        'developer_activity', 'github_commits', 'network_growth', 'holder_distribution', 'whale_activity'
+      ];
+
+      // Convert feature object to tensor (ensure consistent ordering)
+      const featureVector = featureNames.map(name => {
+        return latestFeature[name] || 0;
+      });
+
+      const inputTensor = tf.tensor2d([featureVector]);
+      
+      // Compute gradients for feature importance using Integrated Gradients approach
+      const baseline = tf.zeros([1, featureVector.length]);
+      const steps = 50;
+      
+      let totalGradients = tf.zeros([featureVector.length]);
+      
+      // Integrated Gradients calculation
+      for (let i = 0; i <= steps; i++) {
+        const alpha = i / steps;
+        const interpolatedInput = baseline.add(inputTensor.sub(baseline).mul(alpha));
+        
+        const gradients = tf.variableGrads(() => {
+          const prediction = model.predict(interpolatedInput);
+          return prediction.mean();
+        }, { x: interpolatedInput });
+        
+        totalGradients = totalGradients.add(gradients.grads.x.squeeze());
+        
+        // Clean up tensors
+        interpolatedInput.dispose();
+        gradients.grads.x.dispose();
+      }
+      
+      // Calculate final attributions
+      const pathGradients = totalGradients.div(steps);
+      const attributions = inputTensor.sub(baseline).squeeze().mul(pathGradients);
+      
+      // Get attribution values as array
+      const attributionValues = await attributions.data();
+      
+      // Create feature importance results
+      const featureImportance = featureNames.map((feature, index) => ({
+        feature: feature,
+        shapValue: attributionValues[index]
+      }));
+      
+      // Sort by absolute SHAP value descending
+      featureImportance.sort((a, b) => Math.abs(b.shapValue) - Math.abs(a.shapValue));
+      
+      // Clean up tensors
+      inputTensor.dispose();
+      baseline.dispose();
+      totalGradients.dispose();
+      pathGradients.dispose();
+      attributions.dispose();
+
+      res.json({
+        success: true,
+        feature_importance: featureImportance,
+        model_info: {
+          input_shape: model.inputs[0].shape,
+          total_features: featureNames.length,
+          feature_vector_timestamp: latestFeature.timestamp
+        },
+        method: 'integrated_gradients',
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error('Feature importance error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // Advanced Astrological Indicators endpoints
   app.get('/api/astrology/advanced/lunar', async (req, res) => {
     try {
