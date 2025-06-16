@@ -1,0 +1,41 @@
+{
+  "sentimentHistory": [
+    {
+      "timestamp": "2025-06-16T03:22:54.357Z",
+      "headlines_analyzed": 1,
+      "individual_sentiments": [
+        {
+          "headline": "Asia Morning Briefing: Risk of Escalating Israel-Iran Conflict Keeps BTC Around 105K Says QCP",
+          "source": "CoinDesk",
+          "url": "https://www.coindesk.com/markets/2025/06/15/asia-morning-briefing-risk-of-escalating-israel-iran-conflict-keeps-btc-around-105k-says-qcp",
+          "published": "Mon, 16 Jun 2025 00:50:23 +0000",
+          "sentiment": -0.3,
+          "confidence": 0.8,
+          "explanation": "The headline suggests a geopolitical risk (escalating Israel-Iran conflict) which generally has a negative connotation for markets, including cryptocurrencies. Although it mentions BTC's price, the focus on conflict implies potential market instability, leading to a slightly negative sentiment. The confidence is relatively high due to the clear negative implications of geopolitical tensions on market sentiment.",
+          "timestamp": "2025-06-16T03:22:54.356Z"
+        }
+      ],
+      "aggregated_sentiment": {
+        "overall_sentiment": -0.3,
+        "sentiment_label": "NEGATIVE",
+        "confidence": 0.8,
+        "positive_count": 0,
+        "negative_count": 1,
+        "neutral_count": 0,
+        "sentiment_distribution": {
+          "positive": 0,
+          "negative": 1,
+          "neutral": 0
+        }
+      },
+      "source_breakdown": {
+        "CoinDesk": {
+          "count": 1,
+          "average_sentiment": -0.3,
+          "average_confidence": 0.8
+        }
+      }
+    }
+  ],
+  "lastUpdated": "2025-06-16T03:22:54.357Z"
+}

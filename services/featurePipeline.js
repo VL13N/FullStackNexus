@@ -1204,14 +1204,14 @@ class FeaturePipeline {
   }
 
   calculateDataQuality(features) {
-    const sources = ['technical', 'social', 'fundamental', 'astrology'];
+    const sources = ['technical', 'social', 'fundamental', 'astrology', 'sentiment'];
     let qualityScore = 0;
     
     sources.forEach(source => {
       const data = features[source];
       const nonNullValues = Object.values(data).filter(v => v !== null && v !== undefined).length;
       const totalValues = Object.keys(data).length;
-      qualityScore += totalValues ? (nonNullValues / totalValues) * 25 : 0;
+      qualityScore += totalValues ? (nonNullValues / totalValues) * 20 : 0; // Updated to 20% per source (5 sources)
     });
 
     return qualityScore;
