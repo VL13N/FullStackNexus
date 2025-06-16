@@ -1,0 +1,1087 @@
+{
+  "correlationHistory": [
+    {
+      "timestamp": "2025-06-16T03:14:59.222Z",
+      "period_days": 30,
+      "data_points": 30,
+      "correlation_matrix": {
+        "SOL Technical": {
+          "SOL Technical": 1,
+          "SOL Social": 0.808,
+          "SOL Fundamental": 0.992,
+          "SOL Astrology": 0.689,
+          "BTC Price": -0.199,
+          "ETH Price": 0.283,
+          "SOL Price": -0.799
+        },
+        "SOL Social": {
+          "SOL Technical": 0.808,
+          "SOL Social": 1,
+          "SOL Fundamental": 0.854,
+          "SOL Astrology": 0.42,
+          "BTC Price": -0.033,
+          "ETH Price": 0.309,
+          "SOL Price": -0.827
+        },
+        "SOL Fundamental": {
+          "SOL Technical": 0.992,
+          "SOL Social": 0.854,
+          "SOL Fundamental": 1,
+          "SOL Astrology": 0.634,
+          "BTC Price": -0.228,
+          "ETH Price": 0.253,
+          "SOL Price": -0.845
+        },
+        "SOL Astrology": {
+          "SOL Technical": 0.689,
+          "SOL Social": 0.42,
+          "SOL Fundamental": 0.634,
+          "SOL Astrology": 1,
+          "BTC Price": 0.056,
+          "ETH Price": 0.312,
+          "SOL Price": -0.271
+        },
+        "BTC Price": {
+          "SOL Technical": -0.199,
+          "SOL Social": -0.033,
+          "SOL Fundamental": -0.228,
+          "SOL Astrology": 0.056,
+          "BTC Price": 1,
+          "ETH Price": 0.651,
+          "SOL Price": 0.307
+        },
+        "ETH Price": {
+          "SOL Technical": 0.283,
+          "SOL Social": 0.309,
+          "SOL Fundamental": 0.253,
+          "SOL Astrology": 0.312,
+          "BTC Price": 0.651,
+          "ETH Price": 1,
+          "SOL Price": -0.185
+        },
+        "SOL Price": {
+          "SOL Technical": -0.799,
+          "SOL Social": -0.827,
+          "SOL Fundamental": -0.845,
+          "SOL Astrology": -0.271,
+          "BTC Price": 0.307,
+          "ETH Price": -0.185,
+          "SOL Price": 1
+        }
+      },
+      "variables": [
+        "SOL Technical",
+        "SOL Social",
+        "SOL Fundamental",
+        "SOL Astrology",
+        "BTC Price",
+        "ETH Price",
+        "SOL Price"
+      ],
+      "insights": {
+        "strongest_correlations": [
+          {
+            "variables": [
+              "SOL Technical",
+              "SOL Fundamental"
+            ],
+            "correlation": 0.992,
+            "interpretation": "Strong positive correlation"
+          },
+          {
+            "variables": [
+              "SOL Social",
+              "SOL Fundamental"
+            ],
+            "correlation": 0.854,
+            "interpretation": "Strong positive correlation"
+          },
+          {
+            "variables": [
+              "SOL Fundamental",
+              "SOL Price"
+            ],
+            "correlation": -0.845,
+            "interpretation": "Strong negative correlation"
+          },
+          {
+            "variables": [
+              "SOL Social",
+              "SOL Price"
+            ],
+            "correlation": -0.827,
+            "interpretation": "Strong negative correlation"
+          },
+          {
+            "variables": [
+              "SOL Technical",
+              "SOL Social"
+            ],
+            "correlation": 0.808,
+            "interpretation": "Strong positive correlation"
+          }
+        ],
+        "weakest_correlations": [
+          {
+            "variables": [
+              "SOL Fundamental",
+              "BTC Price"
+            ],
+            "correlation": -0.228,
+            "interpretation": "No significant correlation"
+          },
+          {
+            "variables": [
+              "SOL Technical",
+              "BTC Price"
+            ],
+            "correlation": -0.199,
+            "interpretation": "No significant correlation"
+          },
+          {
+            "variables": [
+              "ETH Price",
+              "SOL Price"
+            ],
+            "correlation": -0.185,
+            "interpretation": "No significant correlation"
+          },
+          {
+            "variables": [
+              "SOL Astrology",
+              "BTC Price"
+            ],
+            "correlation": 0.056,
+            "interpretation": "No significant correlation"
+          },
+          {
+            "variables": [
+              "SOL Social",
+              "BTC Price"
+            ],
+            "correlation": -0.033,
+            "interpretation": "No significant correlation"
+          }
+        ],
+        "pillar_relationships": {
+          "SOL Technical": {
+            "SOL Social": 0.808,
+            "SOL Fundamental": 0.992,
+            "SOL Astrology": 0.689
+          },
+          "SOL Social": {
+            "SOL Technical": 0.808,
+            "SOL Fundamental": 0.854,
+            "SOL Astrology": 0.42
+          },
+          "SOL Fundamental": {
+            "SOL Technical": 0.992,
+            "SOL Social": 0.854,
+            "SOL Astrology": 0.634
+          },
+          "SOL Astrology": {
+            "SOL Technical": 0.689,
+            "SOL Social": 0.42,
+            "SOL Fundamental": 0.634
+          }
+        },
+        "asset_relationships": {
+          "BTC Price": {
+            "ETH Price": 0.651,
+            "SOL Price": 0.307
+          },
+          "ETH Price": {
+            "BTC Price": 0.651,
+            "SOL Price": -0.185
+          },
+          "SOL Price": {
+            "BTC Price": 0.307,
+            "ETH Price": -0.185
+          }
+        },
+        "summary": {
+          "mean_correlation": 0.151,
+          "max_correlation": 0.992,
+          "min_correlation": -0.845,
+          "high_correlation_count": 6,
+          "moderate_correlation_count": 7,
+          "weak_correlation_count": 8
+        }
+      },
+      "raw_data": [
+        {
+          "date": "2025-05-18",
+          "timestamp": "2025-05-18T03:14:59.219Z",
+          "technical": 35.68,
+          "social": 30.64,
+          "fundamental": 33.63,
+          "astrology": 65.18,
+          "btc_price": 103194.65650649132,
+          "eth_price": 2476.1381403269975,
+          "sol_price": 144.34
+        },
+        {
+          "date": "2025-05-19",
+          "timestamp": "2025-05-19T03:14:59.219Z",
+          "technical": 35.29,
+          "social": 27.98,
+          "fundamental": 33.34,
+          "astrology": 72.74,
+          "btc_price": 106139.68550864227,
+          "eth_price": 2473.8388724116753,
+          "sol_price": 140.86
+        },
+        {
+          "date": "2025-05-20",
+          "timestamp": "2025-05-20T03:14:59.219Z",
+          "technical": 34.83,
+          "social": 29.78,
+          "fundamental": 32.94,
+          "astrology": 75.69,
+          "btc_price": 105663.20354903601,
+          "eth_price": 2530.030833562055,
+          "sol_price": 136.69
+        },
+        {
+          "date": "2025-05-21",
+          "timestamp": "2025-05-21T03:14:59.219Z",
+          "technical": 35.85,
+          "social": 32.92,
+          "fundamental": 33.88,
+          "astrology": 81.25,
+          "btc_price": 106798.53751514817,
+          "eth_price": 2523.24767489843,
+          "sol_price": 132.47
+        },
+        {
+          "date": "2025-05-22",
+          "timestamp": "2025-05-22T03:14:59.219Z",
+          "technical": 37.08,
+          "social": 33.01,
+          "fundamental": 35.1,
+          "astrology": 81.29,
+          "btc_price": 109665.86371625263,
+          "eth_price": 2558.9502343769486,
+          "sol_price": 140.31
+        },
+        {
+          "date": "2025-05-23",
+          "timestamp": "2025-05-23T03:14:59.219Z",
+          "technical": 39.27,
+          "social": 33.01,
+          "fundamental": 37.36,
+          "astrology": 88.29,
+          "btc_price": 111579.18064152761,
+          "eth_price": 2658.6712468472556,
+          "sol_price": 146.44
+        },
+        {
+          "date": "2025-05-24",
+          "timestamp": "2025-05-24T03:14:59.219Z",
+          "technical": 39.68,
+          "social": 31.49,
+          "fundamental": 38.17,
+          "astrology": 87.87,
+          "btc_price": 107216.66856870624,
+          "eth_price": 2519.813809045145,
+          "sol_price": 147.34
+        },
+        {
+          "date": "2025-05-25",
+          "timestamp": "2025-05-25T03:14:59.219Z",
+          "technical": 41.34,
+          "social": 30.35,
+          "fundamental": 40.19,
+          "astrology": 91.54,
+          "btc_price": 107819.03500967441,
+          "eth_price": 2529.763966464483,
+          "sol_price": 150.23
+        },
+        {
+          "date": "2025-05-26",
+          "timestamp": "2025-05-26T03:14:59.219Z",
+          "technical": 43.12,
+          "social": 30.88,
+          "fundamental": 42.48,
+          "astrology": 95,
+          "btc_price": 108900.60971032295,
+          "eth_price": 2548.14797380859,
+          "sol_price": 156.59
+        },
+        {
+          "date": "2025-05-27",
+          "timestamp": "2025-05-27T03:14:59.219Z",
+          "technical": 44.81,
+          "social": 29.91,
+          "fundamental": 44.87,
+          "astrology": 95,
+          "btc_price": 109393.7426319189,
+          "eth_price": 2562.4409846186127,
+          "sol_price": 154.3
+        },
+        {
+          "date": "2025-05-28",
+          "timestamp": "2025-05-28T03:14:59.219Z",
+          "technical": 45.14,
+          "social": 32.66,
+          "fundamental": 46.16,
+          "astrology": 95,
+          "btc_price": 109068.45694901445,
+          "eth_price": 2662.0940568241435,
+          "sol_price": 151.68
+        },
+        {
+          "date": "2025-05-29",
+          "timestamp": "2025-05-29T03:14:59.219Z",
+          "technical": 46.24,
+          "social": 31.81,
+          "fundamental": 48.2,
+          "astrology": 94.5,
+          "btc_price": 107830.09824019176,
+          "eth_price": 2679.875687205419,
+          "sol_price": 149.34
+        },
+        {
+          "date": "2025-05-30",
+          "timestamp": "2025-05-30T03:14:59.219Z",
+          "technical": 47.87,
+          "social": 29.91,
+          "fundamental": 50.85,
+          "astrology": 95,
+          "btc_price": 105719.8746352865,
+          "eth_price": 2631.9083003349624,
+          "sol_price": 141.32
+        },
+        {
+          "date": "2025-05-31",
+          "timestamp": "2025-05-31T03:14:59.219Z",
+          "technical": 50.37,
+          "social": 30.19,
+          "fundamental": 54.47,
+          "astrology": 95,
+          "btc_price": 104020.87024454171,
+          "eth_price": 2527.700316388642,
+          "sol_price": 138.62
+        },
+        {
+          "date": "2025-06-01",
+          "timestamp": "2025-06-01T03:14:59.219Z",
+          "technical": 51.07,
+          "social": 31.68,
+          "fundamental": 56.66,
+          "astrology": 95,
+          "btc_price": 104686.33390404454,
+          "eth_price": 2531.533172761844,
+          "sol_price": 132.24
+        },
+        {
+          "date": "2025-06-02",
+          "timestamp": "2025-06-02T03:14:59.219Z",
+          "technical": 52.73,
+          "social": 34.75,
+          "fundamental": 59.81,
+          "astrology": 94.04,
+          "btc_price": 105698.43787667034,
+          "eth_price": 2538.2846946910217,
+          "sol_price": 124.71
+        },
+        {
+          "date": "2025-06-03",
+          "timestamp": "2025-06-03T03:14:59.219Z",
+          "technical": 53.48,
+          "social": 36.43,
+          "fundamental": 62.29,
+          "astrology": 95,
+          "btc_price": 105883.83175718882,
+          "eth_price": 2610.8639611906437,
+          "sol_price": 126.4
+        },
+        {
+          "date": "2025-06-04",
+          "timestamp": "2025-06-04T03:14:59.219Z",
+          "technical": 54.87,
+          "social": 39.53,
+          "fundamental": 65.43,
+          "astrology": 95,
+          "btc_price": 105430.86066799659,
+          "eth_price": 2594.777557170298,
+          "sol_price": 122.35
+        },
+        {
+          "date": "2025-06-05",
+          "timestamp": "2025-06-05T03:14:59.219Z",
+          "technical": 56.21,
+          "social": 38.63,
+          "fundamental": 68.66,
+          "astrology": 95,
+          "btc_price": 104803.00653561577,
+          "eth_price": 2609.9504866476827,
+          "sol_price": 121.05
+        },
+        {
+          "date": "2025-06-06",
+          "timestamp": "2025-06-06T03:14:59.219Z",
+          "technical": 56.4,
+          "social": 38.02,
+          "fundamental": 70.97,
+          "astrology": 94.41,
+          "btc_price": 101597.8403831928,
+          "eth_price": 2419.508274317192,
+          "sol_price": 116.02
+        },
+        {
+          "date": "2025-06-07",
+          "timestamp": "2025-06-07T03:14:59.219Z",
+          "technical": 57.57,
+          "social": 38.59,
+          "fundamental": 74.19,
+          "astrology": 95,
+          "btc_price": 104409.74967959142,
+          "eth_price": 2481.4039836690267,
+          "sol_price": 122.03
+        },
+        {
+          "date": "2025-06-08",
+          "timestamp": "2025-06-08T03:14:59.219Z",
+          "technical": 58.97,
+          "social": 41.07,
+          "fundamental": 75,
+          "astrology": 92.08,
+          "btc_price": 105665.12362716689,
+          "eth_price": 2525.8150122010156,
+          "sol_price": 124.53
+        },
+        {
+          "date": "2025-06-09",
+          "timestamp": "2025-06-09T03:14:59.219Z",
+          "technical": 59.7,
+          "social": 39.84,
+          "fundamental": 75,
+          "astrology": 95,
+          "btc_price": 105724.23517396167,
+          "eth_price": 2509.012947498987,
+          "sol_price": 121.99
+        },
+        {
+          "date": "2025-06-10",
+          "timestamp": "2025-06-10T03:14:59.219Z",
+          "technical": 59.69,
+          "social": 41.98,
+          "fundamental": 75,
+          "astrology": 91.08,
+          "btc_price": 110265.69002155038,
+          "eth_price": 2682.354038332218,
+          "sol_price": 117.75
+        },
+        {
+          "date": "2025-06-11",
+          "timestamp": "2025-06-11T03:14:59.219Z",
+          "technical": 59.43,
+          "social": 40.31,
+          "fundamental": 75,
+          "astrology": 91.18,
+          "btc_price": 110212.73252109604,
+          "eth_price": 2808.503208314919,
+          "sol_price": 111.79
+        },
+        {
+          "date": "2025-06-12",
+          "timestamp": "2025-06-12T03:14:59.219Z",
+          "technical": 60.91,
+          "social": 38.43,
+          "fundamental": 75,
+          "astrology": 95,
+          "btc_price": 108686.78360356209,
+          "eth_price": 2774.902334202254,
+          "sol_price": 113.05
+        },
+        {
+          "date": "2025-06-13",
+          "timestamp": "2025-06-13T03:14:59.219Z",
+          "technical": 60.91,
+          "social": 37.61,
+          "fundamental": 75,
+          "astrology": 95,
+          "btc_price": 105897.58456696918,
+          "eth_price": 2650.1019438066674,
+          "sol_price": 118.86
+        },
+        {
+          "date": "2025-06-14",
+          "timestamp": "2025-06-14T03:14:59.219Z",
+          "technical": 62.11,
+          "social": 37.85,
+          "fundamental": 75,
+          "astrology": 92.69,
+          "btc_price": 106068.92114368563,
+          "eth_price": 2578.1893703419114,
+          "sol_price": 122.97
+        },
+        {
+          "date": "2025-06-15",
+          "timestamp": "2025-06-15T03:14:59.219Z",
+          "technical": 61.64,
+          "social": 34.56,
+          "fundamental": 75,
+          "astrology": 95,
+          "btc_price": 105459.03569251344,
+          "eth_price": 2533.1594418173227,
+          "sol_price": 118.53
+        },
+        {
+          "date": "2025-06-16",
+          "timestamp": "2025-06-16T03:14:59.219Z",
+          "technical": 61.95,
+          "social": 36.35,
+          "fundamental": 75,
+          "astrology": 93.21,
+          "btc_price": 105564.16534458233,
+          "eth_price": 2547.1986772890696,
+          "sol_price": 120.7
+        }
+      ]
+    },
+    {
+      "timestamp": "2025-06-16T03:15:06.858Z",
+      "period_days": 30,
+      "data_points": 30,
+      "correlation_matrix": {
+        "SOL Technical": {
+          "SOL Technical": 1,
+          "SOL Social": 0.956,
+          "SOL Fundamental": 0.992,
+          "SOL Astrology": 0.855,
+          "BTC Price": -0.197,
+          "ETH Price": 0.303,
+          "SOL Price": 0.388
+        },
+        "SOL Social": {
+          "SOL Technical": 0.956,
+          "SOL Social": 1,
+          "SOL Fundamental": 0.971,
+          "SOL Astrology": 0.83,
+          "BTC Price": -0.337,
+          "ETH Price": 0.161,
+          "SOL Price": 0.29
+        },
+        "SOL Fundamental": {
+          "SOL Technical": 0.992,
+          "SOL Social": 0.971,
+          "SOL Fundamental": 1,
+          "SOL Astrology": 0.843,
+          "BTC Price": -0.228,
+          "ETH Price": 0.255,
+          "SOL Price": 0.39
+        },
+        "SOL Astrology": {
+          "SOL Technical": 0.855,
+          "SOL Social": 0.83,
+          "SOL Fundamental": 0.843,
+          "SOL Astrology": 1,
+          "BTC Price": -0.147,
+          "ETH Price": 0.323,
+          "SOL Price": 0.159
+        },
+        "BTC Price": {
+          "SOL Technical": -0.197,
+          "SOL Social": -0.337,
+          "SOL Fundamental": -0.228,
+          "SOL Astrology": -0.147,
+          "BTC Price": 1,
+          "ETH Price": 0.651,
+          "SOL Price": 0.058
+        },
+        "ETH Price": {
+          "SOL Technical": 0.303,
+          "SOL Social": 0.161,
+          "SOL Fundamental": 0.255,
+          "SOL Astrology": 0.323,
+          "BTC Price": 0.651,
+          "ETH Price": 1,
+          "SOL Price": 0.004
+        },
+        "SOL Price": {
+          "SOL Technical": 0.388,
+          "SOL Social": 0.29,
+          "SOL Fundamental": 0.39,
+          "SOL Astrology": 0.159,
+          "BTC Price": 0.058,
+          "ETH Price": 0.004,
+          "SOL Price": 1
+        }
+      },
+      "variables": [
+        "SOL Technical",
+        "SOL Social",
+        "SOL Fundamental",
+        "SOL Astrology",
+        "BTC Price",
+        "ETH Price",
+        "SOL Price"
+      ],
+      "insights": {
+        "strongest_correlations": [
+          {
+            "variables": [
+              "SOL Technical",
+              "SOL Fundamental"
+            ],
+            "correlation": 0.992,
+            "interpretation": "Strong positive correlation"
+          },
+          {
+            "variables": [
+              "SOL Social",
+              "SOL Fundamental"
+            ],
+            "correlation": 0.971,
+            "interpretation": "Strong positive correlation"
+          },
+          {
+            "variables": [
+              "SOL Technical",
+              "SOL Social"
+            ],
+            "correlation": 0.956,
+            "interpretation": "Strong positive correlation"
+          },
+          {
+            "variables": [
+              "SOL Technical",
+              "SOL Astrology"
+            ],
+            "correlation": 0.855,
+            "interpretation": "Strong positive correlation"
+          },
+          {
+            "variables": [
+              "SOL Fundamental",
+              "SOL Astrology"
+            ],
+            "correlation": 0.843,
+            "interpretation": "Strong positive correlation"
+          }
+        ],
+        "weakest_correlations": [
+          {
+            "variables": [
+              "SOL Social",
+              "ETH Price"
+            ],
+            "correlation": 0.161,
+            "interpretation": "No significant correlation"
+          },
+          {
+            "variables": [
+              "SOL Astrology",
+              "SOL Price"
+            ],
+            "correlation": 0.159,
+            "interpretation": "No significant correlation"
+          },
+          {
+            "variables": [
+              "SOL Astrology",
+              "BTC Price"
+            ],
+            "correlation": -0.147,
+            "interpretation": "No significant correlation"
+          },
+          {
+            "variables": [
+              "BTC Price",
+              "SOL Price"
+            ],
+            "correlation": 0.058,
+            "interpretation": "No significant correlation"
+          },
+          {
+            "variables": [
+              "ETH Price",
+              "SOL Price"
+            ],
+            "correlation": 0.004,
+            "interpretation": "No significant correlation"
+          }
+        ],
+        "pillar_relationships": {
+          "SOL Technical": {
+            "SOL Social": 0.956,
+            "SOL Fundamental": 0.992,
+            "SOL Astrology": 0.855
+          },
+          "SOL Social": {
+            "SOL Technical": 0.956,
+            "SOL Fundamental": 0.971,
+            "SOL Astrology": 0.83
+          },
+          "SOL Fundamental": {
+            "SOL Technical": 0.992,
+            "SOL Social": 0.971,
+            "SOL Astrology": 0.843
+          },
+          "SOL Astrology": {
+            "SOL Technical": 0.855,
+            "SOL Social": 0.83,
+            "SOL Fundamental": 0.843
+          }
+        },
+        "asset_relationships": {
+          "BTC Price": {
+            "ETH Price": 0.651,
+            "SOL Price": 0.058
+          },
+          "ETH Price": {
+            "BTC Price": 0.651,
+            "SOL Price": 0.004
+          },
+          "SOL Price": {
+            "BTC Price": 0.058,
+            "ETH Price": 0.004
+          }
+        },
+        "summary": {
+          "mean_correlation": 0.358,
+          "max_correlation": 0.992,
+          "min_correlation": -0.337,
+          "high_correlation_count": 6,
+          "moderate_correlation_count": 6,
+          "weak_correlation_count": 9
+        }
+      },
+      "raw_data": [
+        {
+          "date": "2025-05-18",
+          "timestamp": "2025-05-18T03:15:06.856Z",
+          "technical": 35.58,
+          "social": 32.84,
+          "fundamental": 33.54,
+          "astrology": 58.9,
+          "btc_price": 103194.65650649132,
+          "eth_price": 2476.1381403269975,
+          "sol_price": 151.17
+        },
+        {
+          "date": "2025-05-19",
+          "timestamp": "2025-05-19T03:15:06.856Z",
+          "technical": 35.82,
+          "social": 32.34,
+          "fundamental": 33.82,
+          "astrology": 56.92,
+          "btc_price": 106139.68550864227,
+          "eth_price": 2473.8388724116753,
+          "sol_price": 145.41
+        },
+        {
+          "date": "2025-05-20",
+          "timestamp": "2025-05-20T03:15:06.856Z",
+          "technical": 37.15,
+          "social": 31.24,
+          "fundamental": 35.14,
+          "astrology": 63.23,
+          "btc_price": 105663.20354903601,
+          "eth_price": 2530.030833562055,
+          "sol_price": 146.4
+        },
+        {
+          "date": "2025-05-21",
+          "timestamp": "2025-05-21T03:15:06.856Z",
+          "technical": 37.18,
+          "social": 30.84,
+          "fundamental": 35.39,
+          "astrology": 67.94,
+          "btc_price": 106798.53751514817,
+          "eth_price": 2523.24767489843,
+          "sol_price": 147.74
+        },
+        {
+          "date": "2025-05-22",
+          "timestamp": "2025-05-22T03:15:06.856Z",
+          "technical": 37.01,
+          "social": 30.4,
+          "fundamental": 35.45,
+          "astrology": 68.35,
+          "btc_price": 109665.86371625263,
+          "eth_price": 2558.9502343769486,
+          "sol_price": 143.76
+        },
+        {
+          "date": "2025-05-23",
+          "timestamp": "2025-05-23T03:15:06.856Z",
+          "technical": 39,
+          "social": 32.33,
+          "fundamental": 37.5,
+          "astrology": 70.38,
+          "btc_price": 111579.18064152761,
+          "eth_price": 2658.6712468472556,
+          "sol_price": 151.27
+        },
+        {
+          "date": "2025-05-24",
+          "timestamp": "2025-05-24T03:15:06.856Z",
+          "technical": 40.53,
+          "social": 34.57,
+          "fundamental": 39.33,
+          "astrology": 69.44,
+          "btc_price": 107216.66856870624,
+          "eth_price": 2519.813809045145,
+          "sol_price": 153.13
+        },
+        {
+          "date": "2025-05-25",
+          "timestamp": "2025-05-25T03:15:06.856Z",
+          "technical": 41.21,
+          "social": 33.69,
+          "fundamental": 40.52,
+          "astrology": 73.72,
+          "btc_price": 107819.03500967441,
+          "eth_price": 2529.763966464483,
+          "sol_price": 153.04
+        },
+        {
+          "date": "2025-05-26",
+          "timestamp": "2025-05-26T03:15:06.856Z",
+          "technical": 41.51,
+          "social": 34.79,
+          "fundamental": 41.42,
+          "astrology": 78.16,
+          "btc_price": 108900.60971032295,
+          "eth_price": 2548.14797380859,
+          "sol_price": 153.68
+        },
+        {
+          "date": "2025-05-27",
+          "timestamp": "2025-05-27T03:15:06.856Z",
+          "technical": 42.08,
+          "social": 36.03,
+          "fundamental": 42.61,
+          "astrology": 85.54,
+          "btc_price": 109393.7426319189,
+          "eth_price": 2562.4409846186127,
+          "sol_price": 147.48
+        },
+        {
+          "date": "2025-05-28",
+          "timestamp": "2025-05-28T03:15:06.856Z",
+          "technical": 44.69,
+          "social": 35.8,
+          "fundamental": 45.75,
+          "astrology": 90.02,
+          "btc_price": 109068.45694901445,
+          "eth_price": 2662.0940568241435,
+          "sol_price": 140.19
+        },
+        {
+          "date": "2025-05-29",
+          "timestamp": "2025-05-29T03:15:06.856Z",
+          "technical": 47.1,
+          "social": 35.25,
+          "fundamental": 48.97,
+          "astrology": 90.63,
+          "btc_price": 107830.09824019176,
+          "eth_price": 2679.875687205419,
+          "sol_price": 142.15
+        },
+        {
+          "date": "2025-05-30",
+          "timestamp": "2025-05-30T03:15:06.856Z",
+          "technical": 47.84,
+          "social": 37.21,
+          "fundamental": 50.87,
+          "astrology": 88.36,
+          "btc_price": 105719.8746352865,
+          "eth_price": 2631.9083003349624,
+          "sol_price": 150.2
+        },
+        {
+          "date": "2025-05-31",
+          "timestamp": "2025-05-31T03:15:06.856Z",
+          "technical": 49.58,
+          "social": 40.39,
+          "fundamental": 53.77,
+          "astrology": 95,
+          "btc_price": 104020.87024454171,
+          "eth_price": 2527.700316388642,
+          "sol_price": 155.72
+        },
+        {
+          "date": "2025-06-01",
+          "timestamp": "2025-06-01T03:15:06.856Z",
+          "technical": 49.92,
+          "social": 42.32,
+          "fundamental": 55.55,
+          "astrology": 95,
+          "btc_price": 104686.33390404454,
+          "eth_price": 2531.533172761844,
+          "sol_price": 148.64
+        },
+        {
+          "date": "2025-06-02",
+          "timestamp": "2025-06-02T03:15:06.856Z",
+          "technical": 51.04,
+          "social": 45.48,
+          "fundamental": 58.09,
+          "astrology": 95,
+          "btc_price": 105698.43787667034,
+          "eth_price": 2538.2846946910217,
+          "sol_price": 140.59
+        },
+        {
+          "date": "2025-06-03",
+          "timestamp": "2025-06-03T03:15:06.856Z",
+          "technical": 52.44,
+          "social": 47.85,
+          "fundamental": 61,
+          "astrology": 95,
+          "btc_price": 105883.83175718882,
+          "eth_price": 2610.8639611906437,
+          "sol_price": 143.88
+        },
+        {
+          "date": "2025-06-04",
+          "timestamp": "2025-06-04T03:15:06.856Z",
+          "technical": 54.14,
+          "social": 47.83,
+          "fundamental": 64.33,
+          "astrology": 95,
+          "btc_price": 105430.86066799659,
+          "eth_price": 2594.777557170298,
+          "sol_price": 141.98
+        },
+        {
+          "date": "2025-06-05",
+          "timestamp": "2025-06-05T03:15:06.856Z",
+          "technical": 54.95,
+          "social": 50.87,
+          "fundamental": 67.01,
+          "astrology": 93.63,
+          "btc_price": 104803.00653561577,
+          "eth_price": 2609.9504866476827,
+          "sol_price": 144.43
+        },
+        {
+          "date": "2025-06-06",
+          "timestamp": "2025-06-06T03:15:06.856Z",
+          "technical": 57,
+          "social": 49.88,
+          "fundamental": 70.91,
+          "astrology": 90.61,
+          "btc_price": 101597.8403831928,
+          "eth_price": 2419.508274317192,
+          "sol_price": 150.36
+        },
+        {
+          "date": "2025-06-07",
+          "timestamp": "2025-06-07T03:15:06.856Z",
+          "technical": 57.66,
+          "social": 50.1,
+          "fundamental": 73.73,
+          "astrology": 95,
+          "btc_price": 104409.74967959142,
+          "eth_price": 2481.4039836690267,
+          "sol_price": 157.48
+        },
+        {
+          "date": "2025-06-08",
+          "timestamp": "2025-06-08T03:15:06.856Z",
+          "technical": 58.58,
+          "social": 49.43,
+          "fundamental": 75,
+          "astrology": 93.66,
+          "btc_price": 105665.12362716689,
+          "eth_price": 2525.8150122010156,
+          "sol_price": 149.68
+        },
+        {
+          "date": "2025-06-09",
+          "timestamp": "2025-06-09T03:15:06.856Z",
+          "technical": 58.84,
+          "social": 47.99,
+          "fundamental": 75,
+          "astrology": 95,
+          "btc_price": 105724.23517396167,
+          "eth_price": 2509.012947498987,
+          "sol_price": 155.41
+        },
+        {
+          "date": "2025-06-10",
+          "timestamp": "2025-06-10T03:15:06.856Z",
+          "technical": 60.88,
+          "social": 48.52,
+          "fundamental": 75,
+          "astrology": 95,
+          "btc_price": 110265.69002155038,
+          "eth_price": 2682.354038332218,
+          "sol_price": 163.75
+        },
+        {
+          "date": "2025-06-11",
+          "timestamp": "2025-06-11T03:15:06.856Z",
+          "technical": 60.47,
+          "social": 47.42,
+          "fundamental": 75,
+          "astrology": 95,
+          "btc_price": 110212.73252109604,
+          "eth_price": 2808.503208314919,
+          "sol_price": 157.65
+        },
+        {
+          "date": "2025-06-12",
+          "timestamp": "2025-06-12T03:15:06.856Z",
+          "technical": 61.89,
+          "social": 49.28,
+          "fundamental": 75,
+          "astrology": 92.35,
+          "btc_price": 108686.78360356209,
+          "eth_price": 2774.902334202254,
+          "sol_price": 149.16
+        },
+        {
+          "date": "2025-06-13",
+          "timestamp": "2025-06-13T03:15:06.856Z",
+          "technical": 62.92,
+          "social": 50.38,
+          "fundamental": 75,
+          "astrology": 90.32,
+          "btc_price": 105897.58456696918,
+          "eth_price": 2650.1019438066674,
+          "sol_price": 150.63
+        },
+        {
+          "date": "2025-06-14",
+          "timestamp": "2025-06-14T03:15:06.856Z",
+          "technical": 62.9,
+          "social": 48.36,
+          "fundamental": 75,
+          "astrology": 93.78,
+          "btc_price": 106068.92114368563,
+          "eth_price": 2578.1893703419114,
+          "sol_price": 153.97
+        },
+        {
+          "date": "2025-06-15",
+          "timestamp": "2025-06-15T03:15:06.856Z",
+          "technical": 62.46,
+          "social": 50.8,
+          "fundamental": 75,
+          "astrology": 95,
+          "btc_price": 105459.03569251344,
+          "eth_price": 2533.1594418173227,
+          "sol_price": 155.38
+        },
+        {
+          "date": "2025-06-16",
+          "timestamp": "2025-06-16T03:15:06.856Z",
+          "technical": 62.41,
+          "social": 50.26,
+          "fundamental": 75,
+          "astrology": 95,
+          "btc_price": 105564.16534458233,
+          "eth_price": 2547.1986772890696,
+          "sol_price": 154.34
+        }
+      ]
+    }
+  ],
+  "lastUpdated": "2025-06-16T03:15:06.858Z"
+}
