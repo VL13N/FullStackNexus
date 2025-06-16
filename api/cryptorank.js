@@ -175,8 +175,10 @@ export async function fetchSolanaSparkline(from = null, to = null, interval = '1
       throw new Error('Invalid date parameters provided');
     }
     
-    // Use Basic plan endpoint: /v2/currencies/:id/sparkline with numeric ID (5663 = Solana)
-    const endpoint = `currencies/5663/sparkline?from=${fromDate.toISOString()}&to=${toDate.toISOString()}&interval=${interval}`;
+    // Use Basic plan endpoint: /v2/currencies/:id/sparkline with numeric ID and Unix timestamps
+    const fromUnix = Math.floor(fromDate.getTime() / 1000);
+    const toUnix = Math.floor(toDate.getTime() / 1000);
+    const endpoint = `currencies/5663/sparkline?from=${fromUnix}&to=${toUnix}&interval=${interval}`;
     const responseData = await makeV2Request(endpoint);
     
     if (responseData.data && Array.isArray(responseData.data)) {
