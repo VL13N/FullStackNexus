@@ -20,6 +20,17 @@ An advanced astrological cryptocurrency analytics platform that blends astronomi
 
 ## Recent Changes
 
+### June 16, 2025 - SHAP-based Feature Importance Endpoint Complete
+- **Created comprehensive feature importance analysis endpoint** (/api/ml/feature-importance) using Integrated Gradients method for ML model interpretability
+- **Implemented TensorFlow.js gradient computation** with 50-step interpolation between baseline and input features for accurate SHAP-like attributions
+- **Built complete feature attribution system** analyzing 45 features across price, technical, social, fundamental, and astrological domains
+- **Added comprehensive unit test suite** (__tests__/featureImportance.test.ts) validating output structure, sorting, tensor management, and error handling
+- **Integrated Supabase data retrieval** fetching most recent feature vectors from ml_features table for real-time analysis
+- **Created proper tensor memory management** with automatic disposal to prevent memory leaks during gradient computation
+- **Added feature importance ranking** sorted by absolute attribution values descending for identifying most influential prediction factors
+- **Built robust error handling** for missing models, insufficient data, and database connectivity issues
+- **Implemented authentic data integration** using latest feature vectors from live prediction system for real-time interpretability analysis
+
 ### June 16, 2025 - Backtesting & Automated Retraining System Complete
 - **Created comprehensive backtesting framework** (scripts/backtestRunner.js) validating ML predictions against actual SOL price movements with P&L calculations
 - **Built automated retraining system** (scripts/triggerRetrain.js) triggering model updates when Sharpe ratio exceeds performance thresholds
