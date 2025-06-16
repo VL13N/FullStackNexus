@@ -45,6 +45,28 @@ router.get('/social', async (req, res) => {
   }
 });
 
+// GET /api/lunarcrush/news - Get Solana news using v1 topic endpoint
+router.get('/news', async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+    const data = await lunarCrushService.getSolanaNews(parseInt(limit));
+    
+    res.json({
+      success: true,
+      type: 'solana_news',
+      limit: parseInt(limit),
+      data,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // GET /api/lunarcrush/influencers - Get Solana influencers
 router.get('/influencers', async (req, res) => {
   try {

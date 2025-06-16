@@ -28,8 +28,15 @@ class LunarCrushService {
   async makeRequest(endpoint, maxRetries = 3) {
     this.validateApiKey();
     
-    // v1 API uses query parameters format: ?data=assets&symbol=SOL&key=xxx
-    const url = `${this.baseUrl}?${endpoint}&key=${this.apiKey}`;
+    // Build URL based on endpoint type - either path-based or query-based
+    let url;
+    if (endpoint.startsWith('/')) {
+      // Path-based endpoint like /coins/sol/v1
+      url = `${this.baseUrl}${endpoint}?key=${this.apiKey}`;
+    } else {
+      // Legacy query-based endpoint
+      url = `${this.baseUrl}?${endpoint}&key=${this.apiKey}`;
+    }
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -45,6 +52,10 @@ class LunarCrushService {
         });
         
         if (!response.ok) {
+          // Log status and full response for non-200 responses
+          const responseText = await response.text();
+          console.error(`LunarCrush API Error - Status: ${response.status}, Response: ${responseText}`);
+          
           if (response.status === 429) {
             // Rate limit - exponential backoff
             const waitTime = Math.pow(2, attempt) * 2000; // 2s, 4s, 8s
@@ -62,8 +73,7 @@ class LunarCrushService {
           }
           
           // Client error - don't retry
-          const errorText = await response.text();
-          throw new Error(`HTTP ${response.status}: ${errorText}`);
+          throw new Error(`HTTP ${response.status}: ${responseText}`);
         }
 
         const data = await response.json();
@@ -94,7 +104,7 @@ class LunarCrushService {
    */
   async validateApiKeyConnection() {
     try {
-      const response = await this.makeRequest('coins/SOL');
+      const response = await this.makeRequest('/coins/sol/v1');
       return { valid: true, message: 'API key is valid' };
     } catch (error) {
       return { valid: false, message: error.message };
@@ -107,7 +117,8 @@ class LunarCrushService {
    */
   async getSolanaMetrics(symbol = 'SOL') {
     try {
-      const data = await this.makeRequest(`data=assets&symbol=${symbol}`);
+      // Use the correct v1 endpoint: /coins/sol/v1
+      const data = await this.makeRequest(`/coins/${symbol.toLowerCase()}/v1`);
       
       // LunarCrush v1 API response structure
       const coinData = data.data || data;
@@ -164,62 +175,109 @@ class LunarCrushService {
   }
 
   /**
-   * Get detailed social metrics for Solana
+   * Get Solana news using v1 topic endpoint
+   */
+  async getSolanaNews(limit = 10) {
+    try {
+      // Use the correct v1 endpoint: /topic/solana/news/v1
+      const data = await this.makeRequest(`/topic/solana/news/v1?limit=${limit}`);
+      
+      if (data.data && Array.isArray(data.data)) {
+        return {
+          symbol: 'SOL',
+          topic: 'solana',
+          news: data.data.map(article => ({
+            id: article.id,
+            title: article.title,
+            url: article.url,
+            time: article.time,
+            sentiment: article.sentiment,
+            interactions: article.interactions,
+            type: article.type,
+            source: article.source
+          })),
+          timestamp: new Date().toISOString()
+        };
+      }
+      
+      throw new Error('No news data found for Solana');
+    } catch (error) {
+      console.warn('LunarCrush news API unavailable:', error.message);
+      return {
+        symbol: 'SOL',
+        topic: 'solana',
+        news: [],
+        timestamp: new Date().toISOString(),
+        error: 'News data temporarily unavailable'
+      };
+    }
+  }
+
+  /**
+   * Get detailed social metrics for Solana using v1 coins endpoint
    */
   async getSolanaSocialMetrics() {
-    const params = {
-      data: 'assets',
-      symbol: 'SOL'
-    };
-
-    const data = await this.makeRequest(params);
-    
-    if (data.data && data.data.length > 0) {
-      const solana = data.data[0];
+    try {
+      // Use the correct v1 endpoint: /coins/sol/v1
+      const data = await this.makeRequest('/coins/sol/v1');
       
+      if (data.data || data) {
+        const solana = data.data || data;
+        
+        return {
+          symbol: 'SOL',
+          name: 'Solana',
+          socialMetrics: {
+            galaxyScore: {
+              value: solana.galaxy_score || solana.gs,
+              description: 'Galaxy Score™ - Overall health and performance metric'
+            },
+            altRank: {
+              value: solana.alt_rank || solana.acr,
+              description: 'AltRank™ - Alternative ranking based on social activity'
+            },
+            socialVolume: {
+              value: solana.social_volume || solana.sv,
+              description: 'Total social media mentions and discussions'
+            },
+            socialScore: {
+              value: solana.social_score || solana.ss,
+              description: 'Social engagement and sentiment score'
+            },
+            socialContributors: {
+              value: solana.social_contributors || solana.sc,
+              description: 'Number of unique social contributors'
+            },
+            socialDominance: {
+              value: solana.social_dominance || solana.sd,
+              description: 'Social dominance compared to other cryptocurrencies'
+            }
+          },
+          marketMetrics: {
+            price: solana.price || solana.p,
+            priceChange24h: solana.percent_change_24h || solana.pc,
+            volume24h: solana.volume_24h || solana.v,
+            marketCap: solana.market_cap || solana.mc,
+            marketDominance: solana.market_dominance || solana.md,
+            correlationRank: solana.correlation_rank || solana.cr,
+            volatility: solana.volatility
+          },
+          timestamp: new Date().toISOString()
+        };
+      }
+      
+      throw new Error('No social metrics data found for Solana');
+    } catch (error) {
+      console.warn('LunarCrush social metrics API unavailable:', error.message);
       return {
         symbol: 'SOL',
         name: 'Solana',
-        socialMetrics: {
-          galaxyScore: {
-            value: solana.gs,
-            description: 'Galaxy Score™ - Overall health and performance metric'
-          },
-          altRank: {
-            value: solana.acr,
-            description: 'AltRank™ - Alternative ranking based on social activity'
-          },
-          socialVolume: {
-            value: solana.sv,
-            description: 'Total social media mentions and discussions'
-          },
-          socialScore: {
-            value: solana.ss,
-            description: 'Social engagement and sentiment score'
-          },
-          socialContributors: {
-            value: solana.sc,
-            description: 'Number of unique social contributors'
-          },
-          socialDominance: {
-            value: solana.sd,
-            description: 'Social dominance compared to other cryptocurrencies'
-          }
-        },
-        marketMetrics: {
-          price: solana.p,
-          priceChange24h: solana.pc,
-          volume24h: solana.v,
-          marketCap: solana.mc,
-          marketDominance: solana.md,
-          correlationRank: solana.cr,
-          volatility: solana.volatility
-        },
-        timestamp: new Date().toISOString()
+        socialMetrics: {},
+        marketMetrics: {},
+        timestamp: new Date().toISOString(),
+        error: 'Social metrics temporarily unavailable'
       };
     }
-    
-    throw new Error('No social metrics data found for Solana');
   }
 
   /**
@@ -340,22 +398,22 @@ class LunarCrushService {
    */
   async getComprehensiveSolanaAnalysis() {
     try {
-      const [socialMetrics, influencers, feed] = await Promise.allSettled([
+      const [socialMetrics, news, coinStats] = await Promise.allSettled([
         this.getSolanaSocialMetrics(),
-        this.getSolanaInfluencers(5),
-        this.getSolanaFeed(10)
+        this.getSolanaNews(10),
+        this.getSolanaMetrics('SOL')
       ]);
 
       return {
         symbol: 'SOL',
         name: 'Solana',
         socialMetrics: socialMetrics.status === 'fulfilled' ? socialMetrics.value : null,
-        topInfluencers: influencers.status === 'fulfilled' ? influencers.value : null,
-        recentFeed: feed.status === 'fulfilled' ? feed.value : null,
+        news: news.status === 'fulfilled' ? news.value : null,
+        coinStats: coinStats.status === 'fulfilled' ? coinStats.value : null,
         errors: [
           ...(socialMetrics.status === 'rejected' ? [{ type: 'socialMetrics', error: socialMetrics.reason.message }] : []),
-          ...(influencers.status === 'rejected' ? [{ type: 'influencers', error: influencers.reason.message }] : []),
-          ...(feed.status === 'rejected' ? [{ type: 'feed', error: feed.reason.message }] : [])
+          ...(news.status === 'rejected' ? [{ type: 'news', error: news.reason.message }] : []),
+          ...(coinStats.status === 'rejected' ? [{ type: 'coinStats', error: coinStats.reason.message }] : [])
         ],
         timestamp: new Date().toISOString()
       };
@@ -365,34 +423,44 @@ class LunarCrushService {
   }
 
   /**
-   * Get multiple cryptocurrencies comparison including Solana
+   * Get multiple cryptocurrencies comparison including Solana using v1 coins list endpoint
    * @param {Array} symbols - Array of symbols to compare (default includes SOL)
    */
   async getMultiAssetComparison(symbols = ['SOL', 'BTC', 'ETH', 'ADA', 'DOT']) {
-    const params = {
-      data: 'assets',
-      symbol: symbols.join(',')
-    };
-
-    const data = await this.makeRequest(params);
-    
-    if (data.data) {
+    try {
+      // Use the correct v1 endpoint: /coins/list/v1
+      const data = await this.makeRequest(`/coins/list/v1?limit=100`);
+      
+      if (data.data && Array.isArray(data.data)) {
+        // Filter for requested symbols
+        const filteredAssets = data.data.filter(asset => 
+          symbols.includes(asset.symbol?.toUpperCase() || asset.s?.toUpperCase())
+        );
+        
+        return {
+          comparison: filteredAssets.map(asset => ({
+            symbol: asset.symbol || asset.s,
+            name: asset.name || asset.n,
+            price: asset.price || asset.p,
+            galaxyScore: asset.galaxy_score || asset.gs,
+            altRank: asset.alt_rank || asset.acr,
+            socialVolume: asset.social_volume || asset.sv,
+            socialScore: asset.social_score || asset.ss,
+            marketCap: asset.market_cap || asset.mc
+          })),
+          timestamp: new Date().toISOString()
+        };
+      }
+      
+      throw new Error('No comparison data found');
+    } catch (error) {
+      console.warn('LunarCrush multi-asset comparison API unavailable:', error.message);
       return {
-        comparison: data.data.map(asset => ({
-          symbol: asset.s,
-          name: asset.n,
-          price: asset.p,
-          galaxyScore: asset.gs,
-          altRank: asset.acr,
-          socialVolume: asset.sv,
-          socialScore: asset.ss,
-          marketCap: asset.mc
-        })),
-        timestamp: new Date().toISOString()
+        comparison: [],
+        timestamp: new Date().toISOString(),
+        error: 'Comparison data temporarily unavailable'
       };
     }
-    
-    throw new Error('No comparison data found');
   }
 
   /**
