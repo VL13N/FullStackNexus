@@ -277,6 +277,12 @@ function Navigation() {
                 Backtest
               </Button>
             </Link>
+            <Link href="/alerts">
+              <Button variant={location === '/alerts' ? 'default' : 'ghost'} size="sm">
+                <Bell className="h-4 w-4 mr-1" />
+                Alerts
+              </Button>
+            </Link>
             <Link href="/settings">
               <Button variant={location === '/settings' ? 'default' : 'ghost'} size="sm">
                 <Settings className="h-4 w-4 mr-1" />
