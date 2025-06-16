@@ -15,6 +15,7 @@ import LivePredictions from "@/pages/live-predictions";
 import MLTraining from "@/pages/ml-training";
 import AdvancedAstrology from "@/pages/advanced-astrology";
 import Backtest from "@/pages/Backtest";
+import BacktestAnalysis from "@/pages/BacktestAnalysis";
 import Alerts from "@/pages/Alerts";
 import CorrelationAnalysis from "@/pages/CorrelationAnalysis";
 import RiskManagement from "@/pages/RiskManagement";
@@ -296,6 +297,12 @@ function Navigation() {
                 Backtest
               </Button>
             </Link>
+            <Link href="/backtest-analysis">
+              <Button variant={location === '/backtest-analysis' ? 'default' : 'ghost'} size="sm">
+                <BarChart3 className="h-4 w-4 mr-1" />
+                SHAP Analysis
+              </Button>
+            </Link>
             <Link href="/alerts">
               <Button variant={location === '/alerts' ? 'default' : 'ghost'} size="sm">
                 <Bell className="h-4 w-4 mr-1" />
@@ -347,6 +354,7 @@ function Router() {
         <Route path="/ensemble" component={EnsembleComparison} />
         <Route path="/advanced-astrology" component={AdvancedAstrology} />
         <Route path="/backtest" component={Backtest} />
+        <Route path="/backtest-analysis" component={BacktestAnalysis} />
         <Route path="/alerts" component={Alerts} />
         <Route path="/correlation" component={CorrelationAnalysis} />
         <Route path="/risk-management" component={RiskManagement} />
