@@ -5,10 +5,10 @@ import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 interface PredictionData {
   symbol: string;
-  prediction: number;
-  confidence: number;
-  composite_score: number;
-  category: string;
+  prediction?: number | null;
+  confidence: number | null;
+  composite_score: number | null;
+  category?: string;
   timestamp: string;
 }
 
@@ -22,7 +22,8 @@ export default function Heatmap({ className = "" }: HeatmapProps) {
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
-  const getScoreColor = (score: number): string => {
+  const getScoreColor = (score: number | null): string => {
+    if (score == null) return 'bg-gray-400 text-white';
     if (score >= 240) return 'bg-green-500 text-white';
     if (score >= 220) return 'bg-green-400 text-white';
     if (score >= 200) return 'bg-green-300 text-black';
@@ -32,7 +33,7 @@ export default function Heatmap({ className = "" }: HeatmapProps) {
     return 'bg-red-500 text-white';
   };
 
-  const getCategoryIcon = (category: string) => {
+  const getCategoryIcon = (category?: string) => {
     switch (category) {
       case 'BULLISH': return <TrendingUp className="w-4 h-4" />;
       case 'BEARISH': return <TrendingDown className="w-4 h-4" />;
@@ -40,12 +41,16 @@ export default function Heatmap({ className = "" }: HeatmapProps) {
     }
   };
 
-  const getCategoryColor = (category: string): string => {
+  const getCategoryColor = (category?: string): string => {
     switch (category) {
       case 'BULLISH': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
       case 'BEARISH': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
     }
+  };
+
+  const getDisplayCategory = (category?: string): string => {
+    return category || 'NEUTRAL';
   };
 
   if (isLoading) {
@@ -80,7 +85,7 @@ export default function Heatmap({ className = "" }: HeatmapProps) {
     );
   }
 
-  const predictions: PredictionData[] = data?.data || [];
+  const predictions: PredictionData[] = (data as any)?.data || [];
 
   return (
     <Card className={className}>
@@ -117,19 +122,26 @@ export default function Heatmap({ className = "" }: HeatmapProps) {
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span>Score:</span>
-                    <span className="font-semibold">{prediction.composite_score.toFixed(0)}</span>
+                    <span className="font-semibold">
+                      {prediction.composite_score != null ? prediction.composite_score.toFixed(0) : 'N/A'}
+                    </span>
                   </div>
                   
                   <div className="flex justify-between">
                     <span>Prediction:</span>
                     <span className="font-semibold">
-                      {prediction.prediction > 0 ? '+' : ''}{prediction.prediction.toFixed(2)}%
+                      {prediction.prediction != null ? 
+                        `${prediction.prediction > 0 ? '+' : ''}${prediction.prediction.toFixed(2)}%` : 
+                        'N/A'
+                      }
                     </span>
                   </div>
                   
                   <div className="flex justify-between">
                     <span>Confidence:</span>
-                    <span className="font-semibold">{(prediction.confidence * 100).toFixed(0)}%</span>
+                    <span className="font-semibold">
+                      {prediction.confidence != null ? (prediction.confidence * 100).toFixed(0) + '%' : 'N/A'}
+                    </span>
                   </div>
                 </div>
                 
@@ -138,7 +150,7 @@ export default function Heatmap({ className = "" }: HeatmapProps) {
                     className={`text-xs w-full justify-center ${getCategoryColor(prediction.category)}`}
                     variant="secondary"
                   >
-                    {prediction.category}
+                    {getDisplayCategory(prediction.category)}
                   </Badge>
                 </div>
               </div>
