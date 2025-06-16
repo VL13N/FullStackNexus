@@ -17,6 +17,7 @@ import AdvancedAstrology from "@/pages/advanced-astrology";
 import Backtest from "@/pages/Backtest";
 import Alerts from "@/pages/Alerts";
 import CorrelationAnalysis from "@/pages/CorrelationAnalysis";
+import RiskManagement from "@/pages/RiskManagement";
 import TaapiDemo from "../../components/TaapiDemo";
 import CryptoRankDemo from "../../components/CryptoRankDemo";
 import OnChainDemo from "../../components/OnChainDemo";
@@ -26,7 +27,7 @@ import PredictionWidget from "../../components/PredictionWidget";
 import MLEnsembleDemo from "@/components/MLEnsembleDemo";
 import ExplainabilityDashboard from "@/components/ExplainabilityDashboard";
 import EnsembleComparison from "@/components/EnsembleComparison";
-import { Activity, BarChart3, Database, TrendingUp, Sparkles, Brain, Settings, Target, Bell, GitBranch } from "lucide-react";
+import { Activity, BarChart3, Database, TrendingUp, Sparkles, Brain, Settings, Target, Bell, GitBranch, Shield } from "lucide-react";
 
 function LandingPage() {
   return (
@@ -290,6 +291,12 @@ function Navigation() {
                 Correlations
               </Button>
             </Link>
+            <Link href="/risk-management">
+              <Button variant={location === '/risk-management' ? 'default' : 'ghost'} size="sm">
+                <Shield className="h-4 w-4 mr-1" />
+                Risk
+              </Button>
+            </Link>
             <Link href="/settings">
               <Button variant={location === '/settings' ? 'default' : 'ghost'} size="sm">
                 <Settings className="h-4 w-4 mr-1" />
@@ -325,6 +332,7 @@ function Router() {
         <Route path="/backtest" component={Backtest} />
         <Route path="/alerts" component={Alerts} />
         <Route path="/correlation" component={CorrelationAnalysis} />
+        <Route path="/risk-management" component={RiskManagement} />
         <Route path="/settings" component={SettingsPage} />
         <Route component={NotFound} />
       </Switch>

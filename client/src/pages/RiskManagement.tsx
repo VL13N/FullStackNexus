@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { PositionSizingWidget } from '@/components/ui/position-sizing-widget';
+import { PositionSizingWidget } from '../../../components/ui/position-sizing-widget';
 import { 
   Target, 
   TrendingUp, 
