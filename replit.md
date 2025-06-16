@@ -20,6 +20,16 @@ An advanced astrological cryptocurrency analytics platform that blends astronomi
 
 ## Recent Changes
 
+### June 16, 2025 - LSTM Time-Series Module with Ensemble Stacking Complete
+- **Created dedicated LSTM predictor service** (services/lstmPredictor.js) with multi-layer TensorFlow.js architecture featuring 128+64+32 unit LSTM layers with dropout regularization
+- **Implemented windowed sequence processing** with 60-step rolling windows across 16 features including price, volume, market cap, and pillar scores
+- **Added comprehensive LSTM REST endpoints** (/api/ml/lstm/train, /api/ml/lstm/predict, /api/ml/lstm/info) supporting both real-time and batch inference
+- **Integrated ensemble stacking system** (/api/ml/ensemble-stack) combining XGBoost predictions (60% weight) with LSTM forecasts (40% weight) for superior accuracy
+- **Enhanced automated training scheduler** with LSTM retraining integration alongside existing XGBoost ensemble models for nightly optimization
+- **Built confidence-based prediction system** with volatility-adjusted confidence scoring and directional classification (BULLISH/BEARISH/NEUTRAL)
+- **Created model persistence layer** with automatic TensorFlow.js model serialization and scaler parameter storage for production deployment
+- **Added comprehensive testing framework** (test_lstm_pipeline.js) validating training, prediction, batch processing, and ensemble stacking functionality
+
 ### June 15, 2025 - Automated Model Retraining System Complete
 - **Deployed comprehensive automated training scheduler** (services/modelTrainingScheduler.js) with daily 03:00 UTC and weekly Sunday 02:00 UTC scheduling
 - **Created supporting Python services** for data pulling (dataService.py), model deployment (modelDeployment.py), and retraining capabilities
@@ -65,20 +75,34 @@ An advanced astrological cryptocurrency analytics platform that blends astronomi
 - **Solana RPC:** On-chain metrics, validator stats, real-time TPS
 - **Astronomy Engine:** Authentic lunar phases, planetary positions, aspects
 
-### ML Pipeline
-1. **Data Collection:** Multi-source authenticated data fetching
-2. **Feature Engineering:** Technical indicators, sentiment analysis, astrological features
-3. **Model Training:** Ensemble methods (XGBoost + Random Forest + TensorFlow.js)
-4. **Prediction Generation:** Real-time classifications (BULLISH/BEARISH/NEUTRAL)
-5. **Backtesting:** Historical validation with performance metrics
+### Enhanced ML Pipeline
+1. **Data Collection:** Multi-source authenticated data fetching with 60-step windowed sequences
+2. **Feature Engineering:** 16 technical indicators, sentiment analysis, astrological features with min-max normalization
+3. **Ensemble Training:** Multi-layer LSTM (128+64+32 units) + XGBoost + Random Forest with automated hyperparameter optimization
+4. **Ensemble Stacking:** Weighted combination (XGBoost 60%, LSTM 40%) with confidence-based scoring
+5. **Prediction Generation:** Real-time price forecasting with volatility-adjusted confidence and directional classification
+6. **Automated Retraining:** Nightly LSTM + ensemble retraining with Optuna optimization at 03:00 UTC
+7. **Backtesting:** Historical validation with ensemble performance metrics and walk-forward analysis
 
 ### API Endpoints
-- `/api/ml/test` - Test ML environment and library versions
+**Core ML Pipeline:**
 - `/api/ml/train` - Train ensemble models on historical data
 - `/api/ml/predict` - Generate predictions using trained models
 - `/api/ml/feature-importance` - Analyze feature importance across models
-- `/api/ml/compare-models` - Compare performance of different ML algorithms
-- `/api/backtest/*` - Backtesting and strategy validation endpoints
+- `/api/ml/explainability` - Generate SHAP-based feature attribution reports
+
+**LSTM Time-Series Module:**
+- `/api/ml/lstm/train` - Train multi-layer LSTM with windowed sequences
+- `/api/ml/lstm/predict` - Real-time and batch LSTM price forecasting
+- `/api/ml/lstm/info` - LSTM model architecture and status information
+
+**Ensemble Stacking:**
+- `/api/ml/ensemble-stack` - Combined XGBoost + LSTM weighted predictions
+
+**Training Automation:**
+- `/api/training/status` - Automated scheduler status and logs
+- `/api/training/trigger` - Manual training initiation (standard/deep)
+- `/api/training/logs` - Training history and performance metrics
 
 ## Current Status
 - **All API integrations operational** with proper authentication

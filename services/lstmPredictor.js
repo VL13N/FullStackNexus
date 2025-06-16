@@ -140,10 +140,8 @@ class LSTMPredictor {
       const { data, error } = await this.supabase
         .from('live_predictions')
         .select(`
-          created_at, price, volume, market_cap,
-          technical_score, social_score, fundamental_score, astrology_score,
-          rsi, macd_histogram, ema_20, sma_50, bollinger_upper, bollinger_lower,
-          stoch_rsi, williams_r, atr
+          created_at, predicted_price, confidence,
+          technical_score, social_score, fundamental_score, astrology_score
         `)
         .gte('created_at', startDate.toISOString())
         .order('created_at', { ascending: true });
