@@ -6,6 +6,7 @@ import alertRoutes from "./alertRoutes.js";
 import correlationRoutes from "./correlationRoutes.js";
 import sentimentRoutes from "./sentimentRoutes.js";
 import riskRoutes from "./riskRoutes.js";
+import backtestRoutes from "./backtestRoutes.js";
 import { setupVite, serveStatic, log } from "./vite";
 import scheduler from "../services/scheduler.js";
 import modelTrainingScheduler from "../services/modelTrainingScheduler.js";
@@ -145,6 +146,7 @@ async function scheduleOpenAITasks(port: number) {
   app.use('/api/analysis', correlationRoutes);
   app.use('/api/sentiment', sentimentRoutes);
   app.use('/api/risk', riskRoutes);
+  backtestRoutes(app);
 
   // Use environment port or fallback to 5000
   // this serves both the API and the client.
