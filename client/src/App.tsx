@@ -141,6 +141,23 @@ function LandingPage() {
           </Card>
         </Link>
 
+        <Link href="/risk-management">
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow border-2 border-purple-300">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Risk Management
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-3">
+                Position sizing with Kelly Criterion and fixed-fraction methods
+              </p>
+              <Badge variant="default">New Feature</Badge>
+            </CardContent>
+          </Card>
+        </Link>
+
         <Link href="/lunarcrush">
           <Card className="cursor-pointer hover:shadow-lg transition-shadow">
             <CardHeader>

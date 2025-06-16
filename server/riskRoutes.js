@@ -289,4 +289,4 @@ router.get('/simulate', (req, res) => {
   }
 });
 
-export { router as riskRoutes };
+export default router;

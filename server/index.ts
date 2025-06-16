@@ -5,7 +5,7 @@ import hpoRoutes from "./hpoRoutes.js";
 import alertRoutes from "./alertRoutes.js";
 import correlationRoutes from "./correlationRoutes.js";
 import sentimentRoutes from "./sentimentRoutes.js";
-import { riskRoutes } from "./riskRoutes.js";
+import riskRoutes from "./riskRoutes.js";
 import { setupVite, serveStatic, log } from "./vite";
 import scheduler from "../services/scheduler.js";
 import modelTrainingScheduler from "../services/modelTrainingScheduler.js";
