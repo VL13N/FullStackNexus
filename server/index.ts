@@ -162,6 +162,18 @@ async function scheduleOpenAITasks(port: number) {
   // Start model training scheduler
   modelTrainingScheduler.start();
 
+  // Initialize and start incremental retraining service
+  try {
+    const { default: IncrementalRetrainingService } = await import('../services/incrementalRetraining.js');
+    const incrementalService = new IncrementalRetrainingService();
+    await incrementalService.initialize();
+    incrementalService.startPeriodicChecks();
+    app.locals.incrementalRetrainingService = incrementalService;
+    console.log('✅ Incremental retraining service started with periodic checks');
+  } catch (error) {
+    console.warn('⚠️ Incremental retraining service failed to start:', error.message);
+  }
+
   // Start OpenAI scheduling after routes are registered
   await scheduleOpenAITasks(port);
 

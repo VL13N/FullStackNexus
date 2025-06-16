@@ -523,7 +523,18 @@ export async function registerRoutes(app) {
     }
   });
 
-  // ML Training endpoints
+  // Initialize incremental retraining service
+  let incrementalRetrainingService = null;
+  try {
+    const { default: IncrementalRetrainingService } = await import('../services/incrementalRetraining.js');
+    incrementalRetrainingService = new IncrementalRetrainingService();
+    await incrementalRetrainingService.initialize();
+    console.log('✅ Incremental retraining service initialized');
+  } catch (error) {
+    console.warn('⚠️ Incremental retraining service not available:', error.message);
+  }
+
+  // ML Training endpoints with incremental retraining hook
   app.post('/api/ml/train', async (req, res) => {
     try {
       const { MLTrainer } = await import('../services/mlTrainer.js');
@@ -535,7 +546,11 @@ export async function registerRoutes(app) {
         batchSize: req.body.batchSize || 16,
         validationSplit: req.body.validationSplit || 0.2,
         startDate: req.body.startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-        endDate: req.body.endDate || new Date().toISOString()
+        endDate: req.body.endDate || new Date().toISOString(),
+        retrain: req.body.retrain || false,
+        incremental: req.body.incremental || false,
+        trigger_reason: req.body.trigger_reason || 'manual',
+        version_id: req.body.version_id || `manual_v${Date.now()}`
       };
       
       console.log(`Starting ML training for ${config.symbol}...`);
@@ -547,15 +562,31 @@ export async function registerRoutes(app) {
       // Save model
       await trainer.saveModel('file://./models/crypto-predictor');
       
-      // Cleanup
-      trainer.dispose();
-      
-      res.json({
+      const trainingResult = {
         success: true,
         training_results: results,
         model_saved: './models/crypto-predictor',
+        accuracy: results.accuracy || null,
+        loss: results.loss || null,
+        feature_count: results.feature_count || null,
+        training_samples: results.training_samples || null,
+        model_path: './models/crypto-predictor',
+        version_id: config.version_id,
+        trigger_reason: config.trigger_reason,
         timestamp: new Date().toISOString()
-      });
+      };
+
+      // Trigger incremental retraining hook after successful training
+      if (incrementalRetrainingService && results.success !== false) {
+        setTimeout(async () => {
+          await incrementalRetrainingService.onTrainingComplete(trainingResult);
+        }, 2000); // Wait 2 seconds before checking
+      }
+      
+      // Cleanup
+      trainer.dispose();
+      
+      res.json(trainingResult);
       
     } catch (error) {
       console.error('ML training failed:', error);
@@ -982,6 +1013,51 @@ export async function registerRoutes(app) {
       });
     } catch (error) {
       console.error('Aspects backtesting data retrieval failed:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Training logs API endpoint with incremental retraining integration
+  app.get('/api/training/logs', async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit) || 100;
+      
+      // Get incremental retraining logs if service is available
+      let incrementalLogs = [];
+      if (incrementalRetrainingService) {
+        incrementalLogs = await incrementalRetrainingService.getTrainingLogs(limit);
+      }
+      
+      // Get scheduled training logs
+      const scheduledLogs = [];
+      try {
+        const { default: modelTrainingScheduler } = await import('../services/modelTrainingScheduler.js');
+        const logs = modelTrainingScheduler.getLogs();
+        scheduledLogs.push(...logs.map(log => ({ ...log, source: 'scheduler' })));
+      } catch (error) {
+        console.warn('Could not load scheduled training logs:', error.message);
+      }
+      
+      // Combine and sort logs by timestamp
+      const allLogs = [
+        ...scheduledLogs,
+        ...incrementalLogs.map(log => ({ ...log, source: 'incremental' }))
+      ].sort((a, b) => new Date(b.created_at || b.timestamp) - new Date(a.created_at || a.timestamp));
+
+      res.json({
+        success: true,
+        logs: allLogs.slice(0, limit),
+        total_count: allLogs.length,
+        scheduler_logs: scheduledLogs.length,
+        incremental_logs: incrementalLogs.length,
+        incremental_service_active: !!incrementalRetrainingService,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
       res.status(500).json({
         success: false,
         error: error.message,
