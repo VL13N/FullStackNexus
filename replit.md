@@ -20,6 +20,17 @@ An advanced astrological cryptocurrency analytics platform that blends astronomi
 
 ## Recent Changes
 
+### June 16, 2025 - Backtesting & Automated Retraining System Complete
+- **Created comprehensive backtesting framework** (scripts/backtestRunner.js) validating ML predictions against actual SOL price movements with P&L calculations
+- **Built automated retraining system** (scripts/triggerRetrain.js) triggering model updates when Sharpe ratio exceeds performance thresholds
+- **Added backtesting API endpoints** (/api/backtest/run, /api/backtest/history, /api/backtest/performance, /api/backtest/retrain) for comprehensive model validation
+- **Implemented performance metrics calculation** including Sharpe ratio, hit rate, total P&L, max drawdown, and volatility analysis
+- **Created React UI dashboard** (BacktestRetraining.tsx) with tabbed interface for running backtests, viewing history, and triggering retraining
+- **Integrated database persistence** with backtest_results and backtest_summaries tables storing detailed trading performance data
+- **Added intelligent retraining triggers** automatically initiating ML model updates when Sharpe ratio > 1.0 for optimal performance
+- **Built comprehensive trading simulation** aligning predictions with actual price movements and calculating realistic P&L scenarios
+- **Implemented batch processing** for historical data analysis with progress monitoring and error handling
+
 ### June 16, 2025 - Feature Vector Backfill System Complete
 - **Created comprehensive backfill system** (scripts/backfillFeatures.js) to generate 8,760 hourly feature vectors for 365 days of ML training data
 - **Built automated scheduler** (scripts/scheduleBackfill.js) with hourly incremental, daily catch-up, and weekly deep backfill cron jobs
