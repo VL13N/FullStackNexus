@@ -1865,6 +1865,94 @@ export async function registerRoutes(app) {
     clients = clients.filter(client => !client.destroyed);
   };
 
+  // Walk-Forward Backtesting endpoints
+  app.post('/api/backtest/run', async (req, res) => {
+    try {
+      const { default: WalkForwardBacktester } = await import('../services/backtester.js');
+      const backtester = new WalkForwardBacktester();
+      
+      const {
+        startDate,
+        endDate,
+        trainDays = 30,
+        testDays = 7
+      } = req.body;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({
+          success: false,
+          error: 'Start date and end date are required'
+        });
+      }
+      
+      console.log(`Starting walk-forward backtest from ${startDate} to ${endDate}`);
+      
+      const results = await backtester.runBacktest(startDate, endDate, trainDays, testDays);
+      
+      res.json(results);
+    } catch (error) {
+      console.error('Backtest failed:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get('/api/backtest/summary', async (req, res) => {
+    try {
+      const { default: WalkForwardBacktester } = await import('../services/backtester.js');
+      const backtester = new WalkForwardBacktester();
+      
+      const summary = backtester.getSummary();
+      res.json(summary);
+    } catch (error) {
+      console.error('Failed to get backtest summary:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get('/api/backtest/data', async (req, res) => {
+    try {
+      const { default: WalkForwardBacktester } = await import('../services/backtester.js');
+      const backtester = new WalkForwardBacktester();
+      
+      const data = backtester.getAllDataPoints();
+      res.json(data);
+    } catch (error) {
+      console.error('Failed to get backtest data:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get('/api/backtest/window/:windowId', async (req, res) => {
+    try {
+      const { default: WalkForwardBacktester } = await import('../services/backtester.js');
+      const backtester = new WalkForwardBacktester();
+      
+      const windowId = parseInt(req.params.windowId);
+      const windowDetails = backtester.getWindowDetails(windowId);
+      
+      res.json(windowDetails);
+    } catch (error) {
+      console.error('Failed to get window details:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // Listen for alert events
   alertManager.on('alertTriggered', broadcastAlert);
   alertManager.on('browserAlert', broadcastAlert);

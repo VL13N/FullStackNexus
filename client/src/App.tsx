@@ -14,7 +14,7 @@ import SettingsPage from "@/pages/settings";
 import LivePredictions from "@/pages/live-predictions";
 import MLTraining from "@/pages/ml-training";
 import AdvancedAstrology from "@/pages/advanced-astrology";
-import { BacktestPage } from "@/pages/BacktestPage";
+import Backtest from "@/pages/Backtest";
 import TaapiDemo from "../../components/TaapiDemo";
 import CryptoRankDemo from "../../components/CryptoRankDemo";
 import OnChainDemo from "../../components/OnChainDemo";
