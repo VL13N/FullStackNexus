@@ -477,6 +477,106 @@ class FeaturePipeline {
   }
 
   /**
+   * Fetch enriched sentiment features from news analysis
+   */
+  async fetchSentimentFeatures() {
+    try {
+      const { default: NewsSentimentService } = await import('./newsSentiment.js');
+      const sentimentService = new NewsSentimentService();
+
+      // Get current sentiment features for ML pipeline
+      const sentimentFeatures = sentimentService.getSentimentFeatures();
+      
+      // Fetch latest news and analyze if no recent data
+      if (sentimentFeatures.news_volume_24h === 0) {
+        console.log('📰 No recent sentiment data, fetching fresh news analysis...');
+        
+        const headlines = await sentimentService.fetchSOLNews(15);
+        if (headlines.length > 0) {
+          const analysis = await sentimentService.analyzeBatchSentiment(headlines);
+          if (analysis.success) {
+            return sentimentService.getSentimentFeatures();
+          }
+        }
+      }
+
+      return {
+        // Core sentiment metrics
+        news_sentiment_24h: sentimentFeatures.news_sentiment_24h,
+        news_confidence_24h: sentimentFeatures.news_confidence_24h,
+        news_volume_24h: sentimentFeatures.news_volume_24h,
+        sentiment_trend_6h: sentimentFeatures.sentiment_trend_6h,
+        positive_news_ratio: sentimentFeatures.positive_news_ratio,
+        negative_news_ratio: sentimentFeatures.negative_news_ratio,
+        
+        // Derived sentiment features for ML
+        sentiment_strength: Math.abs(sentimentFeatures.news_sentiment_24h),
+        sentiment_polarity: sentimentFeatures.news_sentiment_24h > 0 ? 1 : (sentimentFeatures.news_sentiment_24h < 0 ? -1 : 0),
+        sentiment_momentum: sentimentFeatures.sentiment_trend_6h,
+        news_activity_level: this.categorizeNewsActivity(sentimentFeatures.news_volume_24h),
+        sentiment_consistency: this.calculateSentimentConsistency(sentimentFeatures),
+        market_narrative_strength: this.calculateNarrativeStrength(sentimentFeatures)
+      };
+
+    } catch (error) {
+      console.warn('Sentiment features fetch failed:', error.message);
+      
+      // Return neutral sentiment features when service unavailable
+      return {
+        news_sentiment_24h: 0,
+        news_confidence_24h: 0.5,
+        news_volume_24h: 0,
+        sentiment_trend_6h: 0,
+        positive_news_ratio: 0.33,
+        negative_news_ratio: 0.33,
+        sentiment_strength: 0,
+        sentiment_polarity: 0,
+        sentiment_momentum: 0,
+        news_activity_level: 0,
+        sentiment_consistency: 0.5,
+        market_narrative_strength: 0
+      };
+    }
+  }
+
+  /**
+   * Categorize news activity level (0-1 scale)
+   */
+  categorizeNewsActivity(volume) {
+    if (volume >= 20) return 1.0;    // High activity
+    if (volume >= 10) return 0.75;   // Medium-high activity
+    if (volume >= 5) return 0.5;     // Medium activity
+    if (volume >= 1) return 0.25;    // Low activity
+    return 0;                        // No activity
+  }
+
+  /**
+   * Calculate sentiment consistency score
+   */
+  calculateSentimentConsistency(features) {
+    const { positive_news_ratio, negative_news_ratio, news_confidence_24h } = features;
+    
+    // Higher consistency when sentiment is clear (not mixed)
+    const clarity = Math.abs(positive_news_ratio - negative_news_ratio);
+    const consistency = clarity * news_confidence_24h;
+    
+    return Math.min(1, consistency);
+  }
+
+  /**
+   * Calculate market narrative strength
+   */
+  calculateNarrativeStrength(features) {
+    const { news_sentiment_24h, news_confidence_24h, news_volume_24h } = features;
+    
+    // Strong narrative = high sentiment magnitude + high confidence + adequate volume
+    const sentimentMagnitude = Math.abs(news_sentiment_24h);
+    const volumeWeight = Math.min(1, news_volume_24h / 10); // Normalize to 0-1
+    
+    return sentimentMagnitude * news_confidence_24h * volumeWeight;
+  }
+
+  /**
    * Normalize all features to 0-1 range for ML training
    */
   async normalizeFeatures(rawFeatures) {
@@ -554,12 +654,30 @@ class FeaturePipeline {
       planetary_volatility_norm: this.normalizeRange(astrology.planetary_volatility_indicator, 0, 100)
     };
 
+    // Sentiment normalization (news sentiment features)
+    const sentiment = rawFeatures.sentiment;
+    normalized.features_normalized.sentiment = {
+      news_sentiment_norm: this.normalizeRange(sentiment.news_sentiment_24h, -1, 1),
+      news_confidence_norm: this.normalizeRange(sentiment.news_confidence_24h, 0, 1),
+      news_volume_norm: this.normalizeLog(sentiment.news_volume_24h + 1), // +1 to handle 0 volume
+      sentiment_trend_norm: this.normalizeRange(sentiment.sentiment_trend_6h, -1, 1),
+      positive_ratio_norm: this.normalizeRange(sentiment.positive_news_ratio, 0, 1),
+      negative_ratio_norm: this.normalizeRange(sentiment.negative_news_ratio, 0, 1),
+      sentiment_strength_norm: this.normalizeRange(sentiment.sentiment_strength, 0, 1),
+      sentiment_polarity_norm: this.normalizeRange(sentiment.sentiment_polarity, -1, 1),
+      sentiment_momentum_norm: this.normalizeRange(sentiment.sentiment_momentum, -1, 1),
+      news_activity_norm: this.normalizeRange(sentiment.news_activity_level, 0, 1),
+      sentiment_consistency_norm: this.normalizeRange(sentiment.sentiment_consistency, 0, 1),
+      narrative_strength_norm: this.normalizeRange(sentiment.market_narrative_strength, 0, 1)
+    };
+
     // Calculate composite feature scores
     normalized.feature_scores = {
       technical_composite: this.calculateTechnicalComposite(normalized.features_normalized.technical),
       social_composite: this.calculateSocialComposite(normalized.features_normalized.social),
       fundamental_composite: this.calculateFundamentalComposite(normalized.features_normalized.fundamental),
-      astrology_composite: this.calculateAstrologyComposite(normalized.features_normalized.astrology)
+      astrology_composite: this.calculateAstrologyComposite(normalized.features_normalized.astrology),
+      sentiment_composite: this.calculateSentimentComposite(normalized.features_normalized.sentiment)
     };
 
     return normalized;
@@ -585,10 +703,12 @@ class FeaturePipeline {
         social_score: features.feature_scores.social_composite,
         fundamental_score: features.feature_scores.fundamental_composite,
         astrology_score: features.feature_scores.astrology_composite,
+        sentiment_score: features.feature_scores.sentiment_composite,
         overall_score: (features.feature_scores.technical_composite + 
                        features.feature_scores.social_composite + 
                        features.feature_scores.fundamental_composite + 
-                       features.feature_scores.astrology_composite) / 4,
+                       features.feature_scores.astrology_composite + 
+                       features.feature_scores.sentiment_composite) / 5,
         classification: this.classifyFeatureVector(features.feature_scores),
         confidence: this.calculateDataQuality(features) / 100,
         risk_level: this.calculateDataQuality(features) > 80 ? 'Low' : 
@@ -1064,6 +1184,22 @@ class FeaturePipeline {
 
     return Object.entries(weights).reduce((score, [key, weight]) => {
       return score + (astrology[key] || 0) * weight;
+    }, 0) * 100;
+  }
+
+  calculateSentimentComposite(sentiment) {
+    const weights = {
+      narrative_strength_norm: 0.25,
+      sentiment_strength_norm: 0.20,
+      sentiment_consistency_norm: 0.15,
+      news_confidence_norm: 0.15,
+      sentiment_momentum_norm: 0.10,
+      news_activity_norm: 0.10,
+      sentiment_polarity_norm: 0.05
+    };
+
+    return Object.entries(weights).reduce((score, [key, weight]) => {
+      return score + (sentiment[key] || 0) * weight;
     }, 0) * 100;
   }
 
