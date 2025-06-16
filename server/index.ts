@@ -2,9 +2,11 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes.js";
 import { registerMLRoutes } from "./mlRoutes.js";
 import hpoRoutes from "./hpoRoutes.js";
+import alertRoutes from "./alertRoutes.js";
 import { setupVite, serveStatic, log } from "./vite";
 import scheduler from "../services/scheduler.js";
 import modelTrainingScheduler from "../services/modelTrainingScheduler.js";
+import AlertsSystem from "../services/alerts.js";
 
 // Verify OpenAI API key on startup
 if (!process.env.OPENAI_API_KEY) {
@@ -127,16 +129,25 @@ async function scheduleOpenAITasks(port: number) {
   const server = await registerRoutes(app);
   await registerMLRoutes(app);
   
-  // Register HPO routes
+  // Initialize alerts system
+  const alertsSystem = new AlertsSystem();
+  app.locals.alertsSystem = alertsSystem;
+  
+  // Initialize alerts WebSocket server
+  alertsSystem.initializeWebSocket(server);
+  
+  // Register route handlers
   app.use('/api/ml/hpo', hpoRoutes);
+  app.use('/api/alerts', alertRoutes);
 
   // Use environment port or fallback to 5000
   // this serves both the API and the client.
   const port = parseInt(process.env.PORT || "5000");
 
-  // Connect scheduler with broadcast function
+  // Connect scheduler with broadcast function and alerts system
   if ((app as any).broadcastPrediction) {
     scheduler.setBroadcastFunction((app as any).broadcastPrediction);
+    scheduler.setAlertsSystem(alertsSystem);
     scheduler.start();
   }
 

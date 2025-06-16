@@ -13,10 +13,15 @@ class SchedulerService {
     this.lastCategory = null;
     this.isRunning = false;
     this.broadcastFunction = null;
+    this.alertsSystem = null;
   }
 
   setBroadcastFunction(broadcastFn) {
     this.broadcastFunction = broadcastFn;
+  }
+
+  setAlertsSystem(alertsSystem) {
+    this.alertsSystem = alertsSystem;
   }
 
   start() {
@@ -86,6 +91,28 @@ class SchedulerService {
       }
       
       this.lastCategory = prediction.prediction.category;
+      
+      // Evaluate prediction against alert rules
+      if (this.alertsSystem) {
+        const triggeredAlerts = this.alertsSystem.evaluatePrediction({
+          predicted_change_percent: prediction.prediction.percentageChange,
+          confidence: prediction.prediction.confidence / 100, // Convert to 0-1 scale
+          predicted_price: prediction.prediction.predictedPrice,
+          direction: prediction.prediction.category,
+          pillar_scores: {
+            technical: prediction.features?.technicalScore || 0,
+            social: prediction.features?.socialScore || 0,
+            fundamental: prediction.features?.fundamentalScore || 0,
+            astrology: prediction.features?.astrologyScore || 0
+          },
+          volatility: prediction.features?.volatility || 0,
+          timestamp: new Date().toISOString()
+        });
+        
+        if (triggeredAlerts.length > 0) {
+          console.log(`🚨 Triggered ${triggeredAlerts.length} alerts for prediction`);
+        }
+      }
       
       // Broadcast prediction via SSE if function available
       if (this.broadcastFunction) {
