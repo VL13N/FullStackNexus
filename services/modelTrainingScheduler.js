@@ -5,6 +5,7 @@
 
 import cron from 'node-cron';
 import { spawn } from 'child_process';
+import OptunaTuner from './optunaTuner.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -14,6 +15,8 @@ class ModelTrainingScheduler {
     this.lastTrainingTime = null;
     this.trainingLogs = [];
     this.maxLogEntries = 100;
+    this.optunaTuner = new OptunaTuner();
+    this.weeklyHpoActive = false;
   }
 
   /**
@@ -31,15 +34,15 @@ class ModelTrainingScheduler {
       timezone: "UTC"
     });
 
-    // Optional: Weekly deep retraining with more Optuna trials on Sundays at 2:00 AM UTC
+    // Weekly deep retraining with Optuna hyperparameter optimization on Sundays at 2:00 AM UTC
     cron.schedule('0 2 * * 0', async () => {
-      await this.runWeeklyDeepTraining();
+      await this.runWeeklyDeepTuning();
     }, {
       scheduled: true,
       timezone: "UTC"
     });
 
-    console.log('✅ Model training scheduler started - Daily at 03:00 UTC, Weekly deep training on Sundays at 02:00 UTC');
+    console.log('✅ Model training scheduler started - Daily at 03:00 UTC, Weekly deep tuning with Optuna on Sundays at 02:00 UTC');
   }
 
   /**
@@ -94,37 +97,67 @@ class ModelTrainingScheduler {
   }
 
   /**
-   * Run weekly deep training with more extensive optimization
+   * Run weekly deep tuning with Optuna hyperparameter optimization
    */
-  async runWeeklyDeepTraining() {
+  async runWeeklyDeepTuning() {
     if (this.isRunning) {
       this.log('⚠️ Training already in progress, skipping weekly deep training');
       return;
     }
 
-    this.log('🔬 Starting weekly deep training with extended optimization...');
+    this.log('🔬 Starting weekly deep tuning with Optuna hyperparameter optimization...');
     this.isRunning = true;
+    this.weeklyHpoActive = true;
     
     try {
-      // Pull features
+      // Pull features for optimization
       const featureData = await this.pullSupabaseFeatures();
       if (!featureData.success) {
         throw new Error(`Failed to pull features: ${featureData.error}`);
       }
 
-      // Extended Optuna optimization (200 trials)
-      this.log('🧪 Running extended Optuna optimization (200 trials)...');
-      const optunaResult = await this.runOptunaOptimization(featureData.data, 200);
-      
-      // Full model retraining with optimized parameters
-      this.log('🏗️ Full model retraining with optimized hyperparameters...');
-      const ensembleResult = await this.retrainEnsembleModels(featureData.data, optunaResult.best_params);
-      const lstmResult = await this.retrainLSTMModels(featureData.data, optunaResult.best_params);
+      // Run comprehensive Optuna optimization for all model types
+      this.log('🧪 Starting ensemble hyperparameter optimization (100 trials)...');
+      const ensembleOptimization = await this.optunaTuner.startOptimization({
+        optimizationType: 'ensemble',
+        nTrials: 100,
+        timeout: 90 * 60 * 1000 // 90 minutes
+      });
+
+      this.log('🧠 Starting LSTM hyperparameter optimization (75 trials)...');
+      const lstmOptimization = await this.optunaTuner.startOptimization({
+        optimizationType: 'lstm',
+        nTrials: 75,
+        timeout: 60 * 60 * 1000 // 60 minutes
+      });
+
+      this.log('🔄 Starting hybrid ensemble optimization (50 trials)...');
+      const hybridOptimization = await this.optunaTuner.startOptimization({
+        optimizationType: 'hybrid',
+        nTrials: 50,
+        timeout: 45 * 60 * 1000 // 45 minutes
+      });
+
+      // Apply best parameters to models
+      if (ensembleOptimization.success && ensembleOptimization.best_params) {
+        this.log('🎯 Applying optimized ensemble parameters...');
+        await this.applyOptimizedParameters('ensemble', ensembleOptimization.best_params);
+      }
+
+      if (lstmOptimization.success && lstmOptimization.best_params) {
+        this.log('🎯 Applying optimized LSTM parameters...');
+        await this.applyOptimizedParameters('lstm', lstmOptimization.best_params);
+      }
+
+      // Full model retraining with best parameters
+      this.log('🏗️ Retraining models with optimized hyperparameters...');
+      const ensembleResult = await this.retrainEnsembleModels(featureData.data);
+      const lstmResult = await this.retrainLSTMModels(featureData.data);
       
       // Deploy optimized models
       await this.deployUpdatedModels();
       
-      this.log(`🎉 Weekly deep training completed successfully`);
+      this.log(`🎉 Weekly deep tuning completed - Ensemble: ${ensembleOptimization.best_value?.toFixed(4)}, LSTM: ${lstmOptimization.best_value?.toFixed(4)}`);
       this.log(`📊 Extended optimization trials: 200`);
       this.log(`🏆 Best validation score: ${optunaResult.best_value?.toFixed(3) || 'N/A'}`);
       

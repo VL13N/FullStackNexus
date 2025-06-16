@@ -126,6 +126,9 @@ async function scheduleOpenAITasks(port: number) {
 (async () => {
   const server = await registerRoutes(app);
   await registerMLRoutes(app);
+  
+  // Register HPO routes
+  app.use('/api/ml/hpo', hpoRoutes);
 
   // Use environment port or fallback to 5000
   // this serves both the API and the client.
