@@ -1,0 +1,61 @@
+[
+  {
+    "id": "rule_1750043064924_z126xq8wl",
+    "name": "High Bullish Signal (Updated)",
+    "description": "Alert when prediction shows strong bullish movement - Updated via test",
+    "conditions": [
+      {
+        "field": "predicted_change_percent",
+        "operator": ">=",
+        "value": 2
+      },
+      {
+        "field": "confidence",
+        "operator": ">=",
+        "value": 60
+      }
+    ],
+    "enabled": false,
+    "created_at": "2025-06-16T03:04:24.924Z",
+    "triggered_count": 0,
+    "last_triggered": null,
+    "updated_at": "2025-06-16T03:04:26.962Z"
+  },
+  {
+    "id": "rule_1750043064934_yl8vhkor1",
+    "name": "Critical Bearish Alert",
+    "description": "Alert for significant bearish predictions",
+    "conditions": [
+      {
+        "field": "predicted_change_percent",
+        "operator": "<=",
+        "value": -3
+      },
+      {
+        "field": "direction",
+        "operator": "==",
+        "value": "BEARISH"
+      }
+    ],
+    "enabled": true,
+    "created_at": "2025-06-16T03:04:24.934Z",
+    "triggered_count": 0,
+    "last_triggered": null
+  },
+  {
+    "id": "rule_1750043064939_wyr0abg2z",
+    "name": "High Confidence Signal",
+    "description": "Alert for any high confidence prediction",
+    "conditions": [
+      {
+        "field": "confidence",
+        "operator": ">=",
+        "value": 80
+      }
+    ],
+    "enabled": true,
+    "created_at": "2025-06-16T03:04:24.939Z",
+    "triggered_count": 0,
+    "last_triggered": null
+  }
+]

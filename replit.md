@@ -20,6 +20,17 @@ An advanced astrological cryptocurrency analytics platform that blends astronomi
 
 ## Recent Changes
 
+### June 16, 2025 - Real-Time Alerts Subsystem Complete
+- **Created comprehensive alerts system** (services/alerts.js) with user-defined threshold rules and real-time evaluation
+- **Implemented WebSocket broadcasting** (/ws/alerts) for live alert notifications with automatic client reconnection
+- **Built complete REST API endpoints** (/api/alerts/rules, /api/alerts/active, /api/alerts/history) for alert management
+- **Added React frontend interface** (client/src/pages/Alerts.tsx) with rule creation, live notifications, and alert acknowledgment
+- **Integrated with prediction scheduler** to evaluate hourly predictions against active alert rules automatically
+- **Created persistent storage** with SQLite for alert rules and history tracking with 500-entry rotation
+- **Added comprehensive alert conditions** supporting 9 prediction fields with multiple operators and severity levels
+- **Built real-time notification system** with toast notifications and WebSocket updates for immediate alert delivery
+- **Created comprehensive testing suite** (test_alerts_system.js) validating rule management, WebSocket connectivity, and alert evaluation
+
 ### June 16, 2025 - Optuna Bayesian Hyperparameter Optimization Complete
 - **Created comprehensive Optuna HPO service** (services/optunaTuner.py, services/optunaTuner.js) with Bayesian optimization for ensemble, LSTM, and hybrid model types
 - **Implemented intelligent search spaces** for LSTM units (64-256), learning rates (0.0001-0.01), dropout rates, XGBoost parameters, and ensemble weights

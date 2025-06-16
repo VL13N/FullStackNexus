@@ -15,6 +15,7 @@ import LivePredictions from "@/pages/live-predictions";
 import MLTraining from "@/pages/ml-training";
 import AdvancedAstrology from "@/pages/advanced-astrology";
 import Backtest from "@/pages/Backtest";
+import Alerts from "@/pages/Alerts";
 import TaapiDemo from "../../components/TaapiDemo";
 import CryptoRankDemo from "../../components/CryptoRankDemo";
 import OnChainDemo from "../../components/OnChainDemo";
@@ -24,7 +25,7 @@ import PredictionWidget from "../../components/PredictionWidget";
 import MLEnsembleDemo from "@/components/MLEnsembleDemo";
 import ExplainabilityDashboard from "@/components/ExplainabilityDashboard";
 import EnsembleComparison from "@/components/EnsembleComparison";
-import { Activity, BarChart3, Database, TrendingUp, Sparkles, Brain, Settings, Target } from "lucide-react";
+import { Activity, BarChart3, Database, TrendingUp, Sparkles, Brain, Settings, Target, Bell } from "lucide-react";
 
 function LandingPage() {
   return (
@@ -309,6 +310,7 @@ function Router() {
         <Route path="/ensemble" component={EnsembleComparison} />
         <Route path="/advanced-astrology" component={AdvancedAstrology} />
         <Route path="/backtest" component={Backtest} />
+        <Route path="/alerts" component={Alerts} />
         <Route path="/settings" component={SettingsPage} />
         <Route component={NotFound} />
       </Switch>
