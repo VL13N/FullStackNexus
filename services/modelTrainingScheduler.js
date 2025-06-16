@@ -245,60 +245,45 @@ except Exception as e:
   }
 
   /**
-   * Retrain LSTM models using TensorFlow
+   * Retrain LSTM models using TensorFlow.js LSTM predictor
    */
   async retrainLSTMModels(trainingData, optimizedParams = null) {
-    return new Promise((resolve, reject) => {
-      const paramsJson = optimizedParams ? JSON.stringify(optimizedParams) : 'null';
+    try {
+      this.log('🔮 Loading LSTM predictor service...');
       
-      const script = `
-import sys
-sys.path.append('/home/runner/workspace')
-from services.advancedMLService import AdvancedMLService
-import json
-
-training_data = ${JSON.stringify(trainingData)}
-optimized_params = ${paramsJson}
-
-try:
-    ml_service = AdvancedMLService()
-    result = ml_service.retrain_lstm(training_data, optimized_params)
-    print(json.dumps(result))
-except Exception as e:
-    print(json.dumps({"success": False, "error": str(e)}))
-`;
-
-      const python = spawn('python3', ['-c', script]);
-      let stdout = '';
-      let stderr = '';
-
-      python.stdout.on('data', (data) => {
-        stdout += data.toString();
-      });
-
-      python.stderr.on('data', (data) => {
-        stderr += data.toString();
-      });
-
-      python.on('close', (code) => {
-        if (code === 0) {
-          try {
-            const result = JSON.parse(stdout.trim());
-            resolve(result);
-          } catch (e) {
-            reject(new Error(`Failed to parse LSTM training result: ${e.message}`));
-          }
-        } else {
-          reject(new Error(`LSTM training failed: ${stderr}`));
-        }
-      });
-
-      // 30 minute timeout for LSTM training
-      setTimeout(() => {
-        python.kill('SIGTERM');
-        reject(new Error('LSTM training timeout'));
-      }, 1800000);
-    });
+      // Import and initialize the LSTM predictor
+      const { default: LSTMPredictor } = await import('./lstmPredictor.js');
+      const lstmPredictor = new LSTMPredictor();
+      
+      // Configure training parameters
+      const epochs = optimizedParams?.lstm_epochs || 80;
+      const validationSplit = optimizedParams?.lstm_validation_split || 0.2;
+      
+      this.log(`🚀 Starting LSTM training with ${epochs} epochs, ${validationSplit} validation split...`);
+      
+      // Train the LSTM model
+      const result = await lstmPredictor.trainModel(epochs, validationSplit);
+      
+      this.log(`✅ LSTM training completed - Final Loss: ${result.finalLoss?.toFixed(4)}, Val Loss: ${result.finalValLoss?.toFixed(4)}`);
+      
+      return {
+        success: true,
+        accuracy: 1 - (result.finalValLoss || 0.1), // Convert loss to accuracy approximation
+        finalLoss: result.finalLoss,
+        finalValLoss: result.finalValLoss,
+        epochs: result.epochs,
+        trainingTime: result.trainingTime,
+        modelInfo: lstmPredictor.getModelInfo()
+      };
+      
+    } catch (error) {
+      this.log(`❌ LSTM training failed: ${error.message}`);
+      return {
+        success: false,
+        error: error.message,
+        accuracy: 0
+      };
+    }
   }
 
   /**

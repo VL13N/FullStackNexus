@@ -999,5 +999,187 @@ except Exception as e:
     }
   });
 
+  // LSTM Time-Series Prediction Routes
+  let lstmPredictor = null;
+  
+  // Initialize LSTM predictor
+  const initializeLSTM = async () => {
+    if (!lstmPredictor) {
+      const { default: LSTMPredictor } = await import('../services/lstmPredictor.js');
+      lstmPredictor = new LSTMPredictor();
+    }
+    return lstmPredictor;
+  };
+
+  // LSTM Training endpoint
+  app.post('/api/ml/lstm/train', async (req, res) => {
+    try {
+      const { epochs = 100, validationSplit = 0.2, days = 90 } = req.body;
+      
+      console.log(`🚀 Starting LSTM training with ${epochs} epochs...`);
+      
+      const predictor = await initializeLSTM();
+      const result = await predictor.trainModel(epochs, validationSplit);
+      
+      res.json({
+        success: true,
+        training: result,
+        modelInfo: predictor.getModelInfo(),
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('❌ LSTM training failed:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // LSTM Prediction endpoint
+  app.post('/api/ml/lstm/predict', async (req, res) => {
+    try {
+      const { recentData = null, batch = false } = req.body;
+      
+      const predictor = await initializeLSTM();
+      
+      let result;
+      if (batch && Array.isArray(recentData)) {
+        result = await predictor.batchPredict(recentData);
+      } else {
+        result = await predictor.predict(recentData);
+      }
+      
+      res.json(result);
+    } catch (error) {
+      console.error('❌ LSTM prediction failed:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // LSTM Model Info endpoint
+  app.get('/api/ml/lstm/info', async (req, res) => {
+    try {
+      const predictor = await initializeLSTM();
+      const info = predictor.getModelInfo();
+      
+      res.json({
+        success: true,
+        modelInfo: info,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('❌ Failed to get LSTM info:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Ensemble Stacking endpoint combining XGBoost + LSTM
+  app.post('/api/ml/ensemble-stack', async (req, res) => {
+    try {
+      const { features, recentData = null } = req.body;
+      
+      if (!features || typeof features !== 'object') {
+        return res.status(400).json({
+          success: false,
+          error: 'Features object is required for ensemble stacking'
+        });
+      }
+
+      console.log('🔄 Running ensemble stacking prediction...');
+      
+      // Get XGBoost ensemble prediction
+      const ensembleScript = `
+import sys
+sys.path.append('/home/runner/workspace')
+from services.ensemble_lite import EnsembleLite
+import json
+
+features = ${JSON.stringify(features)}
+
+try:
+    ensemble = EnsembleLite()
+    result = ensemble.predict(features)
+    print(json.dumps(result))
+except Exception as e:
+    print(json.dumps({"success": False, "error": str(e)}))
+`;
+
+      const xgboostResult = await runPythonMLScript(ensembleScript, 30000);
+      
+      // Get LSTM prediction
+      const predictor = await initializeLSTM();
+      const lstmResult = await predictor.predict(recentData);
+      
+      // Ensemble stacking with weighted average
+      const xgboostWeight = 0.6;
+      const lstmWeight = 0.4;
+      
+      let stackedPrediction = null;
+      let stackedConfidence = null;
+      let stackedDirection = 'NEUTRAL';
+      
+      if (xgboostResult.success && lstmResult.success) {
+        // For XGBoost, we need to extract the prediction value
+        const xgboostPred = xgboostResult.prediction || xgboostResult.predictions?.[0] || 0;
+        const xgboostConf = xgboostResult.confidence || 0.5;
+        
+        // Weighted ensemble
+        if (typeof xgboostPred === 'number' && typeof lstmResult.predictedPrice === 'number') {
+          stackedPrediction = (xgboostPred * xgboostWeight) + (lstmResult.predictedPrice * lstmWeight);
+          stackedConfidence = (xgboostConf * xgboostWeight) + (lstmResult.confidence * lstmWeight);
+          
+          // Determine direction based on ensemble
+          const currentPrice = lstmResult.currentPrice || features.price || 200;
+          const changePercent = ((stackedPrediction - currentPrice) / currentPrice) * 100;
+          
+          if (changePercent > 1) stackedDirection = 'BULLISH';
+          else if (changePercent < -1) stackedDirection = 'BEARISH';
+        }
+      }
+      
+      res.json({
+        success: true,
+        ensembleStacking: {
+          prediction: stackedPrediction,
+          confidence: stackedConfidence,
+          direction: stackedDirection,
+          components: {
+            xgboost: {
+              prediction: xgboostResult.prediction || xgboostResult.predictions?.[0],
+              confidence: xgboostResult.confidence,
+              weight: xgboostWeight,
+              success: xgboostResult.success
+            },
+            lstm: {
+              prediction: lstmResult.predictedPrice,
+              confidence: lstmResult.confidence,
+              direction: lstmResult.direction,
+              weight: lstmWeight,
+              success: lstmResult.success
+            }
+          }
+        },
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('❌ Ensemble stacking failed:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   console.log('Advanced ML routes registered');
 }
