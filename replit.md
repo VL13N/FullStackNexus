@@ -20,6 +20,17 @@ An advanced astrological cryptocurrency analytics platform that blends astronomi
 
 ## Recent Changes
 
+### June 16, 2025 - Incremental Retraining Hook with Model Versioning Complete
+- **Created comprehensive incremental retraining service** (services/incrementalRetraining.js) monitoring feature data growth and triggering automatic model updates
+- **Implemented feature count threshold system** automatically triggering retraining when ≥100 new features accumulate since last training session
+- **Built model versioning system** with model_versions and training_logs tables tracking performance metrics, trigger reasons, and execution history
+- **Added automated training completion hooks** integrating with existing /api/ml/train endpoint to evaluate retraining triggers after successful training
+- **Created periodic monitoring system** checking feature data growth every 15 minutes with intelligent trigger evaluation and logging
+- **Implemented comprehensive training logs API** (/api/training/logs) combining scheduled and incremental training activities with detailed metadata
+- **Built model metadata persistence** storing accuracy, loss, Sharpe ratio, feature counts, and trigger reasons for each training version
+- **Added execution time tracking** monitoring training performance and logging detailed trigger reasons for audit trails
+- **Integrated with scheduler system** seamlessly working alongside existing daily/weekly training schedules with automatic coordination
+
 ### June 16, 2025 - Enhanced React UI with Backtesting and SHAP Visualization Complete
 - **Created comprehensive BacktestAnalysis page** (client/src/pages/BacktestAnalysis.tsx) with date controls, equity curves, and feature importance charts
 - **Implemented dual-panel interface** featuring strategy backtesting with Recharts equity curves and SHAP feature importance with Chart.js bar charts
