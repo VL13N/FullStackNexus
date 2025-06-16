@@ -177,7 +177,7 @@ class ModelTrainingScheduler {
       const script = `
 import sys
 sys.path.append('/home/runner/workspace')
-from services.dataService import pull_supabase_features
+from services.dataServiceClean import pull_supabase_features
 import json
 
 try:

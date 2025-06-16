@@ -20,6 +20,16 @@ An advanced astrological cryptocurrency analytics platform that blends astronomi
 
 ## Recent Changes
 
+### June 16, 2025 - ML Model Training with Enhanced Sentiment Features Complete
+- **Resolved critical data parsing errors** by removing Unicode characters and console output interference from Python scripts causing JSON parsing failures in model training pipeline
+- **Enhanced sentiment feature integration** expanded from 21 to 46 total features including comprehensive news sentiment analysis with OpenAI integration, social engagement metrics, and market sentiment indicators
+- **Created clean data service** (dataServiceClean.py) with pure JSON output for reliable ML training data flow without console interference
+- **Fixed Unicode encoding issues** in training scheduler logs and data service output that prevented successful model retraining execution
+- **Integrated comprehensive sentiment metrics** including news_sentiment, sentiment_volume, sentiment_consistency, narrative_strength, fear_greed_index, btc_dominance, market_sentiment_score, sentiment_momentum, news_activity_level, social_engagement_rate, influencer_sentiment, reddit_sentiment, and twitter_sentiment
+- **Maintained realistic data generation** with proper correlation between price movements and sentiment indicators for authentic training data
+- **Completed ML training system** ready for automated retraining with enhanced 46-feature sentiment analysis integration
+- **Resolved file corruption** in datasetExporter.js by removing extensive duplicate code sections causing syntax errors
+
 ### June 16, 2025 - Cross-Asset and Inter-Pillar Correlation Analysis Complete
 - **Created comprehensive correlation analysis service** (services/correlation.js) with 30-day time series analysis across SOL technical, social, fundamental, and astrology pillars plus BTC/ETH/SOL price data
 - **Implemented Pearson correlation computation** with symmetric matrix validation, diagonal verification, and correlation bounds checking for mathematical accuracy
