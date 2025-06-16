@@ -160,15 +160,15 @@ export async function fetchSolanaSparkline(interval = '1h') {
   if (crCache.has(cacheKey)) return crCache.get(cacheKey);
   
   try {
-    // Compute ISO timestamps: from=now-24h, to=now
+    // Compute Unix timestamps: from=now-24h, to=now (CryptoRank expects Unix timestamps)
     const now = new Date();
     const from = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 24 hours ago
     
-    const fromISO = from.toISOString();
-    const toISO = now.toISOString();
+    const fromUnix = Math.floor(from.getTime() / 1000);
+    const toUnix = Math.floor(now.getTime() / 1000);
     
-    // Use Basic plan endpoint: /v2/currencies/:id/sparkline
-    const endpoint = `currencies/solana/sparkline?from=${fromISO}&to=${toISO}&interval=${interval}`;
+    // Use Basic plan endpoint: /v2/currencies/:id/sparkline (requires numeric ID and Unix timestamps)
+    const endpoint = `currencies/5663/sparkline?from=${fromUnix}&to=${toUnix}&interval=${interval}`;
     const responseData = await makeV2Request(endpoint);
     
     if (responseData.data && Array.isArray(responseData.data)) {

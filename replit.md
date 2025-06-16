@@ -20,6 +20,18 @@ An advanced astrological cryptocurrency analytics platform that blends astronomi
 
 ## Recent Changes
 
+### June 16, 2025 - API Integration Audit: LunarCrush v1 & CryptoRank Basic Plan Complete
+- **Completed LunarCrush v1 endpoint migration** from v4 to v1 API for Discover plan compatibility with /coins/sol/v1 and /topic/solana/news/v1 endpoints
+- **Migrated to path-based v1 authentication** using proper endpoint structure with ?key= parameter format and enhanced error logging
+- **Added Solana news endpoint** (/api/lunarcrush/news) using v1 topic endpoint for authentic news data retrieval
+- **Updated comprehensive analysis** to combine social metrics, news, and coin statistics using v1-compatible endpoints
+- **Completed CryptoRank Basic plan audit** ensuring only authorized endpoints: /global, /currencies, /currencies/:id, /currencies/tags, /currencies/map, /currencies/search, /funds/map, /exchanges/map
+- **Migrated to X-API-KEY header authentication** removing query parameter authentication for cleaner API requests
+- **Enhanced error handling** with detailed logging for HTTP 401/400 responses showing "API key missing" vs "invalid request" errors
+- **Implemented proper ISO timestamp calculation** for sparkline endpoints with from=now-24h, to=now computation
+- **Added exponential backoff retry logic** for 429 rate limits and 5xx server errors with comprehensive error reporting
+- **Verified working endpoints** including global market data, currency tags, Solana current price (ID: 5663), and search functionality
+
 ### June 16, 2025 - Incremental Retraining Hook with Model Versioning Complete
 - **Created comprehensive incremental retraining service** (services/incrementalRetraining.js) monitoring feature data growth and triggering automatic model updates
 - **Implemented feature count threshold system** automatically triggering retraining when ≥100 new features accumulate since last training session
