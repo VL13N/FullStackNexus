@@ -576,9 +576,7 @@ class DatasetExporter {
       }
     };
   }
-}
 
-export { DatasetExporter };
   exportAsTensorFlow(exportData) {
     return {
       format: 'tensorflow',

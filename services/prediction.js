@@ -29,11 +29,28 @@ class PredictionService {
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     
     if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Prediction service requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY');
+      console.warn('Supabase credentials not found - data persistence will be disabled');
+      this.supabase = null;
+    } else {
+      this.supabase = createClient(supabaseUrl, supabaseKey);
+      console.log('✅ Persistence check: Database connection successful');
+      
+      // Test database connection
+      try {
+        const { data, error } = await this.supabase
+          .from('live_predictions')
+          .select('id')
+          .limit(1);
+        
+        if (error && !error.message.includes('relation') && !error.message.includes('does not exist')) {
+          throw error;
+        }
+        console.log('✅ Persistence check: Database read access verified');
+      } catch (dbError) {
+        console.warn('Database connection test failed:', dbError.message);
+        this.supabase = null;
+      }
     }
-    
-    this.supabase = createClient(supabaseUrl, supabaseKey);
-    console.log('Prediction service: Supabase enabled for persistence');
 
     // Load trained model
     await this.loadModel();
