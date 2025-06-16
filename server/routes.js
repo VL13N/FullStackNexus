@@ -309,6 +309,123 @@ export async function registerRoutes(app) {
     }
   });
 
+  // Feature backfill management endpoints
+  app.get('/api/features/history', async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit) || 100;
+      const symbol = req.query.symbol || 'SOL';
+      
+      const { data, error } = await supabase
+        .from('feature_vectors')
+        .select('*')
+        .eq('symbol', symbol)
+        .order('timestamp', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        throw error;
+      }
+
+      res.json({
+        success: true,
+        count: data?.length || 0,
+        data: data || [],
+        symbol: symbol,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.get('/api/features/stats', async (req, res) => {
+    try {
+      const days = parseInt(req.query.days) || 30;
+      const symbol = req.query.symbol || 'SOL';
+      const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+      
+      const { data, error } = await supabase
+        .from('feature_vectors')
+        .select('*')
+        .eq('symbol', symbol)
+        .gte('timestamp', startDate)
+        .order('timestamp', { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+
+      const stats = {
+        total_features: data.length,
+        date_range: {
+          start: data[0]?.timestamp,
+          end: data[data.length - 1]?.timestamp
+        },
+        avg_data_quality: data.reduce((sum, d) => sum + (d.data_quality_score || 0), 0) / data.length,
+        avg_completeness: data.reduce((sum, d) => sum + (d.feature_completeness || 0), 0) / data.length,
+        coverage_hours: data.length,
+        expected_hours: days * 24,
+        coverage_percentage: (data.length / (days * 24) * 100).toFixed(1)
+      };
+
+      res.json({
+        success: true,
+        statistics: stats,
+        symbol: symbol,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  app.post('/api/features/backfill/start', async (req, res) => {
+    try {
+      const { spawn } = await import('child_process');
+      const days = parseInt(req.body.days) || 365;
+      const mode = req.body.mode || 'full';
+      
+      let scriptPath;
+      if (mode === 'incremental') {
+        scriptPath = 'scripts/scheduleBackfill.js';
+        const child = spawn('node', [scriptPath, 'incremental'], {
+          detached: true,
+          stdio: 'ignore'
+        });
+        child.unref();
+      } else {
+        scriptPath = 'scripts/backfillFeatures.js';
+        const child = spawn('node', [scriptPath], {
+          detached: true,
+          stdio: 'ignore'
+        });
+        child.unref();
+      }
+
+      res.json({
+        success: true,
+        message: `Feature backfill started in ${mode} mode`,
+        days: days,
+        estimated_completion: new Date(Date.now() + (mode === 'full' ? 4 * 60 * 60 * 1000 : 30 * 60 * 1000)),
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   app.get('/api/ml/stats', async (req, res) => {
     try {
       const symbol = req.query.symbol || 'SOL';
