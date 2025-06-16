@@ -579,10 +579,6 @@ class DatasetExporter {
 }
 
 export { DatasetExporter };
-
-  /**
-   * Export dataset in TensorFlow-compatible format
-   */
   exportAsTensorFlow(exportData) {
     return {
       format: 'tensorflow',

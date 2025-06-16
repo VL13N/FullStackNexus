@@ -140,7 +140,7 @@ class DataService:
             
             # Create combined feature vector
             feature_vector = {
-                'timestamp': timestamp.isoformat(),
+                'timestamp': str(timestamp),
                 'prediction': pred_row.get('prediction', 0),
                 'confidence': pred_row.get('confidence', 0.5),
                 'actual_outcome': pred_row.get('actual_outcome'),  # May be null for recent data
