@@ -20,6 +20,18 @@ An advanced astrological cryptocurrency analytics platform that blends astronomi
 
 ## Recent Changes
 
+### June 16, 2025 - Advanced Position Sizing Engine with Kelly Criterion Complete
+- **Created comprehensive position sizing system** (services/riskManager.js) with Kelly Criterion and fixed-fraction methods for optimal position allocation
+- **Implemented intelligent risk calculation** combining confidence-based sizing, volatility adjustment, and portfolio percentage limits with emergency stop-loss protection
+- **Built complete REST API endpoints** (/api/risk/size, /api/risk/settings, /api/risk/stats, /api/risk/simulate) for position sizing recommendations and risk management
+- **Added interactive position sizing widget** (components/ui/position-sizing-widget.tsx) with real-time calculations, risk warnings, and detailed breakdown of sizing methods
+- **Created dedicated Risk Management page** (client/src/pages/RiskManagement.tsx) with tabbed interface for calculator, settings, stats, and scenario analysis
+- **Integrated Kelly Criterion mathematics** with win probability estimation, expected return calculation, and fraction optimization for maximum geometric growth
+- **Added fixed-fraction sizing** as conservative alternative with configurable risk percentage and position limits for steady capital preservation
+- **Built comprehensive simulation engine** generating 100+ scenarios across confidence/prediction ranges to validate position sizing strategies
+- **Created risk metrics dashboard** with portfolio statistics, performance tracking, and real-time position recommendations for each prediction cycle
+- **Added navigation integration** with Shield icon and seamless access from main dashboard for complete risk management workflow
+
 ### June 16, 2025 - ML Model Training with Enhanced Sentiment Features Complete
 - **Resolved critical data parsing errors** by removing Unicode characters and console output interference from Python scripts causing JSON parsing failures in model training pipeline
 - **Enhanced sentiment feature integration** expanded from 21 to 46 total features including comprehensive news sentiment analysis with OpenAI integration, social engagement metrics, and market sentiment indicators
