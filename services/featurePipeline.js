@@ -19,10 +19,11 @@ class FeaturePipeline {
       createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) : null;
     this.cache = new Map();
     this.featureWeights = {
-      technical: 0.30,
-      social: 0.25,
-      fundamental: 0.25,
-      astrology: 0.20
+      technical: 0.25,
+      social: 0.20,
+      fundamental: 0.20,
+      astrology: 0.15,
+      sentiment: 0.20
     };
   }
 
@@ -33,12 +34,13 @@ class FeaturePipeline {
     console.log(`🔄 Generating feature vector for ${symbol}...`);
     
     try {
-      // Fetch raw data from all sources
-      const [technicalData, socialData, fundamentalData, astrologyData] = await Promise.allSettled([
+      // Fetch raw data from all sources including sentiment
+      const [technicalData, socialData, fundamentalData, astrologyData, sentimentData] = await Promise.allSettled([
         this.fetchTechnicalFeatures(symbol),
         this.fetchSocialFeatures(symbol),
         this.fetchFundamentalFeatures(symbol),
-        this.fetchAstrologyFeatures()
+        this.fetchAstrologyFeatures(),
+        this.fetchSentimentFeatures()
       ]);
 
       // Extract successful results
@@ -47,6 +49,7 @@ class FeaturePipeline {
         social: socialData.status === 'fulfilled' ? socialData.value : {},
         fundamental: fundamentalData.status === 'fulfilled' ? fundamentalData.value : {},
         astrology: astrologyData.status === 'fulfilled' ? astrologyData.value : {},
+        sentiment: sentimentData.status === 'fulfilled' ? sentimentData.value : {},
         timestamp: new Date().toISOString(),
         symbol: symbol
       };
