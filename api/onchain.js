@@ -277,41 +277,65 @@ class SolanaOnChainService {
   }
 
   /**
-   * Get real-time Solana network metrics including TPS
+   * Get real-time Solana network metrics using public JSON-RPC (no authentication required)
    */
   async getNetworkMetrics() {
     try {
-      const [trackerMetrics, bitqueryMetrics] = await Promise.allSettled([
-        this.getSolanaTrackerMetrics(),
-        this.getBitqueryNetworkMetrics()
+      // Use only public RPC endpoints, no authentication required
+      const [
+        epochInfo,
+        blockHeight,
+        slot,
+        performanceSamples,
+        voteAccounts,
+        supply
+      ] = await Promise.all([
+        this.makeSolanaRpcRequest('getEpochInfo'),
+        this.makeSolanaRpcRequest('getBlockHeight'),
+        this.makeSolanaRpcRequest('getSlot'),
+        this.makeSolanaRpcRequest('getRecentPerformanceSamples', [5]),
+        this.makeSolanaRpcRequest('getVoteAccounts'),
+        this.makeSolanaRpcRequest('getSupply')
       ]);
+
+      // Calculate TPS from performance samples
+      let tps = 0;
+      if (performanceSamples && performanceSamples.length > 0) {
+        const recentSample = performanceSamples[0];
+        tps = Math.round(recentSample.numTransactions / recentSample.samplePeriodSecs);
+      }
+
+      // Count validators
+      const activeValidators = voteAccounts?.current?.length || 0;
+      const totalValidators = (voteAccounts?.current?.length || 0) + (voteAccounts?.delinquent?.length || 0);
 
       const metrics = {
         timestamp: new Date().toISOString(),
-        source: 'combined'
+        source: 'solana_rpc_public',
+        tps: tps,
+        blockHeight: blockHeight,
+        currentSlot: slot,
+        activeValidators: activeValidators,
+        totalValidators: totalValidators,
+        epoch: epochInfo?.epoch || 0,
+        slotIndex: epochInfo?.slotIndex || 0,
+        slotsInEpoch: epochInfo?.slotsInEpoch || 0,
+        epochProgress: epochInfo?.slotIndex && epochInfo?.slotsInEpoch ? 
+          (epochInfo.slotIndex / epochInfo.slotsInEpoch * 100).toFixed(2) : 0,
+        totalSupply: supply?.value?.total || 0,
+        circulatingSupply: supply?.value?.circulating || 0,
+        averageBlockTime: 0.4 // Solana target
       };
 
-      // Merge data from both sources
-      if (trackerMetrics.status === 'fulfilled') {
-        metrics.solanaTracker = trackerMetrics.value;
-      }
-
-      if (bitqueryMetrics.status === 'fulfilled') {
-        metrics.bitquery = bitqueryMetrics.value;
-      }
-
-      // Create combined metrics
-      metrics.combined = {
-        tps: metrics.solanaTracker?.tps || metrics.bitquery?.tps || null,
-        blockHeight: metrics.solanaTracker?.blockHeight || metrics.bitquery?.blockHeight || null,
-        totalTransactions: metrics.bitquery?.totalTransactions || null,
-        activeValidators: metrics.solanaTracker?.activeValidators || null,
-        stakingYield: metrics.solanaTracker?.stakingYield || null,
-        epochInfo: metrics.solanaTracker?.epochInfo || null
-      };
+      console.log('Public Solana RPC metrics retrieved successfully:', {
+        tps: metrics.tps,
+        validators: metrics.activeValidators,
+        epoch: metrics.epoch
+      });
 
       return metrics;
     } catch (error) {
+      console.error('Public Solana RPC network metrics failed:', error.message);
       throw new Error(`Network metrics fetch failed: ${error.message}`);
     }
   }

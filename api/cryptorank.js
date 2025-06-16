@@ -153,29 +153,37 @@ export async function fetchSolanaCurrent() {
 
 /**
  * Fetch Solana sparkline data using Basic plan /currencies/:id/sparkline endpoint
- * Computes ISO timestamps: from=now-24h, to=now
+ * Uses numeric currency ID (5663) with proper ISO-8601 timestamps
  */
-export async function fetchSolanaSparkline(interval = '1h') {
-  const cacheKey = `solSparkline_${interval}`;
+export async function fetchSolanaSparkline(from = null, to = null, interval = '1h') {
+  const cacheKey = `solSparkline_${interval}_${from}_${to}`;
   if (crCache.has(cacheKey)) return crCache.get(cacheKey);
   
   try {
-    // Compute Unix timestamps: from=now-24h, to=now (CryptoRank expects Unix timestamps)
-    const now = new Date();
-    const from = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 24 hours ago
+    // Default to last 24 hours if no timestamps provided
+    if (!from || !to) {
+      const now = new Date();
+      to = now.toISOString();
+      from = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+    }
     
-    const fromUnix = Math.floor(from.getTime() / 1000);
-    const toUnix = Math.floor(now.getTime() / 1000);
+    // Ensure we have valid Date instances for the API
+    const fromDate = new Date(from);
+    const toDate = new Date(to);
     
-    // Use Basic plan endpoint: /v2/currencies/:id/sparkline (requires numeric ID and Unix timestamps)
-    const endpoint = `currencies/5663/sparkline?from=${fromUnix}&to=${toUnix}&interval=${interval}`;
+    if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+      throw new Error('Invalid date parameters provided');
+    }
+    
+    // Use Basic plan endpoint: /v2/currencies/:id/sparkline with numeric ID (5663 = Solana)
+    const endpoint = `currencies/5663/sparkline?from=${fromDate.toISOString()}&to=${toDate.toISOString()}&interval=${interval}`;
     const responseData = await makeV2Request(endpoint);
     
     if (responseData.data && Array.isArray(responseData.data)) {
       const result = {
         interval,
-        from: fromISO,
-        to: toISO,
+        from: fromDate.toISOString(),
+        to: toDate.toISOString(),
         data: responseData.data.map(point => ({
           timestamp: point.timestamp,
           price: point.price || point.value,
@@ -187,10 +195,29 @@ export async function fetchSolanaSparkline(interval = '1h') {
       return result;
     }
     
-    throw new Error('No sparkline data found in v2 response');
+    console.warn('No sparkline data found in CryptoRank response');
+    return {
+      interval,
+      from: fromDate.toISOString(),
+      to: toDate.toISOString(),
+      data: []
+    };
     
   } catch (err) {
     console.error('CryptoRank sparkline fetch failed:', err.message);
+    
+    // Return empty array rather than throwing on HTTP errors
+    if (err.message.includes('HTTP 400') || err.message.includes('HTTP 401') || err.message.includes('HTTP 429')) {
+      console.warn('CryptoRank sparkline API error, returning empty data:', err.message);
+      return {
+        interval,
+        from: from || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+        to: to || new Date().toISOString(),
+        data: [],
+        error: err.message
+      };
+    }
+    
     throw err;
   }
 }
