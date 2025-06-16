@@ -25,10 +25,11 @@ export { makeV2Request };
 
 /**
  * Makes authenticated request to CryptoRank v2 endpoint with retry logic
+ * Uses X-API-KEY header authentication for Basic plan endpoints
  */
 async function makeV2Request(endpoint, maxRetries = 3) {
-  // v2 API uses query parameter authentication as per documentation
-  const url = `https://api.cryptorank.io/v2/${endpoint}${endpoint.includes('?') ? '&' : '?'}api_key=${CR_API_KEY}`;
+  // Use clean endpoint without query parameter authentication - use header instead
+  const url = `https://api.cryptorank.io/v2/${endpoint}`;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -40,12 +41,27 @@ async function makeV2Request(endpoint, maxRetries = 3) {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
-          'User-Agent': 'CryptoAnalytics/1.0'
+          'User-Agent': 'CryptoAnalytics/1.0',
+          'X-API-KEY': CR_API_KEY  // Use header authentication
         },
         timeout: 15000
       });
       
       if (!response.ok) {
+        // Enhanced error logging for 401 and 400 responses
+        if (response.status === 401 || response.status === 400) {
+          let errorDetails;
+          try {
+            errorDetails = await response.json();
+            console.error(`CryptoRank API Error ${response.status}:`, errorDetails);
+          } catch (parseError) {
+            const errorText = await response.text();
+            console.error(`CryptoRank API Error ${response.status}:`, errorText);
+            errorDetails = { message: errorText };
+          }
+          throw new Error(`HTTP ${response.status}: ${errorDetails.message || 'Authentication/Request error'}`);
+        }
+        
         if (response.status === 429) {
           // Rate limit - exponential backoff
           const waitTime = Math.pow(2, attempt) * 2000; // 2s, 4s, 8s
@@ -62,8 +78,9 @@ async function makeV2Request(endpoint, maxRetries = 3) {
           continue;
         }
         
-        // Client error - don't retry
+        // Other client errors - don't retry
         const errorText = await response.text();
+        console.error(`CryptoRank API Error ${response.status}:`, errorText);
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
@@ -92,12 +109,15 @@ async function makeV2Request(endpoint, maxRetries = 3) {
 
 // v2 API uses currency slugs directly, so we can use 'solana' instead of numeric IDs
 
+/**
+ * Fetch Solana current data using Basic plan /currencies/:id endpoint
+ */
 export async function fetchSolanaCurrent() {
   const cacheKey = 'solCurrent';
   if (crCache.has(cacheKey)) return crCache.get(cacheKey);
   
   try {
-    // Use v2 endpoint with currency slug as per documentation
+    // Use Basic plan endpoint: /v2/currencies/:id
     const responseData = await makeV2Request('currencies/solana');
     
     if (responseData.data) {
@@ -132,13 +152,144 @@ export async function fetchSolanaCurrent() {
 }
 
 /**
- * This function is no longer available because the current plan does not include hist_price.
+ * Fetch Solana sparkline data using Basic plan /currencies/:id/sparkline endpoint
+ * Computes ISO timestamps: from=now-24h, to=now
  */
-export async function fetchSolanaHistorical(interval) {
-  throw new Error(
-    "Historical price data is not available on your CryptoRank plan. " +
-    "Allowed endpoints: /global, /currencies/map, /currencies/categories, /currencies/tags, /currencies/fiat, /currencies, /currencies/:id."
-  );
+export async function fetchSolanaSparkline(interval = '1h') {
+  const cacheKey = `solSparkline_${interval}`;
+  if (crCache.has(cacheKey)) return crCache.get(cacheKey);
+  
+  try {
+    // Compute ISO timestamps: from=now-24h, to=now
+    const now = new Date();
+    const from = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 24 hours ago
+    
+    const fromISO = from.toISOString();
+    const toISO = now.toISOString();
+    
+    // Use Basic plan endpoint: /v2/currencies/:id/sparkline
+    const endpoint = `currencies/solana/sparkline?from=${fromISO}&to=${toISO}&interval=${interval}`;
+    const responseData = await makeV2Request(endpoint);
+    
+    if (responseData.data && Array.isArray(responseData.data)) {
+      const result = {
+        interval,
+        from: fromISO,
+        to: toISO,
+        data: responseData.data.map(point => ({
+          timestamp: point.timestamp,
+          price: point.price || point.value,
+          volume: point.volume || null
+        }))
+      };
+      
+      crCache.set(cacheKey, result);
+      return result;
+    }
+    
+    throw new Error('No sparkline data found in v2 response');
+    
+  } catch (err) {
+    console.error('CryptoRank sparkline fetch failed:', err.message);
+    throw err;
+  }
+}
+
+/**
+ * Fetch global market data using Basic plan /global endpoint
+ */
+export async function fetchGlobalData() {
+  const cacheKey = 'globalData';
+  if (crCache.has(cacheKey)) return crCache.get(cacheKey);
+  
+  try {
+    const responseData = await makeV2Request('global');
+    
+    if (responseData.data) {
+      const result = {
+        marketCap: responseData.data.marketCap,
+        volume24h: responseData.data.volume24h,
+        btcDominance: responseData.data.btcDominance,
+        ethDominance: responseData.data.ethDominance,
+        marketCapChange24h: responseData.data.marketCapChange24h,
+        volumeChange24h: responseData.data.volumeChange24h
+      };
+      
+      crCache.set(cacheKey, result);
+      return result;
+    }
+    
+    throw new Error('No global data found in v2 response');
+    
+  } catch (err) {
+    console.error('CryptoRank global fetch failed:', err.message);
+    throw err;
+  }
+}
+
+/**
+ * Fetch currencies list using Basic plan /currencies endpoint
+ */
+export async function fetchCurrencies(limit = 100) {
+  const cacheKey = `currencies_${limit}`;
+  if (crCache.has(cacheKey)) return crCache.get(cacheKey);
+  
+  try {
+    const responseData = await makeV2Request(`currencies?limit=${limit}`);
+    
+    if (responseData.data && Array.isArray(responseData.data)) {
+      const result = responseData.data.map(currency => ({
+        id: currency.id,
+        symbol: currency.symbol,
+        name: currency.name,
+        rank: currency.rank,
+        price: currency.values?.USD?.price || null,
+        marketCap: currency.values?.USD?.marketCap || null,
+        volume24h: currency.values?.USD?.volume24h || null,
+        percentChange24h: currency.values?.USD?.percentChange24h || null
+      }));
+      
+      crCache.set(cacheKey, result);
+      return result;
+    }
+    
+    throw new Error('No currencies data found in v2 response');
+    
+  } catch (err) {
+    console.error('CryptoRank currencies fetch failed:', err.message);
+    throw err;
+  }
+}
+
+/**
+ * Fetch currency tags using Basic plan /currencies/tags endpoint
+ */
+export async function fetchCurrencyTags() {
+  const cacheKey = 'currencyTags';
+  if (crCache.has(cacheKey)) return crCache.get(cacheKey);
+  
+  try {
+    const responseData = await makeV2Request('currencies/tags');
+    
+    if (responseData.data && Array.isArray(responseData.data)) {
+      crCache.set(cacheKey, responseData.data);
+      return responseData.data;
+    }
+    
+    throw new Error('No tags data found in v2 response');
+    
+  } catch (err) {
+    console.error('CryptoRank tags fetch failed:', err.message);
+    throw err;
+  }
+}
+
+/**
+ * Historical price data now uses sparkline endpoint for Basic plan compatibility
+ */
+export async function fetchSolanaHistorical(interval = '1h') {
+  console.log('Fetching Solana historical data using sparkline endpoint...');
+  return await fetchSolanaSparkline(interval);
 }
 
 // Legacy class for backward compatibility
@@ -176,23 +327,41 @@ class CryptoRankService {
   }
 
   async getMultiCoinComparison(symbols = ['solana', 'bitcoin', 'ethereum', 'cardano', 'polkadot']) {
-    // For now, just return Solana data - can be extended later
-    return await fetchSolanaCurrent();
+    // Use Basic plan currencies endpoint
+    const currencies = await fetchCurrencies(100);
+    return currencies.filter(currency => 
+      symbols.some(symbol => currency.name.toLowerCase().includes(symbol) || currency.symbol.toLowerCase() === symbol.slice(0, 3).toUpperCase())
+    );
   }
 
   async getMarketOverview(limit = 100) {
-    return await fetchSolanaCurrent();
-  }
-
-  async getComprehensiveSolanaAnalysis() {
-    const [current, historical] = await Promise.all([
-      fetchSolanaCurrent(),
-      fetchSolanaHistorical('1h')
+    // Use Basic plan endpoints for comprehensive market overview
+    const [global, currencies, tags] = await Promise.allSettled([
+      fetchGlobalData(),
+      fetchCurrencies(limit),
+      fetchCurrencyTags()
     ]);
     
     return {
-      current,
-      historical: historical.slice(-24) // Last 24 hours
+      global: global.status === 'fulfilled' ? global.value : null,
+      currencies: currencies.status === 'fulfilled' ? currencies.value : [],
+      tags: tags.status === 'fulfilled' ? tags.value : [],
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  async getComprehensiveSolanaAnalysis() {
+    const [current, sparkline, global] = await Promise.allSettled([
+      fetchSolanaCurrent(),
+      fetchSolanaSparkline('1h'),
+      fetchGlobalData()
+    ]);
+    
+    return {
+      current: current.status === 'fulfilled' ? current.value : null,
+      sparkline: sparkline.status === 'fulfilled' ? sparkline.value : null,
+      global: global.status === 'fulfilled' ? global.value : null,
+      timestamp: new Date().toISOString()
     };
   }
 
