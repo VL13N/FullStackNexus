@@ -39,8 +39,9 @@ class LunarCrushService {
     }
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      const startTime = Date.now();
       try {
-        console.log(`LunarCrush v1 API Request (attempt ${attempt}): ${endpoint}`);
+        console.log(`[LUNARCRUSH] Request (attempt ${attempt}/${maxRetries}): ${endpoint} | URL: ${url.replace(this.apiKey, 'API_KEY')} | Timestamp: ${new Date().toISOString()}`);
         
         const response = await fetch(url, {
           method: 'GET',

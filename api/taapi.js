@@ -61,20 +61,25 @@ export async function fetchTAIndicator(indicatorName, interval = "1h") {
   const url = `https://api.taapi.io/${indicatorName}?${params}`;
 
   try {
-    console.log(`TAAPI Request: ${indicatorName} (${interval}) with params:`, params.toString());
+    const startTime = Date.now();
+    console.log(`[TAAPI] Request: ${indicatorName} | Interval: ${interval} | URL: ${url.replace(process.env.TAAPI_SECRET, 'API_KEY')} | Timestamp: ${new Date().toISOString()}`);
     
     const response = await fetch(url);
+    const latencyMs = Date.now() - startTime;
+    
+    console.log(`[TAAPI] Response: ${indicatorName} | Status: ${response.status} | Latency: ${latencyMs}ms`);
     
     if (!response.ok) {
       const errorData = await response.text();
+      console.error(`[TAAPI] Error Body: ${errorData}`);
       
       if (response.status === 401) {
-        console.error(`TAAPI Auth Error (${response.status}):`, errorData);
+        console.error(`[TAAPI] Auth Error (${response.status}):`, errorData);
         throw new Error(`TAAPI Authentication failed: ${errorData}. Check your Pro API key.`);
       }
       
       if (response.status === 429) {
-        console.error(`TAAPI Rate Limit (${response.status}):`, errorData);
+        console.error(`[TAAPI] Rate Limit (${response.status}):`, errorData);
         throw new Error(`TAAPI Rate limit exceeded: ${errorData}. Consider using bulk endpoint.`);
       }
       
