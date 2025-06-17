@@ -267,23 +267,57 @@ class PredictionService {
     }
 
     try {
-      await this.ensureTableExists();
+      // First attempt with full schema
+      let insertData = {
+        timestamp: predictionData.timestamp,
+        tech_score: predictionData.techScore,
+        social_score: predictionData.socialScore,
+        fund_score: predictionData.fundScore,
+        astro_score: predictionData.astroScore,
+        predicted_pct: predictionData.predictedPct,
+        category: predictionData.category,
+        confidence: predictionData.confidence
+      };
 
-      const { error } = await this.supabase
+      let { error } = await this.supabase
         .from('live_predictions')
-        .insert({
-          timestamp: predictionData.timestamp,
-          technical_score: predictionData.techScore,
-          social_score: predictionData.socialScore,
-          fundamental_score: predictionData.fundScore,
-          astrology_score: predictionData.astroScore,
-          overall_score: (predictionData.techScore + predictionData.socialScore + predictionData.fundScore + predictionData.astroScore) / 4,
-          classification: predictionData.category,
-          confidence: predictionData.confidence,
-          risk_level: predictionData.confidence > 0.7 ? 'Low' : predictionData.confidence > 0.4 ? 'Medium' : 'High'
-        });
+        .insert([insertData]);
 
-      if (error) {
+      // If astro_score column is missing, try without it
+      if (error && error.message.includes('astro_score')) {
+        console.log('Retrying prediction storage without astro_score column...');
+        
+        // Remove astro_score and try again
+        const { astro_score, ...insertDataWithoutAstro } = insertData;
+        
+        const { error: retryError } = await this.supabase
+          .from('live_predictions')
+          .insert([insertDataWithoutAstro]);
+
+        if (retryError) {
+          console.error('Error storing prediction (retry):', retryError);
+          
+          // Final fallback - try with minimal schema
+          const minimalData = {
+            timestamp: predictionData.timestamp,
+            predicted_pct: predictionData.predictedPct,
+            category: predictionData.category,
+            confidence: predictionData.confidence
+          };
+          
+          const { error: finalError } = await this.supabase
+            .from('live_predictions')
+            .insert([minimalData]);
+          
+          if (finalError) {
+            console.error('Error storing prediction (final attempt):', finalError);
+          } else {
+            console.log('Prediction stored successfully (minimal schema)');
+          }
+        } else {
+          console.log('Prediction stored successfully (without astro_score)');
+        }
+      } else if (error) {
         console.error('Error storing prediction:', error);
       } else {
         console.log('Prediction stored successfully');
