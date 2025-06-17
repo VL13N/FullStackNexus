@@ -14,7 +14,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import scheduler from "../services/scheduler.js";
 import modelTrainingScheduler from "../services/modelTrainingScheduler.js";
 import AlertsSystem from "../services/alerts.js";
-import { supabaseManager } from "./supabaseClient.js";
+import { initializeSupabase, performDatabaseHealthCheck } from "./supabaseClientSimple.js";
 
 async function startServer() {
   // Verify critical API keys on startup
@@ -26,7 +26,7 @@ async function startServer() {
 
   // Initialize Supabase client before any route handling
   try {
-    await supabaseManager.initialize();
+    initializeSupabase();
   } catch (error) {
     console.error('FATAL: Supabase initialization failed:', (error as Error).message);
     console.error('Please verify your Supabase environment variables in Replit Secrets');
@@ -44,7 +44,7 @@ async function startServer() {
   // Add database health endpoint before other routes
   app.get('/health/db', async (req, res) => {
     try {
-      const healthResult = await supabaseManager.healthCheck();
+      const healthResult = await performDatabaseHealthCheck();
       
       if (healthResult.success) {
         res.status(200).json({
