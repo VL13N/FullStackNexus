@@ -72,10 +72,15 @@ async function testTaapiPro() {
   
   try {
     const apiKey = process.env.TAAPI_SECRET;
-    const url = `https://api.taapi.io/rsi?secret=${apiKey}&exchange=binance&symbol=SOL/USDT&interval=1h&period=14`;
+    const url = 'https://api.taapi.io/rsi?exchange=binance&symbol=SOL/USDT&interval=1h&period=14';
     
     const startTime = Date.now();
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
     const latency = Date.now() - startTime;
     
     diagnosticReport.apiTests.taapi.status = response.status;

@@ -41,7 +41,6 @@ export async function fetchTAIndicator(indicatorName, interval = "1h") {
   }
 
   const params = new URLSearchParams({
-    secret: process.env.TAAPI_SECRET,
     exchange: "binance",
     symbol: "SOL/USDT",
     interval
@@ -62,9 +61,14 @@ export async function fetchTAIndicator(indicatorName, interval = "1h") {
 
   try {
     const startTime = Date.now();
-    console.log(`[TAAPI] Request: ${indicatorName} | Interval: ${interval} | URL: ${url.replace(process.env.TAAPI_SECRET, 'API_KEY')} | Timestamp: ${new Date().toISOString()}`);
+    console.log(`[TAAPI] Request: ${indicatorName} | Interval: ${interval} | URL: ${url} | Timestamp: ${new Date().toISOString()}`);
     
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${process.env.TAAPI_SECRET}`,
+        'Content-Type': 'application/json'
+      }
+    });
     const latencyMs = Date.now() - startTime;
     
     console.log(`[TAAPI] Response: ${indicatorName} | Status: ${response.status} | Latency: ${latencyMs}ms`);
@@ -128,7 +132,6 @@ export async function fetchBulkIndicators(interval = "1h") {
   }
 
   const requestBody = {
-    secret: process.env.TAAPI_SECRET,
     construct: {
       exchange: "binance",
       symbol: "SOL/USDT",

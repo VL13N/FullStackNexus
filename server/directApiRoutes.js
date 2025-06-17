@@ -59,7 +59,12 @@ export function registerDirectApiRoutes(app) {
       const apiKey = process.env.TAAPI_SECRET;
       const { interval = '1h', period = '14' } = req.query;
       
-      const response = await fetch(`https://api.taapi.io/rsi?secret=${apiKey}&exchange=binance&symbol=SOL/USDT&interval=${interval}&period=${period}`);
+      const response = await fetch(`https://api.taapi.io/rsi?exchange=binance&symbol=SOL/USDT&interval=${interval}&period=${period}`, {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
       
       if (!response.ok) {
         throw new Error(`TAAPI error: ${response.status}`);
@@ -69,6 +74,52 @@ export function registerDirectApiRoutes(app) {
       res.json({ success: true, data, indicator: 'rsi', interval, period, timestamp: new Date().toISOString() });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message, timestamp: new Date().toISOString() });
+    }
+  });
+
+  // TAAPI Pro test endpoint for authentication verification
+  app.get('/api/taapi/test', async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    try {
+      const apiKey = process.env.TAAPI_SECRET;
+      
+      if (!apiKey) {
+        return res.status(500).json({ 
+          success: false, 
+          error: 'TAAPI_SECRET not configured',
+          timestamp: new Date().toISOString() 
+        });
+      }
+      
+      const response = await fetch('https://api.taapi.io/rsi?exchange=binance&symbol=SOL/USDT&interval=1h&period=14', {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const responseText = await response.text();
+      let responseData;
+      
+      try {
+        responseData = JSON.parse(responseText);
+      } catch {
+        responseData = responseText;
+      }
+      
+      res.json({ 
+        success: response.ok,
+        status: response.status,
+        headers: Object.fromEntries(response.headers.entries()),
+        data: responseData,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false, 
+        error: error.message, 
+        timestamp: new Date().toISOString() 
+      });
     }
   });
 

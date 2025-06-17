@@ -35,7 +35,12 @@ router.get('/internal', async (req, res) => {
   // Test TAAPI Pro service
   try {
     const startTime = Date.now();
-    const response = await fetch(`https://api.taapi.io/rsi?secret=${process.env.TAAPI_SECRET}&exchange=binance&symbol=SOL/USDT&interval=1h`);
+    const response = await fetch('https://api.taapi.io/rsi?exchange=binance&symbol=SOL/USDT&interval=1h', {
+      headers: {
+        'Authorization': `Bearer ${process.env.TAAPI_SECRET}`,
+        'Content-Type': 'application/json'
+      }
+    });
     const latencyMs = Date.now() - startTime;
     
     if (response.ok) {
