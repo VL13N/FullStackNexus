@@ -117,8 +117,8 @@ export async function fetchSolanaCurrent() {
   if (crCache.has(cacheKey)) return crCache.get(cacheKey);
   
   try {
-    // Use Basic plan endpoint: /v2/currencies/:id
-    const responseData = await makeV2Request('currencies/solana');
+    // Use Basic plan endpoint: /v2/currencies/:id with numeric ID for Solana
+    const responseData = await makeV2Request('currencies/5663');
     
     if (responseData.data) {
       const coinData = responseData.data;
