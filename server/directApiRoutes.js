@@ -111,8 +111,9 @@ export function registerDirectApiRoutes(app) {
     }
   });
 
-  // ML Feature Importance endpoint with domain-based rankings
+  // ML Feature Importance endpoint with domain-based rankings (priority route)
   app.get('/api/ml/feature-importance', async (req, res) => {
+    console.log('Direct API route handling feature importance request');
     res.setHeader('Content-Type', 'application/json');
     try {
       // Domain-based feature importance when TensorFlow model unavailable

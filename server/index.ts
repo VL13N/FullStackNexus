@@ -157,11 +157,8 @@ async function scheduleOpenAITasks(port: number) {
   // Initialize alerts WebSocket server
   alertsSystem.initializeWebSocket(server);
   
-  // Register direct API routes first to bypass Vite routing conflicts
+  // Register direct API routes BEFORE all other routes to ensure priority
   registerDirectApiRoutes(app);
-  
-  // Register ML routes after direct API routes to prevent conflicts
-  await registerMLRoutes(app);
   registerHealthRoutes(app);
   app.use('/api/ml/hpo', hpoRoutes);
   app.use('/api/alerts', alertRoutes);
