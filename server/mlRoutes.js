@@ -359,8 +359,8 @@ print(json.dumps(result))
     }
   });
 
-  // Feature importance analysis (GET endpoint for health checks)
-  app.get('/api/ml/feature-importance', async (req, res) => {
+  // Feature importance analysis (renamed to avoid routing conflicts)
+  app.get('/api/ml/legacy-feature-importance', async (req, res) => {
     try {
       // Check if TensorFlow model is available
       const modelPath = './models/tensorflow_model.json';

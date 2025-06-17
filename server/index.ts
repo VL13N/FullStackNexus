@@ -149,7 +149,6 @@ async function scheduleOpenAITasks(port: number) {
 
 (async () => {
   const server = await registerRoutes(app);
-  await registerMLRoutes(app);
   
   // Initialize alerts system
   const alertsSystem = new AlertsSystem();
@@ -160,6 +159,9 @@ async function scheduleOpenAITasks(port: number) {
   
   // Register direct API routes first to bypass Vite routing conflicts
   registerDirectApiRoutes(app);
+  
+  // Register ML routes after direct API routes to prevent conflicts
+  await registerMLRoutes(app);
   registerHealthRoutes(app);
   app.use('/api/ml/hpo', hpoRoutes);
   app.use('/api/alerts', alertRoutes);

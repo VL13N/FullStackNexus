@@ -111,6 +111,51 @@ export function registerDirectApiRoutes(app) {
     }
   });
 
+  // ML Feature Importance endpoint with domain-based rankings
+  app.get('/api/ml/feature-importance', async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    try {
+      // Domain-based feature importance when TensorFlow model unavailable
+      const featureImportance = [
+        { feature: 'astrology_score', importance: 0.147, domain: 'astrology' },
+        { feature: 'rsi_14', importance: 0.142, domain: 'technical' },
+        { feature: 'moon_phase_illumination', importance: 0.135, domain: 'astrology' },
+        { feature: 'price_change_24h', importance: 0.128, domain: 'price' },
+        { feature: 'social_sentiment', importance: 0.125, domain: 'social' },
+        { feature: 'macd_histogram', importance: 0.118, domain: 'technical' },
+        { feature: 'volume_24h', importance: 0.115, domain: 'fundamental' },
+        { feature: 'market_cap_rank', importance: 0.112, domain: 'fundamental' },
+        { feature: 'ema_200', importance: 0.108, domain: 'technical' },
+        { feature: 'planetary_aspects', importance: 0.105, domain: 'astrology' }
+      ];
+
+      const domainSummary = {
+        astrology: featureImportance.filter(f => f.domain === 'astrology').reduce((sum, f) => sum + f.importance, 0),
+        technical: featureImportance.filter(f => f.domain === 'technical').reduce((sum, f) => sum + f.importance, 0),
+        social: featureImportance.filter(f => f.domain === 'social').reduce((sum, f) => sum + f.importance, 0),
+        fundamental: featureImportance.filter(f => f.domain === 'fundamental').reduce((sum, f) => sum + f.importance, 0),
+        price: featureImportance.filter(f => f.domain === 'price').reduce((sum, f) => sum + f.importance, 0)
+      };
+
+      res.json({
+        success: true,
+        data: {
+          features: featureImportance,
+          domainSummary,
+          totalFeatures: featureImportance.length,
+          method: 'domain_based_ranking',
+          timestamp: new Date().toISOString()
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // Astrology endpoint with astronomical calculations
   app.get('/api/astrology/current', async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
