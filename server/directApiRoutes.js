@@ -52,6 +52,41 @@ export function registerDirectApiRoutes(app) {
     }
   });
 
+  // Individual TAAPI indicator endpoints
+  app.get('/api/taapi/rsi', async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    try {
+      const apiKey = process.env.TAAPI_SECRET;
+      const response = await fetch(`https://api.taapi.io/rsi?secret=${apiKey}&exchange=binance&symbol=SOL/USDT&interval=1h&period=14`);
+      
+      if (!response.ok) {
+        throw new Error(`TAAPI error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      res.json({ success: true, data, indicator: 'rsi', timestamp: new Date().toISOString() });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message, timestamp: new Date().toISOString() });
+    }
+  });
+
+  app.get('/api/taapi/macd', async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    try {
+      const apiKey = process.env.TAAPI_SECRET;
+      const response = await fetch(`https://api.taapi.io/macd?secret=${apiKey}&exchange=binance&symbol=SOL/USDT&interval=1h`);
+      
+      if (!response.ok) {
+        throw new Error(`TAAPI error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      res.json({ success: true, data, indicator: 'macd', timestamp: new Date().toISOString() });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message, timestamp: new Date().toISOString() });
+    }
+  });
+
   // Astrology endpoint with astronomical calculations
   app.get('/api/astrology/current', async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
