@@ -167,64 +167,74 @@ router.get('/internal', async (req, res) => {
   }
 
   // Test Supabase database connection
-  try {
-    const startTime = Date.now();
-    
-    // Test read access
-    const { data: readTest, error: readError } = await supabase
-      .from('predictions')
-      .select('id')
-      .limit(1);
-    
-    if (readError) throw new Error(`Read test failed: ${readError.message}`);
-    
-    // Test write access with temporary row
-    const testData = {
-      prediction: 0,
-      confidence: 0,
-      direction: 'HEALTH_TEST',
-      technical_score: 0,
-      social_score: 0,
-      fundamental_score: 0,
-      astrology_score: 0,
-      features: { health_test: true },
-      pillar_scores: { health_test: true },
-      created_at: new Date().toISOString()
-    };
-    
-    const { data: writeTest, error: writeError } = await supabase
-      .from('predictions')
-      .insert([testData])
-      .select();
-    
-    if (writeError) throw new Error(`Write test failed: ${writeError.message}`);
-    
-    // Clean up test row
-    if (writeTest && writeTest[0]) {
-      await supabase
+  if (supabase) {
+    try {
+      const startTime = Date.now();
+      
+      // Test read access
+      const { data: readTest, error: readError } = await supabase
         .from('predictions')
-        .delete()
-        .eq('id', writeTest[0].id);
+        .select('id')
+        .limit(1);
+      
+      if (readError) throw new Error(`Read test failed: ${readError.message}`);
+      
+      // Test write access with temporary row
+      const testData = {
+        prediction: 0,
+        confidence: 0,
+        direction: 'HEALTH_TEST',
+        technical_score: 0,
+        social_score: 0,
+        fundamental_score: 0,
+        astrology_score: 0,
+        features: { health_test: true },
+        pillar_scores: { health_test: true },
+        created_at: new Date().toISOString()
+      };
+      
+      const { data: writeTest, error: writeError } = await supabase
+        .from('predictions')
+        .insert([testData])
+        .select();
+      
+      if (writeError) throw new Error(`Write test failed: ${writeError.message}`);
+      
+      // Clean up test row
+      if (writeTest && writeTest[0]) {
+        await supabase
+          .from('predictions')
+          .delete()
+          .eq('id', writeTest[0].id);
+      }
+      
+      const latencyMs = Date.now() - startTime;
+      
+      healthStatus.services.supabase = {
+        ok: true,
+        latencyMs,
+        endpoint: 'read/write test',
+        error: null
+      };
+      console.log(`[HEALTH] Supabase: OK (${latencyMs}ms)`);
+      
+    } catch (error) {
+      healthStatus.services.supabase = {
+        ok: false,
+        latencyMs: null,
+        endpoint: 'read/write test',
+        error: error.message
+      };
+      console.error(`[HEALTH] Supabase: FAILED - ${error.message}`);
     }
-    
-    const latencyMs = Date.now() - startTime;
-    
-    healthStatus.services.supabase = {
-      ok: true,
-      latencyMs,
-      endpoint: 'read/write test',
-      error: null
-    };
-    console.log(`[HEALTH] Supabase: OK (${latencyMs}ms)`);
-    
-  } catch (error) {
+  } else {
     healthStatus.services.supabase = {
       ok: false,
       latencyMs: null,
       endpoint: 'read/write test',
-      error: error.message
+      error: 'Supabase credentials not configured'
     };
-    console.error(`[HEALTH] Supabase: FAILED - ${error.message}`);
+    console.warn('[HEALTH] Supabase: SKIPPED - Credentials not configured');
   }
 
   // Calculate overall health score
