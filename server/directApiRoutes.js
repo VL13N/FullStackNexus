@@ -91,10 +91,13 @@ export function registerDirectApiRoutes(app) {
         });
       }
 
-      const response = await fetch('https://api.taapi.io/rsi?exchange=binance&symbol=BTC/USDT&interval=1h&period=14', {
+      const TAAPI_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbHVlIjoiNjdhMjllZmY4MDZmZjE2NTFlZGIyYjM0IiwiaWF0IjoxNzUwMTY4MTg1LCJleHAiOjMzMjU0NjMyMTg1fQ.0BRsbV9NzR-CTYwB7JrvfwSxN087JzJopQzF3cg1bo4";
+      const keyToUse = TAAPI_API_KEY || apiKey;
+
+      const response = await fetch('https://api.taapi.io/rsi?exchange=binance&symbol=SOL/USDT&interval=1h&period=14', {
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey.trim()}`
+          'Authorization': `Bearer ${keyToUse.trim()}`
         }
       });
       
@@ -127,6 +130,54 @@ export function registerDirectApiRoutes(app) {
       });
     } catch (error) {
       console.log('TAAPI Auth: ERROR –', error.message);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message, 
+        timestamp: new Date().toISOString() 
+      });
+    }
+  });
+
+  // Solana On-Chain RPC Test Endpoint
+  app.get('/api/onchain/test', async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    try {
+      const response = await fetch('https://api.mainnet-beta.solana.com', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'getBlockHeight'
+        })
+      });
+
+      const responseText = await response.text();
+      let responseData;
+      
+      try {
+        responseData = JSON.parse(responseText);
+      } catch {
+        responseData = responseText;
+      }
+
+      if (response.ok && responseData.result) {
+        console.log('Solana RPC: SUCCESS – endpoint /api/onchain/test returned 200.');
+      } else {
+        console.log(`Solana RPC: FAILED – status ${response.status}`);
+        console.log('Response body:', responseText);
+      }
+      
+      res.json({ 
+        success: response.ok,
+        status: response.status,
+        data: responseData,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.log('Solana RPC: ERROR –', error.message);
       res.status(500).json({ 
         success: false, 
         error: error.message, 

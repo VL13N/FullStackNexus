@@ -17,19 +17,29 @@ import AlertsSystem from "../services/alerts.js";
 import { initializeSupabase, performDatabaseHealthCheck } from "./supabaseClientSimple.js";
 
 async function startServer() {
+  // Initialize Supabase FIRST before anything else
+  try {
+    console.log('🔍 Initializing Supabase at server startup...');
+    initializeSupabase();
+    
+    // Test database connection immediately
+    const healthResult = await performDatabaseHealthCheck();
+    if (!healthResult.success) {
+      console.error('FATAL: Supabase connection test failed:', healthResult.error);
+      console.error('Please verify your Supabase environment variables in Replit Secrets');
+      process.exit(1);
+    }
+    console.log('✅ Supabase initialized and tested successfully');
+  } catch (error) {
+    console.error('FATAL: Supabase initialization failed:', (error as Error).message);
+    console.error('Please verify your Supabase environment variables in Replit Secrets');
+    process.exit(1);
+  }
+
   // Verify critical API keys on startup
   if (!process.env.OPENAI_API_KEY) {
     console.error('ERROR: OPENAI_API_KEY is required but not found in environment variables');
     console.error('Please add your OpenAI API key to Replit Secrets');
-    process.exit(1);
-  }
-
-  // Initialize Supabase client before any route handling
-  try {
-    initializeSupabase();
-  } catch (error) {
-    console.error('FATAL: Supabase initialization failed:', (error as Error).message);
-    console.error('Please verify your Supabase environment variables in Replit Secrets');
     process.exit(1);
   }
 

@@ -63,8 +63,12 @@ console.log('✅ Supabase config loaded');
   }
 })();
 
-console.log("TAAPI key in use:", process.env.TAAPI_SECRET);
-if (!process.env.TAAPI_SECRET) {
+// Use the updated TAAPI API key
+const TAAPI_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbHVlIjoiNjdhMjllZmY4MDZmZjE2NTFlZGIyYjM0IiwiaWF0IjoxNzUwMTY4MTg1LCJleHAiOjMzMjU0NjMyMTg1fQ.0BRsbV9NzR-CTYwB7JrvfwSxN087JzJopQzF3cg1bo4";
+const TAAPI_KEY = TAAPI_API_KEY || process.env.TAAPI_SECRET;
+
+console.log("TAAPI key in use:", TAAPI_KEY ? TAAPI_KEY.slice(0, 10) + '...' : 'MISSING');
+if (!TAAPI_KEY) {
   throw new Error("TAAPI_SECRET is undefined—check Replit Secrets and restart.");
 }
 

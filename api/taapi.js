@@ -1,14 +1,17 @@
 // NOTE: TAAPI's MACD parameters must be camelCase (fastPeriod, slowPeriod, signalPeriod).
 // If you still see authentication errors, check TAAPI dashboard → Usage for quota and IP Access.
 
-// Validate TAAPI_SECRET at startup
-if (!process.env.TAAPI_SECRET) {
+// Validate TAAPI_SECRET at startup - use new API key format
+const TAAPI_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbHVlIjoiNjdhMjllZmY4MDZmZjE2NTFlZGIyYjM0IiwiaWF0IjoxNzUwMTY4MTg1LCJleHAiOjMzMjU0NjMyMTg1fQ.0BRsbV9NzR-CTYwB7JrvfwSxN087JzJopQzF3cg1bo4";
+
+if (!TAAPI_API_KEY && !process.env.TAAPI_SECRET) {
   console.error('FATAL ERROR: TAAPI_SECRET is required but not found in environment variables');
   console.error('Please add your TAAPI Pro API key to Replit Secrets');
   throw new Error("TAAPI_SECRET is undefined—check Replit Secrets and restart.");
 }
 
-console.log("TAAPI Pro key loaded:", process.env.TAAPI_SECRET.slice(0, 10) + '...');
+const TAAPI_KEY = TAAPI_API_KEY || process.env.TAAPI_SECRET;
+console.log("TAAPI Pro key loaded:", TAAPI_KEY.slice(0, 10) + '...');
 
 /**
  * TAAPI Pro Technical Analysis Integration
@@ -97,7 +100,7 @@ export async function fetchTAIndicator(indicatorName, interval = "1h") {
     
     const response = await fetch(url, {
       headers: {
-        'Authorization': `Bearer ${process.env.TAAPI_SECRET}`,
+        'Authorization': `Bearer ${TAAPI_KEY}`,
         'Content-Type': 'application/json'
       }
     });
@@ -110,8 +113,15 @@ export async function fetchTAIndicator(indicatorName, interval = "1h") {
       console.error(`[TAAPI] Error Body: ${errorData}`);
       
       if (response.status === 401) {
-        console.warn(`[TAAPI] Auth failed, switching to fallback calculations: ${errorData}`);
-        return calculateFallbackIndicator(indicatorName);
+        console.error(`[TAAPI] AUTH FAILED - Raw Request:`, {
+          url: url,
+          headers: {
+            'Authorization': `Bearer ${TAAPI_KEY.slice(0, 20)}...`,
+            'Content-Type': 'application/json'
+          }
+        });
+        console.error(`[TAAPI] AUTH FAILED - Raw Response:`, errorData);
+        throw new Error(`TAAPI Authentication failed: ${errorData}. STOPPING retries for debugging.`);
       }
       
       if (response.status === 429) {
