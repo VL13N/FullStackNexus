@@ -186,8 +186,6 @@ async function scheduleOpenAITasks(port: number) {
   // Initialize alerts WebSocket server
   alertsSystem.initializeWebSocket(server);
   
-  // Register direct API routes BEFORE middleware to prevent conflicts
-  registerDirectApiRoutes(app);
   app.use('/api/health', healthRoutesSimple);
   
   // Register ML routes after direct API routes to prevent conflicts
