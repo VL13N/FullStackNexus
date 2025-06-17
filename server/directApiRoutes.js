@@ -77,7 +77,7 @@ export function registerDirectApiRoutes(app) {
     }
   });
 
-  // TAAPI Pro test endpoint for authentication verification
+  // TAAPI Pro test endpoint for BTC/USDT RSI at 1h
   app.get('/api/taapi/test', async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     try {
@@ -90,66 +90,13 @@ export function registerDirectApiRoutes(app) {
           timestamp: new Date().toISOString() 
         });
       }
-      
-      // Test multiple authentication methods for TAAPI Pro
-      const authMethods = [
-        {
-          name: 'Bearer Token',
-          url: 'https://api.taapi.io/rsi?exchange=binance&symbol=SOL/USDT&interval=1h&period=14',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-          }
-        },
-        {
-          name: 'API Key Header',
-          url: 'https://api.taapi.io/rsi?exchange=binance&symbol=SOL/USDT&interval=1h&period=14',
-          headers: {
-            'X-API-Key': apiKey,
-            'Content-Type': 'application/json'
-          }
-        },
-        {
-          name: 'Query Parameter (fallback)',
-          url: `https://api.taapi.io/rsi?secret=${apiKey}&exchange=binance&symbol=SOL/USDT&interval=1h&period=14`,
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        }
-      ];
 
-      let lastResponse;
-      for (const method of authMethods) {
-        try {
-          const response = await fetch(method.url, { headers: method.headers });
-          lastResponse = response;
-          
-          if (response.ok) {
-            const responseText = await response.text();
-            let responseData;
-            
-            try {
-              responseData = JSON.parse(responseText);
-            } catch {
-              responseData = responseText;
-            }
-            
-            return res.json({ 
-              success: true,
-              status: response.status,
-              authMethod: method.name,
-              headers: Object.fromEntries(response.headers.entries()),
-              data: responseData,
-              timestamp: new Date().toISOString()
-            });
-          }
-        } catch (error) {
-          // Continue to next method
+      const response = await fetch('https://api.taapi.io/rsi?exchange=binance&symbol=BTC/USDT&interval=1h&period=14', {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey.trim()}`
         }
-      }
-
-      // If all methods failed, return the last response
-      const response = lastResponse;
+      });
       
       const responseText = await response.text();
       let responseData;
@@ -158,6 +105,17 @@ export function registerDirectApiRoutes(app) {
         responseData = JSON.parse(responseText);
       } catch {
         responseData = responseText;
+      }
+
+      if (response.ok) {
+        console.log('TAAPI Auth: SUCCESS – endpoint /api/taapi/test returned 200.');
+      } else {
+        console.log(`TAAPI Auth: FAILED – status ${response.status}`);
+        console.log('Request headers:', JSON.stringify({
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey.slice(0, 10)}...`
+        }, null, 2));
+        console.log('Response body:', responseText);
       }
       
       res.json({ 
@@ -168,6 +126,7 @@ export function registerDirectApiRoutes(app) {
         timestamp: new Date().toISOString()
       });
     } catch (error) {
+      console.log('TAAPI Auth: ERROR –', error.message);
       res.status(500).json({ 
         success: false, 
         error: error.message, 
