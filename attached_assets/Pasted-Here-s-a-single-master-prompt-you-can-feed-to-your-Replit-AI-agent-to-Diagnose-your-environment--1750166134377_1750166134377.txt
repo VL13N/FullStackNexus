@@ -1,0 +1,93 @@
+Here’s a single “master” prompt you can feed to your Replit AI agent to:
+
+Diagnose your environment and isolate API failures
+
+Verify and fix each paid‐plan integration (TAAPI, CryptoRank, LunarCrush)
+
+Ensure Supabase persistence is truly working
+
+Isolate your ML pipeline so it can’t break API flows
+
+Apply the date‐format fix for CryptoRank sparkline
+
+Upgrade LunarCrush to v2 and handle fallback gracefully
+
+MASTER DEBUG & FIX PROMPT
+
+Diagnostics & Environment
+
+Log out the presence and values (masked) of all required secrets:
+
+process.env.SUPABASE_URL
+
+process.env.SUPABASE_ANON_KEY
+
+process.env.SUPABASE_SERVICE_ROLE_KEY
+
+process.env.TAAPI_KEY
+
+process.env.CRYPTORANK_API_KEY
+
+process.env.LUNARCRUSH_KEY
+
+For each, throw an explicit error if any is missing.
+
+API Sanity Tests
+3. TAAPI Pro
+
+Call a simple RSI endpoint for SOL/USDT at 1h
+
+Log status code and JSON or error payload
+
+CryptoRank V2
+
+Call /global with X-API-KEY header
+
+Call /currencies/5663 for Solana
+
+Call /currencies/5663/sparkline with from & to as ISO strings (new Date().toISOString()) and interval=1h
+
+Log each response or error.
+
+LunarCrush
+
+Switch to v2: call /v2/coins/solana and /v2/coins/solana/time-series using your Discover plan key
+
+Fallback: verify CoinGecko social data call if LunarCrush fails
+
+Log attempts and final result.
+
+Supabase Persistence
+6. Run a quick insert+select in your feature table (e.g. ml_features) to confirm writes actually persist
+7. Log success or detailed error.
+
+ML Isolation
+8. Temporarily disable your scheduled ML prediction/training loops (comment out scheduler registration)
+9. Re-run steps 3–7 to confirm API and DB paths are now error-free
+10. If clean, re-enable ML scheduler.
+
+Automated Fixes
+
+Date Conversion: In api/cryptorank.js, wrap your sparkline from and to values as new Date(from).toISOString()
+
+LunarCrush v2 Migration: Update your service to call the v2 endpoints, add appropriate query parameters (key=) or header, and adjust JSON parsing.
+
+Error Handling: For each API failure, fall back to a community data source (CoinGecko) but don’t crash—return a 200 with fallback:true.
+
+Reporting
+At the end of these steps, print a structured report:
+
+json
+Copy
+Edit
+{
+  "env": { "SUPABASE_URL":true, … },
+  "apiTests": {
+    "taapi": { "status":200, "rsi": { … } },
+    "cryptorank": { "global":200, "solana":200, "sparkline":200 },
+    "lunarcrush": { "v2":200, "fallbackUsed":false }
+  },
+  "dbTest": { "write":true, "read":true },
+  "mlIsolation": { "apiErrorsBefore":3, "apiErrorsAfter":0 }
+}
+And automatically apply the code patches mentioned above.
