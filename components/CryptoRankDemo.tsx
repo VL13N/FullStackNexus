@@ -281,13 +281,13 @@ export default function CryptoRankDemo() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {formatNumber(fundamentalData.currentPrice.usd)}
+                    {fundamentalData.currentPrice?.usd ? formatNumber(fundamentalData.currentPrice.usd) : 'N/A'}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    BTC: {fundamentalData.currentPrice.btc?.toFixed(8) || 'N/A'}
+                    BTC: {fundamentalData.currentPrice?.btc?.toFixed(8) || 'N/A'}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    ETH: {fundamentalData.currentPrice.eth?.toFixed(6) || 'N/A'}
+                    ETH: {fundamentalData.currentPrice?.eth?.toFixed(6) || 'N/A'}
                   </p>
                 </CardContent>
               </Card>
@@ -299,10 +299,10 @@ export default function CryptoRankDemo() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {formatNumber(fundamentalData.marketCap.usd, 1)}
+                    {fundamentalData.marketCap?.usd ? formatNumber(fundamentalData.marketCap.usd, 1) : 'N/A'}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Rank #{fundamentalData.marketCap.rank || 'N/A'}
+                    Rank #{fundamentalData.marketCap?.rank || 'N/A'}
                   </p>
                 </CardContent>
               </Card>
@@ -314,7 +314,7 @@ export default function CryptoRankDemo() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {formatNumber(fundamentalData.volume24h.usd, 1)}
+                    {fundamentalData.volume24h?.usd ? formatNumber(fundamentalData.volume24h.usd, 1) : 'N/A'}
                   </div>
                 </CardContent>
               </Card>

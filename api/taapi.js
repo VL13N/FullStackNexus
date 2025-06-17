@@ -1,9 +1,9 @@
 // NOTE: TAAPI's MACD parameters must be camelCase (fastPeriod, slowPeriod, signalPeriod).
 // If you still see authentication errors, check TAAPI dashboard → Usage for quota and IP Access.
 
-console.log("TAAPI key in use:", process.env.TAAPI_API_KEY);
-if (!process.env.TAAPI_API_KEY) {
-  throw new Error("TAAPI_API_KEY is undefined—check Replit Secrets and restart.");
+console.log("TAAPI key in use:", process.env.TAAPI_SECRET);
+if (!process.env.TAAPI_SECRET) {
+  throw new Error("TAAPI_SECRET is undefined—check Replit Secrets and restart.");
 }
 
 /**
