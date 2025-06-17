@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes.js";
 import { registerMLRoutes } from "./mlRoutes.js";
+import { registerHealthRoutes } from "./healthRoutes.js";
 import hpoRoutes from "./hpoRoutes.js";
 import alertRoutes from "./alertRoutes.js";
 import correlationRoutes from "./correlationRoutes.js";
@@ -12,10 +13,21 @@ import scheduler from "../services/scheduler.js";
 import modelTrainingScheduler from "../services/modelTrainingScheduler.js";
 import AlertsSystem from "../services/alerts.js";
 
-// Verify OpenAI API key on startup
+// Verify critical API keys on startup
 if (!process.env.OPENAI_API_KEY) {
   console.error('ERROR: OPENAI_API_KEY is required but not found in environment variables');
   console.error('Please add your OpenAI API key to Replit Secrets');
+  process.exit(1);
+}
+
+// Verify Supabase credentials
+console.log('🔍 Checking Supabase configuration...');
+console.log('SUPABASE_URL:', process.env.SUPABASE_URL ? 'SET' : 'MISSING');
+console.log('SUPABASE_ANON_KEY:', process.env.SUPABASE_ANON_KEY ? 'SET' : 'MISSING');
+console.log('SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SET' : 'MISSING');
+
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+  console.error('ERROR: Missing Supabase credentials - please define SUPABASE_URL and SUPABASE_ANON_KEY in Replit Secrets');
   process.exit(1);
 }
 
@@ -141,6 +153,9 @@ async function scheduleOpenAITasks(port: number) {
   alertsSystem.initializeWebSocket(server);
   
   // Register route handlers
+  registerRoutes(app);
+  registerMLRoutes(app);
+  registerHealthRoutes(app);
   app.use('/api/ml/hpo', hpoRoutes);
   app.use('/api/alerts', alertRoutes);
   app.use('/api/analysis', correlationRoutes);
