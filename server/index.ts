@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes.js";
 import { registerMLRoutes } from "./mlRoutes.js";
 import { registerHealthRoutes } from "./healthRoutes.js";
+import { ensureJSONResponse, apiRouteProtection } from "./apiMiddleware.js";
 import hpoRoutes from "./hpoRoutes.js";
 import alertRoutes from "./alertRoutes.js";
 import correlationRoutes from "./correlationRoutes.js";
@@ -34,6 +35,10 @@ if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Apply API middleware to fix routing conflicts
+app.use(apiRouteProtection);
+app.use(ensureJSONResponse);
 
 app.use((req, res, next) => {
   const start = Date.now();
