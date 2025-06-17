@@ -91,12 +91,65 @@ export function registerDirectApiRoutes(app) {
         });
       }
       
-      const response = await fetch('https://api.taapi.io/rsi?exchange=binance&symbol=SOL/USDT&interval=1h&period=14', {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
+      // Test multiple authentication methods for TAAPI Pro
+      const authMethods = [
+        {
+          name: 'Bearer Token',
+          url: 'https://api.taapi.io/rsi?exchange=binance&symbol=SOL/USDT&interval=1h&period=14',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          }
+        },
+        {
+          name: 'API Key Header',
+          url: 'https://api.taapi.io/rsi?exchange=binance&symbol=SOL/USDT&interval=1h&period=14',
+          headers: {
+            'X-API-Key': apiKey,
+            'Content-Type': 'application/json'
+          }
+        },
+        {
+          name: 'Query Parameter (fallback)',
+          url: `https://api.taapi.io/rsi?secret=${apiKey}&exchange=binance&symbol=SOL/USDT&interval=1h&period=14`,
+          headers: {
+            'Content-Type': 'application/json'
+          }
         }
-      });
+      ];
+
+      let lastResponse;
+      for (const method of authMethods) {
+        try {
+          const response = await fetch(method.url, { headers: method.headers });
+          lastResponse = response;
+          
+          if (response.ok) {
+            const responseText = await response.text();
+            let responseData;
+            
+            try {
+              responseData = JSON.parse(responseText);
+            } catch {
+              responseData = responseText;
+            }
+            
+            return res.json({ 
+              success: true,
+              status: response.status,
+              authMethod: method.name,
+              headers: Object.fromEntries(response.headers.entries()),
+              data: responseData,
+              timestamp: new Date().toISOString()
+            });
+          }
+        } catch (error) {
+          // Continue to next method
+        }
+      }
+
+      // If all methods failed, return the last response
+      const response = lastResponse;
       
       const responseText = await response.text();
       let responseData;
