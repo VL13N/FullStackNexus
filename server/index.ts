@@ -14,32 +14,63 @@ import { setupVite, serveStatic, log } from "./vite";
 import scheduler from "../services/scheduler.js";
 import modelTrainingScheduler from "../services/modelTrainingScheduler.js";
 import AlertsSystem from "../services/alerts.js";
+import { supabaseManager } from "./supabaseClient.js";
 
-// Verify critical API keys on startup
-if (!process.env.OPENAI_API_KEY) {
-  console.error('ERROR: OPENAI_API_KEY is required but not found in environment variables');
-  console.error('Please add your OpenAI API key to Replit Secrets');
-  process.exit(1);
-}
+async function startServer() {
+  // Verify critical API keys on startup
+  if (!process.env.OPENAI_API_KEY) {
+    console.error('ERROR: OPENAI_API_KEY is required but not found in environment variables');
+    console.error('Please add your OpenAI API key to Replit Secrets');
+    process.exit(1);
+  }
 
-// Verify Supabase credentials
-console.log('🔍 Checking Supabase configuration...');
-console.log('SUPABASE_URL:', process.env.SUPABASE_URL ? 'SET' : 'MISSING');
-console.log('SUPABASE_ANON_KEY:', process.env.SUPABASE_ANON_KEY ? 'SET' : 'MISSING');
-console.log('SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SET' : 'MISSING');
+  // Initialize Supabase client before any route handling
+  try {
+    await supabaseManager.initialize();
+  } catch (error) {
+    console.error('FATAL: Supabase initialization failed:', (error as Error).message);
+    console.error('Please verify your Supabase environment variables in Replit Secrets');
+    process.exit(1);
+  }
 
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
-  console.error('ERROR: Missing Supabase credentials - please define SUPABASE_URL and SUPABASE_ANON_KEY in Replit Secrets');
-  process.exit(1);
-}
+  const app = express();
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: false }));
 
-const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+  // Apply API middleware to fix routing conflicts
+  app.use(apiRouteProtection);
+  app.use(ensureJSONResponse);
 
-// Apply API middleware to fix routing conflicts
-app.use(apiRouteProtection);
-app.use(ensureJSONResponse);
+  // Add database health endpoint before other routes
+  app.get('/health/db', async (req, res) => {
+    try {
+      const healthResult = await supabaseManager.healthCheck();
+      
+      if (healthResult.success) {
+        res.status(200).json({
+          success: true,
+          message: healthResult.message,
+          latency: healthResult.latency,
+          timestamp: new Date().toISOString(),
+          database: 'operational'
+        });
+      } else {
+        res.status(503).json({
+          success: false,
+          message: healthResult.message,
+          timestamp: new Date().toISOString(),
+          database: 'unavailable'
+        });
+      }
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: `Database health check failed: ${(error as Error).message}`,
+        timestamp: new Date().toISOString(),
+        database: 'error'
+      });
+    }
+  });
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -147,7 +178,6 @@ async function scheduleOpenAITasks(port: number) {
   log('[OpenAI Scheduler] Automated scheduling activated');
 }
 
-(async () => {
   const server = await registerRoutes(app);
   
   // Initialize alerts system
@@ -219,4 +249,10 @@ async function scheduleOpenAITasks(port: number) {
   server.listen(port, "0.0.0.0", () => {
     log(`serving on port ${port}`);
   });
-})();
+}
+
+// Start the server
+startServer().catch((error) => {
+  console.error('Failed to start server:', error.message);
+  process.exit(1);
+});
