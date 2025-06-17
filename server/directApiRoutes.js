@@ -81,7 +81,8 @@ export function registerDirectApiRoutes(app) {
   app.get('/api/taapi/test', async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     try {
-      const apiKey = process.env.TAAPI_SECRET;
+      const TAAPI_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbHVlIjoiNjdhMjllZmY4MDZmZjE2NTFlZGIyYjM0IiwiaWF0IjoxNzUwMTY4MTg1LCJleHAiOjMzMjU0NjMyMTg1fQ.0BRsbV9NzR-CTYwB7JrvfwSxN087JzJopQzF3cg1bo4";
+      const apiKey = TAAPI_API_KEY || process.env.TAAPI_SECRET;
       
       if (!apiKey) {
         return res.status(500).json({ 
@@ -91,8 +92,7 @@ export function registerDirectApiRoutes(app) {
         });
       }
 
-      const TAAPI_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbHVlIjoiNjdhMjllZmY4MDZmZjE2NTFlZGIyYjM0IiwiaWF0IjoxNzUwMTY4MTg1LCJleHAiOjMzMjU0NjMyMTg1fQ.0BRsbV9NzR-CTYwB7JrvfwSxN087JzJopQzF3cg1bo4";
-      const keyToUse = TAAPI_API_KEY || apiKey;
+      const keyToUse = apiKey;
 
       const response = await fetch('https://api.taapi.io/rsi?exchange=binance&symbol=SOL/USDT&interval=1h&period=14', {
         headers: {

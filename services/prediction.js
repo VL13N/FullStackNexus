@@ -262,8 +262,7 @@ class PredictionService {
 
   async storePrediction(predictionData) {
     if (!this.supabase) {
-      console.warn('Cannot store prediction: Supabase not available');
-      return;
+      throw new Error('FATAL: Database persistence required but Supabase client not initialized. Cannot store prediction.');
     }
 
     try {
