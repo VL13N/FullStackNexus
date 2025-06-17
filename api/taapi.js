@@ -19,8 +19,8 @@ const taapiCache = new LRUCache({ max: 50, ttl: 1000 * 60 * 15 }); // 15 min cac
  * Validates API key availability
  */
 function validateApiKey() {
-  if (!process.env.TAAPI_API_KEY) {
-    throw new Error('TAAPI API key not found. Please set TAAPI_API_KEY environment variable in Secrets.');
+  if (!process.env.TAAPI_SECRET) {
+    throw new Error('TAAPI SECRET not found. Please set TAAPI_SECRET environment variable in Secrets.');
   }
 }
 
@@ -41,7 +41,7 @@ export async function fetchTAIndicator(indicatorName, interval = "1h") {
   }
 
   const params = new URLSearchParams({
-    secret: process.env.TAAPI_API_KEY,
+    secret: process.env.TAAPI_SECRET,
     exchange: "binance",
     symbol: "SOL/USDT",
     interval
@@ -123,7 +123,7 @@ export async function fetchBulkIndicators(interval = "1h") {
   }
 
   const requestBody = {
-    secret: process.env.TAAPI_API_KEY,
+    secret: process.env.TAAPI_SECRET,
     construct: {
       exchange: "binance",
       symbol: "SOL/USDT",

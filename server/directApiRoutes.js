@@ -38,20 +38,8 @@ export function registerDirectApiRoutes(app) {
         throw new Error('TAAPI Pro key not configured');
       }
       
-      const indicators = [
-        { indicator: 'rsi', exchange: 'binance', symbol: 'SOL/USDT', interval: '1h' },
-        { indicator: 'macd', exchange: 'binance', symbol: 'SOL/USDT', interval: '1h' },
-        { indicator: 'ema', exchange: 'binance', symbol: 'SOL/USDT', interval: '1h', period: 200 }
-      ];
-      
-      const response = await fetch('https://api.taapi.io/bulk', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({ construct: indicators })
-      });
+      // Use single indicator endpoint for Pro authentication
+      const response = await fetch(`https://api.taapi.io/rsi?secret=${apiKey}&exchange=binance&symbol=SOL/USDT&interval=1h&period=14`);
       
       if (!response.ok) {
         throw new Error(`TAAPI error: ${response.status}`);
