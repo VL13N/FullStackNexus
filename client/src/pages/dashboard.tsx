@@ -120,7 +120,27 @@ export default function Dashboard() {
 
   const generateLivePrediction = async () => {
     try {
-      // Generate authentic prediction using live API analysis
+      // Force generate fresh prediction with current timestamp
+      console.log('[Dashboard] Generating fresh prediction with live data...');
+      
+      // Get latest social metrics directly
+      const socialRes = await fetch('/api/lunarcrush/metrics');
+      const cryptoRes = await fetch('/api/cryptorank/current');
+      
+      let socialData = null;
+      let cryptoData = null;
+      
+      if (socialRes.ok) {
+        const socialJson = await socialRes.json();
+        socialData = socialJson.data;
+      }
+      
+      if (cryptoRes.ok) {
+        const cryptoJson = await cryptoRes.json();
+        cryptoData = cryptoJson.data;
+      }
+      
+      // Generate fresh analysis with current data
       const analysisRes = await fetch('/api/analysis/complete');
       if (analysisRes.ok) {
         const analysisData = await analysisRes.json();
