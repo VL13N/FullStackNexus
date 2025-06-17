@@ -1,29 +1,33 @@
 /**
- * Health Monitoring Routes for System Hardening
- * Provides comprehensive health checks across all services and database
+ * Simplified Health Monitoring Routes for System Hardening
+ * Provides comprehensive health checks with minimal dependencies
  */
 
 import { Router } from 'express';
-import { fetchTAIndicator } from '../api/taapi.js';
-import { LunarCrushService } from '../api/lunarcrush.js';
-import { fetchSolanaCurrent } from '../api/cryptorank.js';
 import { createClient } from '@supabase/supabase-js';
-
-// Initialize Supabase client with environment variables
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 const router = Router();
 
+// Initialize Supabase client with validation
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+let supabase = null;
+if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+  supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  console.log('[HEALTH] Supabase client initialized successfully');
+} else {
+  console.warn('[HEALTH] Supabase credentials not found - database tests will be skipped');
+}
+
 /**
  * Comprehensive internal health check endpoint
- * Tests all critical services with latency monitoring
  */
 router.get('/internal', async (req, res) => {
   const healthStatus = {
     timestamp: new Date().toISOString(),
-    services: {}
+    services: {},
+    overall: {}
   };
 
   console.log('[HEALTH] Starting comprehensive health check...');
@@ -31,16 +35,27 @@ router.get('/internal', async (req, res) => {
   // Test TAAPI Pro service
   try {
     const startTime = Date.now();
-    await fetchTAIndicator('rsi', '1h');
+    const response = await fetch(`https://api.taapi.io/rsi?secret=${process.env.TAAPI_SECRET}&exchange=binance&symbol=SOL/USDT&interval=1h`);
     const latencyMs = Date.now() - startTime;
     
-    healthStatus.services.taapi = {
-      ok: true,
-      latencyMs,
-      endpoint: 'rsi indicator',
-      error: null
-    };
-    console.log(`[HEALTH] TAAPI: OK (${latencyMs}ms)`);
+    if (response.ok) {
+      healthStatus.services.taapi = {
+        ok: true,
+        latencyMs,
+        endpoint: 'rsi indicator',
+        error: null
+      };
+      console.log(`[HEALTH] TAAPI: OK (${latencyMs}ms)`);
+    } else {
+      const errorText = await response.text();
+      healthStatus.services.taapi = {
+        ok: false,
+        latencyMs,
+        endpoint: 'rsi indicator',
+        error: `HTTP ${response.status}: ${errorText}`
+      };
+      console.error(`[HEALTH] TAAPI: FAILED - ${response.status}`);
+    }
   } catch (error) {
     healthStatus.services.taapi = {
       ok: false,
@@ -51,43 +66,32 @@ router.get('/internal', async (req, res) => {
     console.error(`[HEALTH] TAAPI: FAILED - ${error.message}`);
   }
 
-  // Test LunarCrush service
-  try {
-    const startTime = Date.now();
-    const lunarcrush = new LunarCrushService();
-    await lunarcrush.getSolanaMetrics();
-    const latencyMs = Date.now() - startTime;
-    
-    healthStatus.services.lunarcrush = {
-      ok: true,
-      latencyMs,
-      endpoint: 'solana metrics',
-      error: null
-    };
-    console.log(`[HEALTH] LunarCrush: OK (${latencyMs}ms)`);
-  } catch (error) {
-    healthStatus.services.lunarcrush = {
-      ok: false,
-      latencyMs: null,
-      endpoint: 'solana metrics',
-      error: error.message
-    };
-    console.error(`[HEALTH] LunarCrush: FAILED - ${error.message}`);
-  }
-
   // Test CryptoRank service
   try {
     const startTime = Date.now();
-    await fetchSolanaCurrent();
+    const response = await fetch('https://api.cryptorank.io/v2/currencies/5663', {
+      headers: { 'X-API-KEY': process.env.CRYPTORANK_API_KEY }
+    });
     const latencyMs = Date.now() - startTime;
     
-    healthStatus.services.cryptorank = {
-      ok: true,
-      latencyMs,
-      endpoint: 'solana current',
-      error: null
-    };
-    console.log(`[HEALTH] CryptoRank: OK (${latencyMs}ms)`);
+    if (response.ok) {
+      healthStatus.services.cryptorank = {
+        ok: true,
+        latencyMs,
+        endpoint: 'solana current',
+        error: null
+      };
+      console.log(`[HEALTH] CryptoRank: OK (${latencyMs}ms)`);
+    } else {
+      const errorText = await response.text();
+      healthStatus.services.cryptorank = {
+        ok: false,
+        latencyMs,
+        endpoint: 'solana current',
+        error: `HTTP ${response.status}: ${errorText}`
+      };
+      console.error(`[HEALTH] CryptoRank: FAILED - ${response.status}`);
+    }
   } catch (error) {
     healthStatus.services.cryptorank = {
       ok: false,
@@ -98,17 +102,47 @@ router.get('/internal', async (req, res) => {
     console.error(`[HEALTH] CryptoRank: FAILED - ${error.message}`);
   }
 
-  // Test basic system health (replacing on-chain for now)
+  // Test LunarCrush/CoinGecko social data
   try {
     const startTime = Date.now();
+    const response = await fetch('https://api.coingecko.com/api/v3/coins/solana?localization=false&market_data=true&community_data=true');
+    const latencyMs = Date.now() - startTime;
     
-    // Test basic system metrics
+    if (response.ok) {
+      healthStatus.services.social = {
+        ok: true,
+        latencyMs,
+        endpoint: 'coingecko community',
+        error: null
+      };
+      console.log(`[HEALTH] Social Data: OK (${latencyMs}ms)`);
+    } else {
+      healthStatus.services.social = {
+        ok: false,
+        latencyMs,
+        endpoint: 'coingecko community',
+        error: `HTTP ${response.status}`
+      };
+      console.error(`[HEALTH] Social Data: FAILED - ${response.status}`);
+    }
+  } catch (error) {
+    healthStatus.services.social = {
+      ok: false,
+      latencyMs: null,
+      endpoint: 'coingecko community',
+      error: error.message
+    };
+    console.error(`[HEALTH] Social Data: FAILED - ${error.message}`);
+  }
+
+  // Test system metrics
+  try {
+    const startTime = Date.now();
     const systemHealth = {
       uptime: process.uptime(),
       memory: process.memoryUsage(),
       cpu: process.cpuUsage()
     };
-    
     const latencyMs = Date.now() - startTime;
     
     healthStatus.services.system = {
@@ -148,13 +182,13 @@ router.get('/internal', async (req, res) => {
     const testData = {
       prediction: 0,
       confidence: 0,
-      direction: 'TEST',
+      direction: 'HEALTH_TEST',
       technical_score: 0,
       social_score: 0,
       fundamental_score: 0,
       astrology_score: 0,
-      features: {},
-      pillar_scores: {},
+      features: { health_test: true },
+      pillar_scores: { health_test: true },
       created_at: new Date().toISOString()
     };
     
@@ -217,7 +251,35 @@ router.get('/ping', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    memory: {
+      used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+      total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024)
+    }
+  });
+});
+
+/**
+ * API validation endpoint
+ */
+router.get('/apis', async (req, res) => {
+  const apiStatus = {};
+
+  // Check each API key availability
+  apiStatus.taapi = !!process.env.TAAPI_SECRET;
+  apiStatus.cryptorank = !!process.env.CRYPTORANK_API_KEY;
+  apiStatus.supabase = !!(process.env.VITE_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+  apiStatus.openai = !!process.env.OPENAI_API_KEY;
+
+  const configuredApis = Object.values(apiStatus).filter(Boolean).length;
+  const totalApis = Object.keys(apiStatus).length;
+
+  res.json({
+    timestamp: new Date().toISOString(),
+    apis: apiStatus,
+    configured: configuredApis,
+    total: totalApis,
+    score: Math.round((configuredApis / totalApis) * 100)
   });
 });
 

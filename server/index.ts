@@ -1,7 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes.js";
 import { registerMLRoutes } from "./mlRoutes.js";
-import { registerHealthRoutes } from "./healthRoutes.js";
+import healthRoutesSimple from "./healthRoutesSimple.js";
 import { registerDirectApiRoutes } from "./directApiRoutes.js";
 import { ensureJSONResponse, apiRouteProtection } from "./apiMiddleware.js";
 import hpoRoutes from "./hpoRoutes.js";
@@ -159,7 +159,7 @@ async function scheduleOpenAITasks(port: number) {
   
   // Register direct API routes BEFORE all other routes to ensure priority
   registerDirectApiRoutes(app);
-  registerHealthRoutes(app);
+  app.use('/api/health', healthRoutesSimple);
   
   // Register ML routes after direct API routes to prevent conflicts
   await registerMLRoutes(app);
