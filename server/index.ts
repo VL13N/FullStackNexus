@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes.js";
 import { registerMLRoutes } from "./mlRoutes.js";
 import { registerHealthRoutes } from "./healthRoutes.js";
+import { registerDirectApiRoutes } from "./directApiRoutes.js";
 import { ensureJSONResponse, apiRouteProtection } from "./apiMiddleware.js";
 import hpoRoutes from "./hpoRoutes.js";
 import alertRoutes from "./alertRoutes.js";
@@ -157,7 +158,8 @@ async function scheduleOpenAITasks(port: number) {
   // Initialize alerts WebSocket server
   alertsSystem.initializeWebSocket(server);
   
-  // Register route handlers
+  // Register route handlers with direct API routes taking priority
+  registerDirectApiRoutes(app);
   registerRoutes(app);
   registerMLRoutes(app);
   registerHealthRoutes(app);
