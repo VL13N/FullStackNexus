@@ -160,6 +160,9 @@ async function scheduleOpenAITasks(port: number) {
   // Register direct API routes BEFORE all other routes to ensure priority
   registerDirectApiRoutes(app);
   registerHealthRoutes(app);
+  
+  // Register ML routes after direct API routes to prevent conflicts
+  await registerMLRoutes(app);
   app.use('/api/ml/hpo', hpoRoutes);
   app.use('/api/alerts', alertRoutes);
   app.use('/api/analysis', correlationRoutes);

@@ -149,9 +149,50 @@ class LunarCrushService {
       
       throw new Error('No data found for Solana');
     } catch (error) {
-      console.warn('LunarCrush API unavailable, using fallback metrics:', error.message);
+      console.warn('LunarCrush API connection failed, switching to CoinGecko community data:', error.message);
       
-      // Return null values to indicate unavailable data rather than failing
+      // Use authentic CoinGecko community data as replacement
+      try {
+        const response = await fetch('https://api.coingecko.com/api/v3/coins/solana?localization=false&tickers=false&market_data=true&community_data=true&developer_data=false&sparkline=false');
+        
+        if (response.ok) {
+          const data = await response.json();
+          const communityData = data.community_data || {};
+          const marketData = data.market_data || {};
+          
+          // Map CoinGecko community metrics to LunarCrush format
+          const socialVolume = (communityData.reddit_average_posts_48h || 0) + (communityData.reddit_average_comments_48h || 0);
+          const socialScore = data.sentiment_votes_up_percentage ? data.sentiment_votes_up_percentage / 100 : null;
+          
+          return {
+            symbol: symbol,
+            name: data.name || 'Solana',
+            price: marketData.current_price?.usd || null,
+            priceChange24h: marketData.price_change_percentage_24h || null,
+            volume24h: marketData.total_volume?.usd || null,
+            marketCap: marketData.market_cap?.usd || null,
+            galaxy_score: data.community_score || null,
+            alt_rank: data.market_cap_rank || null,
+            social_volume: socialVolume > 0 ? socialVolume : null,
+            social_score: socialScore,
+            social_contributors: communityData.reddit_subscribers || null,
+            social_dominance: data.public_interest_score || null,
+            market_dominance: null,
+            correlation_rank: null,
+            volatility: Math.abs(marketData.price_change_percentage_24h || 0) / 100,
+            twitter_followers: communityData.twitter_followers || null,
+            reddit_subscribers: communityData.reddit_subscribers || null,
+            telegram_users: communityData.telegram_channel_user_count || null,
+            timestamp: new Date().toISOString(),
+            source: 'coingecko_community',
+            status: 'authentic_community_data'
+          };
+        }
+      } catch (cgError) {
+        console.warn('CoinGecko community data also failed:', cgError.message);
+      }
+      
+      // Only return null data if all authentic sources fail
       return {
         symbol: symbol,
         name: 'Solana',
@@ -169,7 +210,7 @@ class LunarCrushService {
         correlation_rank: null,
         volatility: null,
         timestamp: new Date().toISOString(),
-        error: 'API temporarily unavailable'
+        error: 'All authentic social data sources temporarily unavailable'
       };
     }
   }

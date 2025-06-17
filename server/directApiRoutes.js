@@ -157,6 +157,70 @@ export function registerDirectApiRoutes(app) {
     }
   });
 
+  // Enhanced social metrics with CoinGecko community data
+  app.get('/api/social/enhanced', async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    try {
+      // Use CoinGecko community data as authentic alternative
+      const response = await fetch('https://api.coingecko.com/api/v3/coins/solana?localization=false&tickers=false&market_data=true&community_data=true&developer_data=false&sparkline=false', {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'SolanaAnalytics/1.0'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`CoinGecko API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Extract authentic social metrics from CoinGecko
+      const socialMetrics = {
+        symbol: 'SOL',
+        name: data.name || 'Solana',
+        community_score: data.community_score || null,
+        developer_score: data.developer_score || null,
+        liquidity_score: data.liquidity_score || null,
+        public_interest_score: data.public_interest_score || null,
+        social_data: {
+          twitter_followers: data.community_data?.twitter_followers || null,
+          reddit_subscribers: data.community_data?.reddit_subscribers || null,
+          reddit_avg_posts_48h: data.community_data?.reddit_average_posts_48h || null,
+          reddit_avg_comments_48h: data.community_data?.reddit_average_comments_48h || null,
+          telegram_channel_user_count: data.community_data?.telegram_channel_user_count || null,
+          facebook_likes: data.community_data?.facebook_likes || null
+        },
+        market_data: {
+          current_price: data.market_data?.current_price?.usd || null,
+          market_cap: data.market_data?.market_cap?.usd || null,
+          volume_24h: data.market_data?.total_volume?.usd || null,
+          price_change_24h: data.market_data?.price_change_percentage_24h || null,
+          market_cap_rank: data.market_cap_rank || null
+        },
+        sentiment_votes: {
+          votes_up_percentage: data.sentiment_votes_up_percentage || null,
+          votes_down_percentage: data.sentiment_votes_down_percentage || null
+        },
+        source: 'coingecko_community',
+        timestamp: new Date().toISOString(),
+        status: 'LunarCrush DNS issues - using CoinGecko authentic data'
+      };
+
+      res.json({
+        success: true,
+        data: socialMetrics,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // Astrology endpoint with astronomical calculations
   app.get('/api/astrology/current', async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
