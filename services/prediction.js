@@ -5,7 +5,7 @@
  */
 
 import * as tf from '@tensorflow/tfjs-node';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseClient } from '../server/supabaseClientSimple.js';
 import { fetchAndNormalize } from './fetchAndNormalize.js';
 import {
   computeTechnicalScore,
@@ -24,32 +24,24 @@ class PredictionService {
   }
 
   async initialize() {
-    // Initialize Supabase connection
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    
-    if (!supabaseUrl || !supabaseKey) {
-      console.warn('Supabase credentials not found - data persistence will be disabled');
-      this.supabase = null;
-    } else {
-      this.supabase = createClient(supabaseUrl, supabaseKey);
+    // Use centralized Supabase client
+    try {
+      this.supabase = getSupabaseClient();
       console.log('✅ Persistence check: Database connection successful');
       
       // Test database connection
-      try {
-        const { data, error } = await this.supabase
-          .from('live_predictions')
-          .select('id')
-          .limit(1);
-        
-        if (error && !error.message.includes('relation') && !error.message.includes('does not exist')) {
-          throw error;
-        }
-        console.log('✅ Persistence check: Database read access verified');
-      } catch (dbError) {
-        console.warn('Database connection test failed:', dbError.message);
-        this.supabase = null;
+      const { data, error } = await this.supabase
+        .from('live_predictions')
+        .select('id')
+        .limit(1);
+      
+      if (error && !error.message.includes('relation') && !error.message.includes('does not exist')) {
+        throw error;
       }
+      console.log('✅ Persistence check: Database read access verified');
+    } catch (dbError) {
+      console.warn('Database connection test failed:', dbError.message);
+      this.supabase = null;
     }
 
     // Load trained model

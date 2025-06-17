@@ -9,11 +9,11 @@ import fetch from 'node-fetch';
 import { technicalMetrics, socialMetrics, fundamentalMetrics, astrologyMetrics } from '../services/pillars.js';
 
 // Supabase configuration
-const supabaseUrl = process.env.DATABASE_URL?.replace('postgresql://', 'https://').replace(':5432/', '.supabase.co/');
-const supabaseKey = process.env.SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-  console.error('Missing Supabase configuration. Please provide DATABASE_URL and SUPABASE_ANON_KEY');
+  console.error('Missing Supabase configuration. Please provide SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY');
   process.exit(1);
 }
 

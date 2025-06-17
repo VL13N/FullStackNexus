@@ -5,9 +5,9 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Initialize Supabase
-const supabaseUrl = process.env.DATABASE_URL?.replace('postgresql://', 'https://').replace(':5432/', '.supabase.co/');
-const supabaseKey = process.env.SUPABASE_ANON_KEY;
+// Initialize Supabase with proper environment variables
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 async function generateFreshPrediction() {
