@@ -66,11 +66,18 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = async (force = false) => {
     setLoading(true);
     setError(null);
     
     try {
+      // Force fresh data by generating new prediction
+      if (force) {
+        console.log('[Dashboard] Force refresh - generating new prediction...');
+        await generateLivePrediction();
+        return;
+      }
+
       // Check for stored predictions first
       const predictionRes = await fetch('/api/predictions/latest');
       const newsRes = await fetch('/api/news/recent?limit=10');
@@ -81,8 +88,13 @@ export default function Dashboard() {
         const newsData = await newsRes.json();
         const updateData = await updateRes.json();
 
-        // If database is empty, generate live prediction
-        if (!predictionData.data && newsData.data.length === 0 && !updateData.data) {
+        // Check if data is older than 5 minutes - auto-refresh
+        const now = new Date().getTime();
+        const predictionTime = predictionData.data ? new Date(predictionData.data.timestamp).getTime() : 0;
+        const dataAge = now - predictionTime;
+        
+        if (dataAge > 5 * 60 * 1000) { // 5 minutes
+          console.log('[Dashboard] Data is stale, generating fresh prediction...');
           await generateLivePrediction();
         } else {
           // Use stored data
@@ -100,6 +112,10 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleForceRefresh = async () => {
+    await fetchData(true);
   };
 
   const generateLivePrediction = async () => {
@@ -171,7 +187,11 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 30000); // Refresh every 30 seconds for more responsive updates
+    // Refresh every 10 seconds to show live updates
+    const interval = setInterval(() => {
+      console.log('[Dashboard] Auto-refreshing data...');
+      fetchData();
+    }, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -229,10 +249,16 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold">AI Trading Dashboard</h1>
           <p className="text-muted-foreground">Live Solana analysis powered by multi-source AI</p>
         </div>
-        <Button onClick={fetchData} disabled={loading}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => fetchData(false)} disabled={loading} variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+          <Button onClick={handleForceRefresh} disabled={loading}>
+            <Activity className="h-4 w-4 mr-2" />
+            Force Update
+          </Button>
+        </div>
       </div>
 
       {/* Multi-Asset Heatmap */}
