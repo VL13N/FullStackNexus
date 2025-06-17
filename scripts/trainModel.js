@@ -30,8 +30,8 @@ class MetaModelTrainer {
   async initialize() {
     // Initialize Supabase connection
     try {
-      const supabaseUrl = process.env.DATABASE_URL?.replace('postgresql://', 'https://').replace(':5432/', '.supabase.co/');
-      const supabaseKey = process.env.SUPABASE_ANON_KEY;
+      const supabaseUrl = process.env.SUPABASE_URL;
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
       
       if (supabaseUrl && supabaseKey) {
         this.supabase = createClient(supabaseUrl, supabaseKey);
