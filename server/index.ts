@@ -37,9 +37,8 @@ async function startServer() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
 
-  // Apply API middleware to fix routing conflicts
-  app.use(apiRouteProtection);
-  app.use(ensureJSONResponse);
+  // Register direct API routes FIRST to prevent routing conflicts
+  registerDirectApiRoutes(app);
 
   // Add database health endpoint before other routes
   app.get('/health/db', async (req, res) => {
@@ -187,7 +186,7 @@ async function scheduleOpenAITasks(port: number) {
   // Initialize alerts WebSocket server
   alertsSystem.initializeWebSocket(server);
   
-  // Register direct API routes BEFORE all other routes to ensure priority
+  // Register direct API routes BEFORE middleware to prevent conflicts
   registerDirectApiRoutes(app);
   app.use('/api/health', healthRoutesSimple);
   

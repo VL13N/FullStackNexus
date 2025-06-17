@@ -176,6 +176,50 @@ export function registerDirectApiRoutes(app) {
     }
   });
 
+  // Technical Analysis Fallback Endpoint
+  app.get('/api/technical/analysis', async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    try {
+      const { default: technicalAnalysisService } = await import('../services/technicalAnalysisService.js');
+      const { interval = '1h' } = req.query;
+      
+      const analysis = await technicalAnalysisService.getAnalysis(interval);
+      
+      res.json({
+        success: true,
+        data: analysis,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Technical Analysis Health Check
+  app.get('/api/technical/health', async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    try {
+      const { default: technicalAnalysisService } = await import('../services/technicalAnalysisService.js');
+      const healthStatus = technicalAnalysisService.getHealthStatus();
+      
+      res.json({
+        success: true,
+        ...healthStatus,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   app.get('/api/taapi/macd', async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     try {
