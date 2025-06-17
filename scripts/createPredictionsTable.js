@@ -54,6 +54,38 @@ async function createPredictionsTable() {
       }
     } else {
       console.log('✅ live_predictions table already exists');
+      
+      // Check if astro_score column exists and add it if missing
+      const { data: columns, error: columnError } = await supabase
+        .from('live_predictions')
+        .select('astro_score')
+        .limit(1);
+      
+      if (columnError && columnError.message.includes('astro_score')) {
+        console.log('Adding missing astro_score column...');
+        
+        // Add missing column
+        const alterTableSQL = `
+          ALTER TABLE live_predictions 
+          ADD COLUMN IF NOT EXISTS astro_score DECIMAL(5,2);
+        `;
+        
+        const response = await fetch(`${process.env.SUPABASE_URL}/rest/v1/rpc/exec_sql`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+            'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY
+          },
+          body: JSON.stringify({ sql: alterTableSQL })
+        });
+        
+        if (response.ok) {
+          console.log('✅ astro_score column added successfully');
+        } else {
+          console.log('Column addition response:', await response.text());
+        }
+      }
     }
     
   } catch (err) {
