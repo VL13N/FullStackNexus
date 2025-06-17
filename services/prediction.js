@@ -24,28 +24,25 @@ class PredictionService {
   }
 
   async initialize() {
-    // Use centralized Supabase client
+    // Load trained model first
+    await this.loadModel();
+    
+    // Initialize Supabase client after server startup
+    this.reinitializeSupabase();
+  }
+
+  reinitializeSupabase() {
     try {
       this.supabase = getSupabaseClient();
-      console.log('✅ Persistence check: Database connection successful');
-      
-      // Test database connection
-      const { data, error } = await this.supabase
-        .from('live_predictions')
-        .select('id')
-        .limit(1);
-      
-      if (error && !error.message.includes('relation') && !error.message.includes('does not exist')) {
-        throw error;
+      if (this.supabase) {
+        console.log('✅ Prediction service: Database client connected');
+      } else {
+        console.warn('⚠️ Prediction service: Database client not available');
       }
-      console.log('✅ Persistence check: Database read access verified');
     } catch (dbError) {
-      console.warn('Database connection test failed:', dbError.message);
+      console.warn('Prediction service database initialization failed:', dbError.message);
       this.supabase = null;
     }
-
-    // Load trained model
-    await this.loadModel();
   }
 
   async loadModel() {
@@ -261,6 +258,11 @@ class PredictionService {
   }
 
   async storePrediction(predictionData) {
+    // Attempt to reinitialize Supabase if not available
+    if (!this.supabase) {
+      this.reinitializeSupabase();
+    }
+    
     if (!this.supabase) {
       throw new Error('FATAL: Database persistence required but Supabase client not initialized. Cannot store prediction.');
     }
