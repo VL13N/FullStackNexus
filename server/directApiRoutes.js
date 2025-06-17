@@ -38,7 +38,7 @@ export function registerDirectApiRoutes(app) {
         throw new Error('TAAPI Pro key not configured');
       }
       
-      // Use single indicator endpoint for Pro authentication
+      // Use query string authentication as per TAAPI Pro documentation
       const response = await fetch(`https://api.taapi.io/rsi?secret=${apiKey}&exchange=binance&symbol=SOL/USDT&interval=1h&period=14`);
       
       if (!response.ok) {
@@ -57,14 +57,16 @@ export function registerDirectApiRoutes(app) {
     res.setHeader('Content-Type', 'application/json');
     try {
       const apiKey = process.env.TAAPI_SECRET;
-      const response = await fetch(`https://api.taapi.io/rsi?secret=${apiKey}&exchange=binance&symbol=SOL/USDT&interval=1h&period=14`);
+      const { interval = '1h', period = '14' } = req.query;
+      
+      const response = await fetch(`https://api.taapi.io/rsi?secret=${apiKey}&exchange=binance&symbol=SOL/USDT&interval=${interval}&period=${period}`);
       
       if (!response.ok) {
         throw new Error(`TAAPI error: ${response.status}`);
       }
       
       const data = await response.json();
-      res.json({ success: true, data, indicator: 'rsi', timestamp: new Date().toISOString() });
+      res.json({ success: true, data, indicator: 'rsi', interval, period, timestamp: new Date().toISOString() });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message, timestamp: new Date().toISOString() });
     }
@@ -74,14 +76,36 @@ export function registerDirectApiRoutes(app) {
     res.setHeader('Content-Type', 'application/json');
     try {
       const apiKey = process.env.TAAPI_SECRET;
-      const response = await fetch(`https://api.taapi.io/macd?secret=${apiKey}&exchange=binance&symbol=SOL/USDT&interval=1h`);
+      const { interval = '1h' } = req.query;
+      
+      const response = await fetch(`https://api.taapi.io/macd?secret=${apiKey}&exchange=binance&symbol=SOL/USDT&interval=${interval}`);
       
       if (!response.ok) {
         throw new Error(`TAAPI error: ${response.status}`);
       }
       
       const data = await response.json();
-      res.json({ success: true, data, indicator: 'macd', timestamp: new Date().toISOString() });
+      res.json({ success: true, data, indicator: 'macd', interval, timestamp: new Date().toISOString() });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message, timestamp: new Date().toISOString() });
+    }
+  });
+
+  // EMA endpoint for additional technical analysis
+  app.get('/api/taapi/ema', async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    try {
+      const apiKey = process.env.TAAPI_SECRET;
+      const { interval = '1h', period = '20' } = req.query;
+      
+      const response = await fetch(`https://api.taapi.io/ema?secret=${apiKey}&exchange=binance&symbol=SOL/USDT&interval=${interval}&period=${period}`);
+      
+      if (!response.ok) {
+        throw new Error(`TAAPI error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      res.json({ success: true, data, indicator: 'ema', interval, period, timestamp: new Date().toISOString() });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message, timestamp: new Date().toISOString() });
     }
