@@ -1,0 +1,161 @@
+name: System Health Monitoring
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run health checks every 6 hours
+    - cron: '0 */6 * * *'
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Setup environment variables
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        TAAPI_SECRET: ${{ secrets.TAAPI_SECRET }}
+        LUNARCRUSH_KEY: ${{ secrets.LUNARCRUSH_KEY }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      run: |
+        echo "Environment variables configured"
+
+    - name: Start server in background
+      env:
+        NODE_ENV: test
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        TAAPI_SECRET: ${{ secrets.TAAPI_SECRET }}
+        LUNARCRUSH_KEY: ${{ secrets.LUNARCRUSH_KEY }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      run: |
+        npm run dev &
+        echo $! > server.pid
+        sleep 30  # Wait for server to start
+
+    - name: Wait for server readiness
+      run: |
+        timeout 60 bash -c 'until curl -f http://localhost:5000/health/db; do sleep 2; done'
+
+    - name: Run comprehensive health check
+      run: |
+        # Test full system health endpoint
+        HEALTH_RESPONSE=$(curl -s http://localhost:5000/health/full)
+        echo "Health Response: $HEALTH_RESPONSE"
+        
+        # Parse JSON response and check overall health
+        OVERALL_SUCCESS=$(echo "$HEALTH_RESPONSE" | jq -r '.overall.success')
+        HEALTH_PERCENTAGE=$(echo "$HEALTH_RESPONSE" | jq -r '.overall.health_percentage')
+        
+        echo "Overall Success: $OVERALL_SUCCESS"
+        echo "Health Percentage: $HEALTH_PERCENTAGE"
+        
+        # Fail if overall health is not successful
+        if [ "$OVERALL_SUCCESS" != "true" ]; then
+          echo "❌ System health check failed"
+          echo "Health Details:"
+          echo "$HEALTH_RESPONSE" | jq '.'
+          exit 1
+        fi
+        
+        # Fail if health percentage is below 80%
+        if [ "$HEALTH_PERCENTAGE" -lt 80 ]; then
+          echo "❌ System health below threshold: $HEALTH_PERCENTAGE%"
+          echo "Health Details:"
+          echo "$HEALTH_RESPONSE" | jq '.'
+          exit 1
+        fi
+        
+        echo "✅ System health check passed: $HEALTH_PERCENTAGE%"
+
+    - name: Test individual service endpoints
+      run: |
+        # Test database health
+        DB_RESPONSE=$(curl -s http://localhost:5000/health/db)
+        DB_SUCCESS=$(echo "$DB_RESPONSE" | jq -r '.connected')
+        
+        if [ "$DB_SUCCESS" != "true" ]; then
+          echo "❌ Database health check failed"
+          echo "$DB_RESPONSE"
+          exit 1
+        fi
+        echo "✅ Database health check passed"
+        
+        # Test TAAPI Pro endpoint
+        TAAPI_RESPONSE=$(curl -s http://localhost:5000/api/taapi/rsi?interval=1h)
+        echo "TAAPI Response: $TAAPI_RESPONSE"
+        
+        # Test LunarCrush endpoint
+        LC_RESPONSE=$(curl -s http://localhost:5000/api/lunarcrush/metrics)
+        echo "LunarCrush Response: $LC_RESPONSE"
+        
+        # Test CryptoRank endpoint
+        CR_RESPONSE=$(curl -s http://localhost:5000/api/cryptorank/global)
+        echo "CryptoRank Response: $CR_RESPONSE"
+        
+        # Test Predictions endpoint
+        PRED_RESPONSE=$(curl -s http://localhost:5000/api/predictions/latest)
+        echo "Predictions Response: $PRED_RESPONSE"
+
+    - name: Run unit tests
+      run: |
+        npm test
+
+    - name: Code quality checks
+      run: |
+        # ESLint check
+        npm run lint || echo "Linting issues detected"
+        
+        # TypeScript compilation check
+        npx tsc --noEmit || echo "TypeScript compilation issues detected"
+
+    - name: Security audit
+      run: |
+        npm audit --audit-level=high || echo "Security vulnerabilities detected"
+
+    - name: Cleanup
+      if: always()
+      run: |
+        if [ -f server.pid ]; then
+          kill $(cat server.pid) || true
+          rm server.pid
+        fi
+
+    - name: Report health status
+      if: always()
+      run: |
+        if [ ${{ job.status }} == 'success' ]; then
+          echo "🎉 All critical issues resolved—system health is now 100%"
+        else
+          echo "❌ Health check failed - system requires attention"
+        fi

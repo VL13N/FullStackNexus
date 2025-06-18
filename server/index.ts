@@ -86,6 +86,163 @@ async function startServer() {
     }
   });
 
+  // Comprehensive health check endpoint - parallel testing of all critical services
+  app.get('/health/full', async (req, res) => {
+    const startTime = Date.now();
+    const results = {};
+    const port = app.get('port') || 5000;
+    
+    try {
+      // Parallel health checks for all critical services
+      const [dbHealth, taapiHealth, lunarcrushHealth, cryptorankHealth, predictionsHealth] = await Promise.allSettled([
+        // Database health check with SELECT 1
+        (async () => {
+          const dbStart = Date.now();
+          const health = await performDatabaseHealthCheck();
+          return {
+            name: 'database',
+            success: health.success,
+            latency: Date.now() - dbStart,
+            message: health.message || (health.success ? 'Connected' : 'Failed')
+          };
+        })(),
+        
+        // TAAPI Pro health check
+        (async () => {
+          const taapiStart = Date.now();
+          try {
+            const response = await fetch(`http://localhost:${port}/api/taapi/rsi?interval=1h`);
+            const data = await response.json();
+            return {
+              name: 'taapi',
+              success: response.ok && data.success,
+              latency: Date.now() - taapiStart,
+              message: data.success ? 'Operational' : data.message || 'Failed'
+            };
+          } catch (error) {
+            return {
+              name: 'taapi',
+              success: false,
+              latency: Date.now() - taapiStart,
+              message: (error as Error).message
+            };
+          }
+        })(),
+        
+        // LunarCrush health check
+        (async () => {
+          const lcStart = Date.now();
+          try {
+            const response = await fetch(`http://localhost:${port}/api/lunarcrush/metrics`);
+            const data = await response.json();
+            return {
+              name: 'lunarcrush',
+              success: response.ok && data.success,
+              latency: Date.now() - lcStart,
+              message: data.success ? 'Operational' : data.message || 'Failed'
+            };
+          } catch (error) {
+            return {
+              name: 'lunarcrush',
+              success: false,
+              latency: Date.now() - lcStart,
+              message: (error as Error).message
+            };
+          }
+        })(),
+        
+        // CryptoRank health check
+        (async () => {
+          const crStart = Date.now();
+          try {
+            const response = await fetch(`http://localhost:${port}/api/cryptorank/global`);
+            const data = await response.json();
+            return {
+              name: 'cryptorank',
+              success: response.ok && data.success,
+              latency: Date.now() - crStart,
+              message: data.success ? 'Operational' : data.message || 'Failed'
+            };
+          } catch (error) {
+            return {
+              name: 'cryptorank',
+              success: false,
+              latency: Date.now() - crStart,
+              message: (error as Error).message
+            };
+          }
+        })(),
+        
+        // Predictions health check
+        (async () => {
+          const predStart = Date.now();
+          try {
+            const response = await fetch(`http://localhost:${port}/api/predictions/latest`);
+            const data = await response.json();
+            return {
+              name: 'predictions',
+              success: response.ok && data.success,
+              latency: Date.now() - predStart,
+              message: data.success ? 'Operational' : data.message || 'Failed'
+            };
+          } catch (error) {
+            return {
+              name: 'predictions',
+              success: false,
+              latency: Date.now() - predStart,
+              message: (error as Error).message
+            };
+          }
+        })()
+      ]);
+
+      // Process results
+      [dbHealth, taapiHealth, lunarcrushHealth, cryptorankHealth, predictionsHealth].forEach((result, index) => {
+        const serviceName = ['database', 'taapi', 'lunarcrush', 'cryptorank', 'predictions'][index];
+        if (result.status === 'fulfilled') {
+          results[serviceName] = result.value;
+        } else {
+          results[serviceName] = {
+            name: serviceName,
+            success: false,
+            latency: 0,
+            message: result.reason?.message || 'Health check failed'
+          };
+        }
+      });
+
+      // Calculate overall health
+      const successCount = Object.values(results).filter((r: any) => r.success).length;
+      const totalServices = Object.keys(results).length;
+      const overallHealth = (successCount / totalServices) * 100;
+      const allHealthy = successCount === totalServices;
+
+      const response = {
+        overall: {
+          success: allHealthy,
+          health_percentage: Math.round(overallHealth),
+          total_latency: Date.now() - startTime,
+          services_healthy: successCount,
+          services_total: totalServices
+        },
+        services: results,
+        timestamp: new Date().toISOString()
+      };
+
+      res.status(allHealthy ? 200 : 503).json(response);
+    } catch (error) {
+      res.status(500).json({
+        overall: {
+          success: false,
+          health_percentage: 0,
+          total_latency: Date.now() - startTime,
+          error: (error as Error).message
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
