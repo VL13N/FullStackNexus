@@ -116,17 +116,33 @@ interface HealthData {
   };
 }
 
+interface PredictionData {
+  id: string;
+  overall_score: number;
+  confidence: number;
+  classification: string;
+  technical_score: number;
+  social_score: number;
+  fundamental_score: number;
+  astrology_score: number;
+  timestamp: string;
+  price_target?: number;
+  risk_level: string;
+}
+
 const ComprehensiveDashboard: React.FC = () => {
   const [pillarData, setPillarData] = useState<PillarData | null>(null);
   const [healthData, setHealthData] = useState<HealthData | null>(null);
+  const [predictionData, setPredictionData] = useState<PredictionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
-      const [pillarsResponse, healthResponse] = await Promise.all([
+      const [pillarsResponse, healthResponse, predictionResponse] = await Promise.all([
         fetch('/api/pillars/all'),
-        fetch('/health/full')
+        fetch('/health/full'),
+        fetch('/api/predictions/latest')
       ]);
 
       if (pillarsResponse.ok) {
@@ -137,6 +153,11 @@ const ComprehensiveDashboard: React.FC = () => {
       if (healthResponse.ok) {
         const healthResult = await healthResponse.json();
         setHealthData(healthResult);
+      }
+
+      if (predictionResponse.ok) {
+        const predictionResult = await predictionResponse.json();
+        setPredictionData(predictionResult.data);
       }
 
       setLoading(false);
@@ -464,6 +485,88 @@ const ComprehensiveDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* ML Predictions Section */}
+      {predictionData && (
+        <div style={{ 
+          backgroundColor: '#f3e8ff', 
+          border: '2px solid #a855f7', 
+          borderRadius: '12px', 
+          padding: '24px',
+          marginBottom: '32px'
+        }}>
+          <h3 style={{ fontSize: '24px', fontWeight: 'bold', color: '#7c3aed', marginBottom: '16px' }}>
+            🤖 AI Price Prediction & ML Analysis
+          </h3>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+            <div style={{ textAlign: 'center', padding: '16px', backgroundColor: '#a855f7', borderRadius: '8px', color: 'white' }}>
+              <div style={{ fontSize: '32px', fontWeight: 'bold' }}>
+                {predictionData.overall_score.toFixed(1)}/100
+              </div>
+              <div style={{ fontSize: '14px', opacity: 0.9 }}>Overall Score</div>
+            </div>
+            <div style={{ textAlign: 'center', padding: '16px', backgroundColor: getSignalColor(predictionData.classification), borderRadius: '8px', color: 'white' }}>
+              <div style={{ fontSize: '32px', fontWeight: 'bold' }}>
+                {predictionData.classification}
+              </div>
+              <div style={{ fontSize: '14px', opacity: 0.9 }}>Trading Signal</div>
+            </div>
+            <div style={{ textAlign: 'center', padding: '16px', backgroundColor: '#6366f1', borderRadius: '8px', color: 'white' }}>
+              <div style={{ fontSize: '32px', fontWeight: 'bold' }}>
+                {(predictionData.confidence * 100).toFixed(1)}%
+              </div>
+              <div style={{ fontSize: '14px', opacity: 0.9 }}>Confidence</div>
+            </div>
+            <div style={{ textAlign: 'center', padding: '16px', backgroundColor: '#059669', borderRadius: '8px', color: 'white' }}>
+              <div style={{ fontSize: '32px', fontWeight: 'bold' }}>
+                {predictionData.risk_level}
+              </div>
+              <div style={{ fontSize: '14px', opacity: 0.9 }}>Risk Level</div>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+            <div>
+              <strong>ML Analysis:</strong>
+              <div>Overall Score: {predictionData.overall_score.toFixed(1)}/100</div>
+              <div>Classification: {predictionData.classification}</div>
+              <div>Risk Level: {predictionData.risk_level}</div>
+              {predictionData.price_target && (
+                <div>Price Target: ${predictionData.price_target.toFixed(2)}</div>
+              )}
+            </div>
+            <div>
+              <strong>Pillar Contributions:</strong>
+              <div>Technical: {predictionData.technical_score.toFixed(1)}/100</div>
+              <div>Social: {predictionData.social_score.toFixed(1)}/100</div>
+              <div>Fundamental: {predictionData.fundamental_score.toFixed(1)}/100</div>
+              <div>Astrology: {predictionData.astrology_score.toFixed(1)}/100</div>
+            </div>
+          </div>
+
+          <div style={{ 
+            color: '#7c3aed', 
+            fontSize: '14px', 
+            lineHeight: '1.6',
+            backgroundColor: 'white',
+            padding: '16px',
+            borderRadius: '8px'
+          }}>
+            <strong>AI Analysis:</strong> TensorFlow.js ensemble model generates overall score of {predictionData.overall_score.toFixed(1)}/100 
+            with {(predictionData.confidence * 100).toFixed(1)}% confidence. Classification: {predictionData.classification} 
+            (Risk: {predictionData.risk_level}) based on {pillarData ? (
+              `technical analysis (RSI: ${pillarData.technical.indicators.rsi}), social sentiment (Galaxy: ${pillarData.social.metrics.galaxy_score}), 
+              market fundamentals ($${formatNumber(pillarData.fundamental.metrics.market_cap)} cap), and astrological factors 
+              (${pillarData.astrology.celestial_data.moon_phase} moon).`
+            ) : 'comprehensive multi-domain feature analysis.'} 
+            Pillar contributions: Technical ({predictionData.technical_score.toFixed(1)}), 
+            Social ({predictionData.social_score.toFixed(1)}), 
+            Fundamental ({predictionData.fundamental_score.toFixed(1)}), 
+            Astrology ({predictionData.astrology_score.toFixed(1)}).
+          </div>
+        </div>
+      )}
 
       {/* Overall Investment Summary */}
       <div style={{ 
