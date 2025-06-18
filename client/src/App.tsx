@@ -24,10 +24,6 @@ import CryptoRankDemo from "../../components/CryptoRankDemo";
 import OnChainDemo from "../../components/OnChainDemo";
 import AstrologyDemo from "../../components/AstrologyDemo";
 import LunarCrushDemo from "../../components/LunarCrushDemo";
-import PredictionWidget from "../../components/PredictionWidget";
-import MLEnsembleDemo from "@/components/MLEnsembleDemo";
-import ExplainabilityDashboard from "@/components/ExplainabilityDashboard";
-import EnsembleComparison from "@/components/EnsembleComparison";
 import { Activity, BarChart3, Database, TrendingUp, Sparkles, Brain, Settings, Target, Bell, GitBranch, Shield } from "lucide-react";
 
 function LandingPage() {
@@ -273,24 +269,7 @@ function Navigation() {
                 ML Training
               </Button>
             </Link>
-            <Link href="/ml-demo">
-              <Button variant={location === '/ml-demo' ? 'default' : 'ghost'} size="sm">
-                <Target className="h-4 w-4 mr-1" />
-                Ensemble
-              </Button>
-            </Link>
-            <Link href="/explainability">
-              <Button variant={location === '/explainability' ? 'default' : 'ghost'} size="sm">
-                <Brain className="h-4 w-4 mr-1" />
-                Explainability
-              </Button>
-            </Link>
-            <Link href="/ensemble">
-              <Button variant={location === '/ensemble' ? 'default' : 'ghost'} size="sm">
-                <BarChart3 className="h-4 w-4 mr-1" />
-                Ensemble
-              </Button>
-            </Link>
+
             <Link href="/backtest">
               <Button variant={location === '/backtest' ? 'default' : 'ghost'} size="sm">
                 <Target className="h-4 w-4 mr-1" />
@@ -349,9 +328,7 @@ function Router() {
         <Route path="/lunarcrush" component={LunarCrushDemo} />
         <Route path="/live-predictions" component={LivePredictions} />
         <Route path="/ml-training" component={MLTraining} />
-        <Route path="/ml-demo" component={MLEnsembleDemo} />
-        <Route path="/explainability" component={ExplainabilityDashboard} />
-        <Route path="/ensemble" component={EnsembleComparison} />
+
         <Route path="/advanced-astrology" component={AdvancedAstrology} />
         <Route path="/backtest" component={Backtest} />
         <Route path="/backtest-analysis" component={BacktestAnalysis} />
