@@ -1,11 +1,16 @@
 import { useState } from "react";
 import WorkingDashboard from "@/components/WorkingDashboard";
+import ComprehensiveDashboard from "@/components/ComprehensiveDashboard";
 
 function App() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
 
   // Simple routing without external dependencies
   if (currentPath === "/dashboard") {
+    return <ComprehensiveDashboard />;
+  }
+  
+  if (currentPath === "/working") {
     return <WorkingDashboard />;
   }
 
