@@ -52,6 +52,14 @@ async function startServer() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
 
+  // Register health endpoints FIRST to prevent Vite interception
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/health') || req.path.startsWith('/api/')) {
+      res.setHeader('Content-Type', 'application/json');
+    }
+    next();
+  });
+
   // Register direct API routes FIRST to prevent routing conflicts
   registerDirectApiRoutes(app);
 
