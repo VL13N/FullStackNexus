@@ -1,0 +1,109 @@
+~/workspace$ git push -u origin main
+Enumerating objects: 891, done.
+Counting objects: 100% (891/891), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (840/840), done.
+Writing objects: 100% (849/849), 871.57 KiB | 8.22 MiB/s, done.
+Total 849 (delta 557), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (557/557), completed with 31 local objects.
+remote: error: GH013: Repository rule violations found for refs/heads/main.
+remote: 
+remote: - GITHUB PUSH PROTECTION
+remote:   —————————————————————————————————————————
+remote:     Resolve the following violations before pushing again
+remote: 
+remote:     - Push cannot contain secrets
+remote: 
+remote:     
+remote:      (?) Learn how to resolve a blocked push
+remote:      https://docs.github.com/code-security/secret-scanning/working-with-secret-scanning-and-push-protection/working-with-push-protection-from-the-command-line#resolving-a-blocked-push
+remote:     
+remote:     
+remote:       —— OpenAI API Key ————————————————————————————————————
+remote:        locations:
+remote:          - commit: 5e195884a6849ea57d8fcb088d3e7e06a4f9db40
+remote:            path: .env.example:27
+remote:     
+remote:        (?) To push, remove secret from commit(s) or follow this URL to allow the secret.
+remote:        https://github.com/VL13N/FullStackNexus/security/secret-scanning/unblock-secret/2ydYAbQe3jqKYebuuwqdFOOKco3
+remote:     
+remote: 
+remote: 
+To https://github.com/VL13N/FullStackNexus
+ ! [remote rejected] main -> main (push declined due to repository rule violations)
+error: failed to push some refs to 'https://github.com/VL13N/FullStackNexus'
+~/workspace$ git add .env.example
+git commit -m "fix: Remove OpenAI API key from .env.example for GitHub push protection"
+git push -u origin main
+On branch main
+nothing to commit, working tree clean
+Enumerating objects: 894, done.
+Counting objects: 100% (894/894), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (843/843), done.
+Writing objects: 100% (852/852), 877.76 KiB | 7.77 MiB/s, done.
+Total 852 (delta 558), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (558/558), completed with 31 local objects.
+remote: error: GH013: Repository rule violations found for refs/heads/main.
+remote: 
+remote: - GITHUB PUSH PROTECTION
+remote:   —————————————————————————————————————————
+remote:     Resolve the following violations before pushing again
+remote: 
+remote:     - Push cannot contain secrets
+remote: 
+remote:     
+remote:      (?) Learn how to resolve a blocked push
+remote:      https://docs.github.com/code-security/secret-scanning/working-with-secret-scanning-and-push-protection/working-with-push-protection-from-the-command-line#resolving-a-blocked-push
+remote:     
+remote:     
+remote:       —— OpenAI API Key ————————————————————————————————————
+remote:        locations:
+remote:          - commit: 5e195884a6849ea57d8fcb088d3e7e06a4f9db40
+remote:            path: .env.example:27
+remote:     
+remote:        (?) To push, remove secret from commit(s) or follow this URL to allow the secret.
+remote:        https://github.com/VL13N/FullStackNexus/security/secret-scanning/unblock-secret/2ydYAbQe3jqKYebuuwqdFOOKco3
+remote:     
+remote: 
+remote: 
+To https://github.com/VL13N/FullStackNexus
+ ! [remote rejected] main -> main (push declined due to repository rule violations)
+error: failed to push some refs to 'https://github.com/VL13N/FullStackNexus'
+~/workspace$ git add .env.example
+git commit -m "fix: Remove OpenAI API key from .env.example for GitHub push protection"
+git push -u origin main
+On branch main
+nothing to commit, working tree clean
+Enumerating objects: 894, done.
+Counting objects: 100% (894/894), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (843/843), done.
+Writing objects: 100% (852/852), 878.97 KiB | 6.76 MiB/s, done.
+Total 852 (delta 558), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (558/558), completed with 31 local objects.
+remote: error: GH013: Repository rule violations found for refs/heads/main.
+remote: 
+remote: - GITHUB PUSH PROTECTION
+remote:   —————————————————————————————————————————
+remote:     Resolve the following violations before pushing again
+remote: 
+remote:     - Push cannot contain secrets
+remote: 
+remote:     
+remote:      (?) Learn how to resolve a blocked push
+remote:      https://docs.github.com/code-security/secret-scanning/working-with-secret-scanning-and-push-protection/working-with-push-protection-from-the-command-line#resolving-a-blocked-push
+remote:     
+remote:     
+remote:       —— OpenAI API Key ————————————————————————————————————
+remote:        locations:
+remote:          - commit: 5e195884a6849ea57d8fcb088d3e7e06a4f9db40
+remote:            path: .env.example:27
+remote:     
+remote:        (?) To push, remove secret from commit(s) or follow this URL to allow the secret.
+remote:        https://github.com/VL13N/FullStackNexus/security/secret-scanning/unblock-secret/2ydYAbQe3jqKYebuuwqdFOOKco3
+remote:     
+remote: 
+remote: 
+To https://github.com/VL13N/FullStackNexus
+ ! [remote rejected] main -> main (push declined due to repository rule violations)
