@@ -17,22 +17,27 @@ import AlertsSystem from "../services/alerts.js";
 import { initializeSupabase, performDatabaseHealthCheck } from "./supabaseClientSimple.js";
 
 async function startServer() {
-  // Initialize Supabase FIRST before anything else
+  // CRITICAL: Initialize Supabase IMMEDIATELY before any other services
+  console.log('🔍 Initializing Supabase at server startup...');
+  
   try {
-    console.log('🔍 Initializing Supabase at server startup...');
+    // Validate environment variables first
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error('Missing required Supabase environment variables: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY');
+    }
+    
     initializeSupabase();
     
-    // Test database connection immediately
+    // Test database connection with SELECT 1 query
     const healthResult = await performDatabaseHealthCheck();
     if (!healthResult.success) {
-      console.error('FATAL: Supabase connection test failed:', healthResult.error);
-      console.error('Please verify your Supabase environment variables in Replit Secrets');
+      console.error('FATAL: Database connection failed:', healthResult.error || healthResult.message);
+      console.error('Please verify your Supabase credentials in Replit Secrets');
       process.exit(1);
     }
-    console.log('✅ Supabase initialized and tested successfully');
+    console.log('✅ Supabase initialized and connection verified');
   } catch (error) {
     console.error('FATAL: Supabase initialization failed:', (error as Error).message);
-    console.error('Please verify your Supabase environment variables in Replit Secrets');
     process.exit(1);
   }
 

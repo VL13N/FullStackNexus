@@ -76,6 +76,7 @@ export async function fetchTAIndicator(indicatorName, interval = "1h") {
   }
 
   const params = new URLSearchParams({
+    secret: TAAPI_KEY,
     exchange: "binance",
     symbol: "SOL/USDT",
     interval
@@ -96,11 +97,10 @@ export async function fetchTAIndicator(indicatorName, interval = "1h") {
 
   try {
     const startTime = Date.now();
-    console.log(`[TAAPI] Request: ${indicatorName} | Interval: ${interval} | URL: ${url} | Timestamp: ${new Date().toISOString()}`);
+    console.log(`[TAAPI] Request: ${indicatorName} | Interval: ${interval} | URL: ${url.replace(TAAPI_KEY, 'SECRET_KEY')} | Timestamp: ${new Date().toISOString()}`);
     
     const response = await fetch(url, {
       headers: {
-        'Authorization': `Bearer ${TAAPI_KEY}`,
         'Content-Type': 'application/json'
       }
     });
