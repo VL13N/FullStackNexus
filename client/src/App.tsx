@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import ProjectInitializer from "@/pages/project-initializer";
 import NotFound from "@/pages/not-found";
 import PredictionsPage from "@/pages/predictions";
-import Dashboard from "@/pages/dashboard";
+import SimpleDashboard from "@/components/SimpleDashboard";
 import SettingsPage from "@/pages/settings";
 import LivePredictions from "@/pages/live-predictions";
 import MLTraining from "@/pages/ml-training";
@@ -19,11 +19,6 @@ import BacktestAnalysis from "@/pages/BacktestAnalysis";
 import Alerts from "@/pages/Alerts";
 import CorrelationAnalysis from "@/pages/CorrelationAnalysis";
 import RiskManagement from "@/pages/RiskManagement";
-import TaapiDemo from "../../components/TaapiDemo";
-import CryptoRankDemo from "../../components/CryptoRankDemo";
-import OnChainDemo from "../../components/OnChainDemo";
-import AstrologyDemo from "../../components/AstrologyDemo";
-import LunarCrushDemo from "../../components/LunarCrushDemo";
 import { Activity, BarChart3, Database, TrendingUp, Sparkles, Brain, Settings, Target, Bell, GitBranch, Shield } from "lucide-react";
 
 function LandingPage() {
@@ -319,13 +314,9 @@ function Router() {
       <Navigation />
       <Switch>
         <Route path="/" component={LandingPage} />
-        <Route path="/dashboard" component={Dashboard} />
+        <Route path="/dashboard" component={SimpleDashboard} />
         <Route path="/predictions" component={PredictionsPage} />
-        <Route path="/taapi" component={TaapiDemo} />
-        <Route path="/cryptorank" component={CryptoRankDemo} />
-        <Route path="/onchain" component={OnChainDemo} />
-        <Route path="/astrology" component={AstrologyDemo} />
-        <Route path="/lunarcrush" component={LunarCrushDemo} />
+
         <Route path="/live-predictions" component={LivePredictions} />
         <Route path="/ml-training" component={MLTraining} />
 
