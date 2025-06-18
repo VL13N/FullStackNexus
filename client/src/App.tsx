@@ -1,5 +1,4 @@
 import { useState } from "react";
-import WorkingDashboard from "@/components/WorkingDashboard";
 import ComprehensiveDashboard from "@/components/ComprehensiveDashboard";
 
 function App() {
@@ -10,9 +9,7 @@ function App() {
     return <ComprehensiveDashboard />;
   }
   
-  if (currentPath === "/working") {
-    return <WorkingDashboard />;
-  }
+
 
   const navigateTo = (path: string) => {
     window.history.pushState({}, "", path);
